@@ -34,6 +34,8 @@ jobs:
     name: "azd ${{ github.event.inputs.action }} → ${{ github.event.inputs.environment }}"
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
+    outputs:
+      app_url: ${{ steps.capture-app-url.outputs.app_url }}
 
     steps:
       - name: Checkout
@@ -117,6 +119,17 @@ jobs:
         if: github.event.inputs.action != 'down (destroy all resources)'
         run: azd env get-values | grep -E "URL|HOST|NAME" | sed 's/=.*/=<REDACTED>/'
 
+      - name: Capture app URL
+        id: capture-app-url
+        if: github.event.inputs.action != 'down (destroy all resources)'
+        run: |
+          APP_URL=$(azd env get-values | grep '^TYPESCRIPT_APP_URL=' | cut -d'=' -f2- | tr -d '"')
+          if [ -z "$APP_URL" ]; then
+            echo "::error::TYPESCRIPT_APP_URL was not found in azd environment values."
+            exit 1
+          fi
+          echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
+
   smoke-tests:
     name: Run Smoke Tests
     needs: deploy
@@ -133,35 +146,13 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install azd
-        uses: Azure/setup-azd@v2
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Log in to azd (federated)
-        run: |
-          azd auth login \
-            --client-id "${{ secrets.AZURE_CLIENT_ID }}" \
-            --federated-credential-provider github \
-            --tenant-id "${{ secrets.AZURE_TENANT_ID }}"
-
-      - name: Get app URL
-        id: env
-        run: |
-          ENV_NAME="agentcraftworks-${{ github.event.inputs.environment }}"
-          azd env select "$ENV_NAME"
-          APP_URL=$(azd env get-values | grep TYPESCRIPT_APP_URL | cut -d'=' -f2 | tr -d '"')
-          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+      - name: Use app URL from deploy job
+        run: echo "Using deploy job output for app URL."
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run smoke tests
         env:
-          BASE_URL: ${{ steps.env.outputs.app_url }}
+          BASE_URL: ${{ needs.deploy.outputs.app_url }}
         run: npx -w typescript tsx smoke-test.ts
