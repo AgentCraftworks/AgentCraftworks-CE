@@ -74,8 +74,8 @@ async function testCreateHandoff(): Promise<void> {
   if (!data.handoff_id) {
     throw new Error("Created handoff missing handoff_id");
   }
-  if (data.status !== "initiated") {
-    throw new Error(`Expected status "initiated", got "${data.status}"`);
+  if (data.status !== "pending") {
+    throw new Error(`Expected status "pending", got "${data.status}"`);
   }
 }
 
