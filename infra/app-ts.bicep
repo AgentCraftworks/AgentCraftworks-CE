@@ -11,6 +11,11 @@ param redisPort int
 @description('Container image to deploy. Defaults to a public placeholder for initial provisioning.')
 param imageName string = ''
 
+// azd uses this tag to map a service in azure.yaml to its deployed Azure resource.
+var serviceTags = union(tags, {
+  'azd-service-name': 'typescript-api'
+})
+
 // Container Registry reference
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' existing = {
   name: containerRegistryName
@@ -56,7 +61,7 @@ resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: 'ca-ts-${resourceToken}'
   location: location
-  tags: tags
+  tags: serviceTags
   dependsOn: [
     keyVaultSecretsUserRole
     acrPullRole
