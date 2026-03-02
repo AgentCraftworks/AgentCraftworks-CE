@@ -116,7 +116,7 @@ jobs:
           DISCOVERY_PATH="${{ steps.resolve-url.outputs.discovery_path }}"
           if [ -z "$APP_URL" ]; then
             echo "❌ BASE_URL could not be resolved (discovery_path=${DISCOVERY_PATH})."
-            echo "   Fix: ensure the azd-service-name='typescript-api' tag exists on the Container App"
+            echo "   Fix: ensure the azd-service-name='${{ env.AZD_SERVICE_NAME }}' tag exists on the Container App"
             echo "   or set the TYPESCRIPT_PROD_URL environment secret as a fallback."
             exit 1
           fi
