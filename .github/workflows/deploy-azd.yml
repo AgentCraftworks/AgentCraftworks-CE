@@ -3,6 +3,7 @@ name: Deploy Infrastructure (azd)
 # Infrastructure provisioning for new environments.
 # Run manually to provision Azure resources via Azure Developer CLI.
 # Uses OIDC federated credentials — no stored Azure secrets.
+# Engagement Level: T5 (Full Agent Team) — provisions and deploys Azure infrastructure.
 
 on:
   workflow_dispatch:
@@ -35,7 +36,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
     outputs:
-      app_url: ${{ steps.capture_app_url.outputs.app_url }}
+      app_url: ${{ steps.capture_outputs.outputs.app_url }}
+      acr_name: ${{ steps.capture_outputs.outputs.acr_name }}
+      acr_login_server: ${{ steps.capture_outputs.outputs.acr_login_server }}
+      resource_group: ${{ steps.capture_outputs.outputs.resource_group }}
+      container_app_name: ${{ steps.capture_outputs.outputs.container_app_name }}
 
     steps:
       - name: Checkout
@@ -119,16 +124,70 @@ jobs:
         if: github.event.inputs.action != 'down (destroy all resources)'
         run: azd env get-values | grep -E "URL|HOST|NAME" | sed 's/=.*/=<REDACTED>/'
 
-      - name: Capture app URL
-        id: capture_app_url
+      - name: Capture deployment outputs
+        id: capture_outputs
         if: github.event.inputs.action != 'down (destroy all resources)'
         run: |
-          APP_URL=$(azd env get-values | grep '^TYPESCRIPT_APP_URL=' | cut -d'=' -f2- | tr -d '"')
-          if [ -z "$APP_URL" ]; then
-            echo "::error::TYPESCRIPT_APP_URL was not found in azd environment values."
+          ENV_VALUES=$(azd env get-values)
+          APP_URL=$(echo "$ENV_VALUES" | grep '^TYPESCRIPT_APP_URL=' | cut -d'=' -f2- | tr -d '"')
+          ACR_NAME=$(echo "$ENV_VALUES" | grep '^AZURE_CONTAINER_REGISTRY_NAME=' | cut -d'=' -f2- | tr -d '"')
+          ACR_LOGIN_SERVER=$(echo "$ENV_VALUES" | grep '^AZURE_CONTAINER_REGISTRY_ENDPOINT=' | cut -d'=' -f2- | tr -d '"')
+          CONTAINER_APP_NAME=$(echo "$ENV_VALUES" | grep '^AZURE_CONTAINER_APP_NAME=' | cut -d'=' -f2- | tr -d '"')
+          RESOURCE_GROUP=$(echo "$ENV_VALUES" | grep '^AZURE_RESOURCE_GROUP=' | cut -d'=' -f2- | tr -d '"')
+
+          MISSING=()
+          [ -z "$APP_URL" ]           && MISSING+=("TYPESCRIPT_APP_URL")
+          [ -z "$ACR_NAME" ]          && MISSING+=("AZURE_CONTAINER_REGISTRY_NAME")
+          [ -z "$ACR_LOGIN_SERVER" ]  && MISSING+=("AZURE_CONTAINER_REGISTRY_ENDPOINT")
+          [ -z "$CONTAINER_APP_NAME" ] && MISSING+=("AZURE_CONTAINER_APP_NAME")
+          [ -z "$RESOURCE_GROUP" ]    && MISSING+=("AZURE_RESOURCE_GROUP")
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing required azd outputs: ${MISSING[*]}"
+            echo "Ensure 'azd up' completed successfully and the Bicep outputs are defined."
             exit 1
           fi
+
           echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
+          echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+          echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+          echo "resource_group=$RESOURCE_GROUP" >> "$GITHUB_OUTPUT"
+          echo "container_app_name=$CONTAINER_APP_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Publish deployment outputs
+        if: github.event.inputs.action != 'down (destroy all resources)'
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          if [ "$ENV" = "production" ]; then
+            URL_SECRET="TYPESCRIPT_PROD_URL"
+          elif [ "$ENV" = "staging" ]; then
+            URL_SECRET="TYPESCRIPT_STAGING_URL"
+          else
+            URL_SECRET="TYPESCRIPT_APP_URL"
+          fi
+
+          {
+            echo "## Deployment Outputs — ${ENV}"
+            echo ""
+            echo "Sync the following values to the \`${ENV}\` environment secrets in GitHub:"
+            echo "**Settings → Environments → ${ENV} → Environment secrets**"
+            echo ""
+            echo "| Secret | Value |"
+            echo "|--------|-------|"
+            echo "| \`AZURE_ACR_NAME\` | \`${{ steps.capture_outputs.outputs.acr_name }}\` |"
+            echo "| \`AZURE_ACR_LOGIN_SERVER\` | \`${{ steps.capture_outputs.outputs.acr_login_server }}\` |"
+            echo "| \`AZURE_RESOURCE_GROUP\` | \`${{ steps.capture_outputs.outputs.resource_group }}\` |"
+            echo "| \`AZURE_CONTAINER_APP_NAME\` | \`${{ steps.capture_outputs.outputs.container_app_name }}\` |"
+            echo "| \`${URL_SECRET}\` | \`${{ steps.capture_outputs.outputs.app_url }}\` |"
+            echo ""
+            echo "### Quick sync with GitHub CLI"
+            echo "\`\`\`sh"
+            echo "gh secret set AZURE_ACR_NAME --env ${ENV} --body \"${{ steps.capture_outputs.outputs.acr_name }}\""
+            echo "gh secret set AZURE_ACR_LOGIN_SERVER --env ${ENV} --body \"${{ steps.capture_outputs.outputs.acr_login_server }}\""
+            echo "gh secret set AZURE_RESOURCE_GROUP --env ${ENV} --body \"${{ steps.capture_outputs.outputs.resource_group }}\""
+            echo "gh secret set AZURE_CONTAINER_APP_NAME --env ${ENV} --body \"${{ steps.capture_outputs.outputs.container_app_name }}\""
+            echo "gh secret set ${URL_SECRET} --env ${ENV} --body \"${{ steps.capture_outputs.outputs.app_url }}\""
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   smoke-tests:
     name: Run Smoke Tests

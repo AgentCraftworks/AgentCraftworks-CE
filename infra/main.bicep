@@ -114,9 +114,11 @@ module appTs './app-ts.bicep' = {
 // Outputs
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
+output AZURE_RESOURCE_GROUP string = rg.name
 output AZURE_CONTAINER_REGISTRY_NAME string = resources.outputs.containerRegistryName
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.containerRegistryLoginServer
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.keyVaultName
 output AZURE_POSTGRES_HOST string = postgres.outputs.postgresHost
 output AZURE_REDIS_HOST string = redis.outputs.redisHost
+output AZURE_CONTAINER_APP_NAME string = appTs.outputs.containerAppName
 output TYPESCRIPT_APP_URL string = appTs.outputs.appUrl

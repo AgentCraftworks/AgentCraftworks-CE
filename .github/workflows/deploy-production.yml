@@ -1,5 +1,12 @@
 name: Deploy to Production
 
+# Deploys the TypeScript service to the production Azure Container Apps environment.
+# Triggered on version tags or manual dispatch.
+# Engagement Level: T4 (Agent Team) — deploys to production Azure environment.
+# Prerequisite: run deploy-azd.yml first and sync its job-summary outputs to the
+# 'production' environment secrets (AZURE_ACR_NAME, AZURE_ACR_LOGIN_SERVER,
+# AZURE_RESOURCE_GROUP, AZURE_CONTAINER_APP_NAME, TYPESCRIPT_PROD_URL).
+
 on:
   push:
     tags:
@@ -21,6 +28,29 @@ jobs:
       id-token: write
 
     steps:
+      - name: Preflight — verify required secrets
+        env:
+          AZURE_ACR_NAME: ${{ secrets.AZURE_ACR_NAME }}
+          AZURE_ACR_LOGIN_SERVER: ${{ secrets.AZURE_ACR_LOGIN_SERVER }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AZURE_CONTAINER_APP_NAME: ${{ secrets.AZURE_CONTAINER_APP_NAME }}
+          TYPESCRIPT_PROD_URL: ${{ secrets.TYPESCRIPT_PROD_URL }}
+        run: |
+          MISSING=()
+          [ -z "$AZURE_ACR_NAME" ]           && MISSING+=("AZURE_ACR_NAME")
+          [ -z "$AZURE_ACR_LOGIN_SERVER" ]   && MISSING+=("AZURE_ACR_LOGIN_SERVER")
+          [ -z "$AZURE_RESOURCE_GROUP" ]     && MISSING+=("AZURE_RESOURCE_GROUP")
+          [ -z "$AZURE_CONTAINER_APP_NAME" ] && MISSING+=("AZURE_CONTAINER_APP_NAME")
+          [ -z "$TYPESCRIPT_PROD_URL" ]      && MISSING+=("TYPESCRIPT_PROD_URL")
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing required production secrets: ${MISSING[*]}"
+            echo "::notice::Run deploy-azd.yml (action: 'up (provision + deploy)', environment: production)"
+            echo "::notice::and sync the job-summary outputs to the 'production' environment secrets."
+            echo "::notice::See DEPLOYMENT.md for step-by-step instructions."
+            exit 1
+          fi
+          echo "✅ All required secrets are present."
+
       - name: Checkout code
         uses: actions/checkout@v6
 

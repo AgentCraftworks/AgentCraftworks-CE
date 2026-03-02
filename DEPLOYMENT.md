@@ -377,13 +377,42 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 
 ### For deploy-production.yml (Docker-based deploy)
 
-| Secret | Description |
-|--------|-------------|
-| `AZURE_ACR_NAME` | Azure Container Registry name |
-| `AZURE_ACR_LOGIN_SERVER` | ACR login server (e.g., `myacr.azurecr.io`) |
-| `AZURE_CONTAINER_APP_NAME` | Container App name |
-| `AZURE_RESOURCE_GROUP` | Resource group name |
-| `TYPESCRIPT_PROD_URL` | Production URL for smoke tests |
+These five secrets are automatically resolved after `azd up` and printed to the
+`deploy-azd.yml` job summary. Run `deploy-azd.yml` first, then copy the values.
+
+| Secret | Description | Source |
+|--------|-------------|--------|
+| `AZURE_ACR_NAME` | Azure Container Registry name | `deploy-azd.yml` job summary |
+| `AZURE_ACR_LOGIN_SERVER` | ACR login server (e.g., `myacr.azurecr.io`) | `deploy-azd.yml` job summary |
+| `AZURE_CONTAINER_APP_NAME` | Container App name | `deploy-azd.yml` job summary |
+| `AZURE_RESOURCE_GROUP` | Resource group name | `deploy-azd.yml` job summary |
+| `TYPESCRIPT_PROD_URL` | Production URL for smoke tests | `deploy-azd.yml` job summary |
+
+#### Secret Sync — Step-by-Step
+
+After running `deploy-azd.yml` (action: `up (provision + deploy)`, environment: `production`):
+
+1. Open the completed workflow run → click the **deploy** job → scroll to the
+   **Publish deployment outputs** step summary.
+2. The summary shows a formatted table of all five values and ready-to-run
+   `gh secret set` commands.
+3. Copy and run the commands from the job summary (requires `gh auth login` with repo write access).
+   The job summary contains the exact commands pre-populated with your deployed values, for example:
+
+   ```sh
+   gh secret set AZURE_ACR_NAME          --env production --body "acragentXXXXXX"
+   gh secret set AZURE_ACR_LOGIN_SERVER  --env production --body "acragentXXXXXX.azurecr.io"
+   gh secret set AZURE_RESOURCE_GROUP    --env production --body "rg-agentcraftworks-production"
+   gh secret set AZURE_CONTAINER_APP_NAME --env production --body "ca-ts-XXXXXX"
+   gh secret set TYPESCRIPT_PROD_URL     --env production --body "https://ca-ts-XXXXXX.region.azurecontainerapps.io"
+   ```
+
+   > **Tip:** Copy the pre-populated commands directly from the **Publish deployment outputs**
+   > step summary — they contain your actual resource names, not the placeholders above.
+
+4. Re-run `deploy-production.yml` — the preflight check confirms all secrets are
+   present before the build starts, and fails fast with an actionable error if any
+   are still missing.
 
 ### Setting Up Azure Service Principal with Federated Credentials
 
