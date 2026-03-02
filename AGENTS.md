@@ -391,6 +391,26 @@ After every correction, update agent instruction files so agents don't repeat mi
 6. Merge after approval and CI passes
 7. Delete feature branch and worktree
 
+## Branching and Promotion Policy (MANDATORY)
+
+Standard promotion flow for this repository:
+
+`feature/*` -> `staging` -> `main`
+
+Rules:
+
+1. Never push directly to `main` or `staging`.
+2. Create work branches from `main` using `feature/*`, `feat/*`, `fix/*`, `hotfix/*`, `chore/*`, or `docs/*`.
+3. Merge to `staging` first for full integration testing.
+4. Promote to `main` only by PR from `staging`.
+5. PRs into `main` from non-`staging` branches are disallowed.
+
+Bootstrap assets for this policy:
+
+- Script: `scripts/bootstrap-branch-policy.ps1`
+- PR guard workflow: `.github/workflows/ghaw-branch-policy-guard.yml`
+- New repo template: `docs/NEW_REPO_BRANCH_POLICY_TEMPLATE.md`
+
 ## Always Ask First
 
 Before making significant changes:
