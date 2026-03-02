@@ -345,6 +345,9 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 | `AZURE_TENANT_ID` | Azure AD Tenant ID | `az account show --query tenantId -o tsv` |
 | `AZURE_SUBSCRIPTION_ID` | Subscription ID | `az account show --query id -o tsv` |
 
+> `deploy-azd.yml` runs with `environment: ${{ github.event.inputs.environment }}`.
+> Ensure these Azure OIDC secrets are present in each GitHub environment you use (`dev`, `staging`, `production`), not only at repo level.
+
 ### Azure Environment
 
 | Secret | Description | Example |
@@ -503,7 +506,7 @@ services:
 | Workflow | File | Trigger |
 |----------|------|---------|
 | **TypeScript CI** | `.github/workflows/ci.yml` | Push, PR |
-| **azd deploy** | `.github/workflows/deploy-azd.yml` | Push to `main`, `v*` tags, manual |
+| **azd deploy** | `.github/workflows/deploy-azd.yml` | Manual (`workflow_dispatch`) |
 | **Docker deploy** | `.github/workflows/deploy-production.yml` | Push to `main`, `v*` tags, manual |
 | **Changeset** | `.github/workflows/ghaw-changeset.yml` | Push to `main`, manual |
 | **CI Coach** | `.github/workflows/ghaw-ci-coach.yml` | CI failure |
@@ -550,6 +553,16 @@ TYPESCRIPT_PROD_URL=https://your-app.azurecontainerapps.io ./scripts/run-smoke-t
 cd typescript
 BASE_URL=http://localhost:3000 npx tsx smoke-test.ts
 ```
+
+### Postdeploy Retry Behavior (azd)
+
+The `azure.yaml` `postdeploy` hook runs smoke tests with retries to reduce false negatives during cold start or ingress warm-up:
+
+- Attempts: `5`
+- Delay between attempts: `15s`
+- Behavior: workflow fails only if all attempts fail
+
+This applies to `azd up` executions used by `.github/workflows/deploy-azd.yml`.
 
 ### Expected Output
 
@@ -710,6 +723,33 @@ az role assignment list --assignee {principal-id} \
 3. Check workflow logs for specific error
 4. Ensure Docker image builds locally first
 5. Verify Azure resource limits aren't exceeded
+
+#### Common OIDC error: missing environment secrets
+
+If `Azure Login (OIDC)` fails with:
+
+`Using auth-type: SERVICE_PRINCIPAL. Not all values are present. Ensure 'client-id' and 'tenant-id' are supplied.`
+
+Check that the target GitHub environment (for example `staging`) includes all required Azure auth secrets:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+- `AZURE_LOCATION`
+
+You can verify configured environment secrets with:
+
+```bash
+gh api repos/AgentCraftworks/AgentCraftworks-CE/environments/staging/secrets --jq '[.secrets[].name]'
+```
+
+#### GitHub API rate limit during workflow triage
+
+If `gh run view` or `gh run list` returns `HTTP 403: API rate limit exceeded`, check reset time before retrying:
+
+```bash
+gh api rate_limit --jq '.resources.core | "\(.remaining)/\(.limit) remaining, resets \(.reset | todate)"'
+```
 
 ### Security Best Practices
 
