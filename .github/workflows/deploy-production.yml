@@ -1,5 +1,7 @@
 name: Deploy to Production
 
+# Engagement Level: T4 (Agent Team) — deploys to production Azure environment.
+
 on:
   push:
     tags:
@@ -9,6 +11,7 @@ on:
 env:
   AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_ACR_LOGIN_SERVER }}
   TYPESCRIPT_IMAGE_NAME: typescript-api
+  AZD_SERVICE_NAME: typescript-api
 
 jobs:
   build-and-deploy-typescript:
@@ -66,12 +69,58 @@ jobs:
     name: Run Smoke Tests
     needs: build-and-deploy-typescript
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
+      id-token: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve app URL from Azure resource metadata
+        # Primary: query the Container App whose azd-service-name tag equals
+        # AZD_SERVICE_NAME inside the deployment resource group.
+        # Fallback: use the TYPESCRIPT_PROD_URL secret if tag lookup yields nothing.
+        id: resolve-url
+        run: |
+          LOOKUP_STDERR=$(mktemp)
+          FQDN=$(az containerapp list \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --query "[?tags.\"azd-service-name\"=='${{ env.AZD_SERVICE_NAME }}'].properties.configuration.ingress.fqdn | [0]" \
+            --output tsv 2>"$LOOKUP_STDERR" || true)
+          if [ -n "$FQDN" ]; then
+            APP_URL="https://${FQDN}"
+            echo "discovery_path=azure-tag-lookup" >> "$GITHUB_OUTPUT"
+          else
+            if [ -s "$LOOKUP_STDERR" ]; then
+              echo "⚠️ Azure tag lookup failed with error:" >&2
+              cat "$LOOKUP_STDERR" >&2
+            fi
+            APP_URL="${{ secrets.TYPESCRIPT_PROD_URL }}"
+            echo "discovery_path=secret-fallback" >> "$GITHUB_OUTPUT"
+          fi
+          rm -f "$LOOKUP_STDERR"
+          echo "app_url=${APP_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate app URL is non-empty
+        run: |
+          APP_URL="${{ steps.resolve-url.outputs.app_url }}"
+          DISCOVERY_PATH="${{ steps.resolve-url.outputs.discovery_path }}"
+          if [ -z "$APP_URL" ]; then
+            echo "❌ BASE_URL could not be resolved (discovery_path=${DISCOVERY_PATH})."
+            echo "   Fix: ensure the azd-service-name='typescript-api' tag exists on the Container App"
+            echo "   or set the TYPESCRIPT_PROD_URL environment secret as a fallback."
+            exit 1
+          fi
+          echo "✅ BASE_URL resolved via ${DISCOVERY_PATH}: ${APP_URL}"
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -83,7 +132,7 @@ jobs:
 
       - name: Run TypeScript smoke tests
         env:
-          BASE_URL: ${{ secrets.TYPESCRIPT_PROD_URL }}
+          BASE_URL: ${{ steps.resolve-url.outputs.app_url }}
         run: npx -w typescript tsx smoke-test.ts
 
       - name: Notify on success
