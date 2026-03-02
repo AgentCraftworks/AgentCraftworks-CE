@@ -438,6 +438,64 @@ az ad app federated-credential create --id "$APP_ID" --parameters '{
 
 ---
 
+## azd Service-Tag Contract
+
+`azd deploy` maps each service in `azure.yaml` to its Azure resource using an
+`azd-service-name` tag.  If the tag is missing on the resource, deploy fails
+with a service-mapping error.
+
+### How it works
+
+Every entry under `services:` in `azure.yaml` requires a matching tag on the
+provisioned Azure resource in `infra/`:
+
+```bicep
+// infra/app-ts.bicep
+var serviceTags = union(tags, {
+  'azd-service-name': 'typescript-api'   // must match the key in azure.yaml
+})
+
+resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
+  tags: serviceTags   // pass serviceTags, not plain tags
+  ...
+}
+```
+
+The service name in the tag (`typescript-api`) must exactly match the key under
+`services:` in `azure.yaml`:
+
+```yaml
+# azure.yaml
+services:
+  typescript-api:   # <-- must match 'azd-service-name' tag value
+    host: containerapp
+    ...
+```
+
+### Current service-tag mapping
+
+| azure.yaml service | Bicep file | Tag value |
+|--------------------|------------|-----------|
+| `typescript-api` | `infra/app-ts.bicep` | `'azd-service-name': 'typescript-api'` |
+
+### Adding a new service
+
+1. Add the service to `azure.yaml` under `services:`.
+2. Create (or update) the corresponding Bicep file in `infra/` so the Azure
+   resource carries the `azd-service-name` tag:
+
+   ```bicep
+   var serviceTags = union(tags, {
+     'azd-service-name': '<your-service-name>'
+   })
+   ```
+
+3. The `ghaw-azd-service-tag-check` CI workflow validates this contract
+   automatically on every PR that touches `azure.yaml` or `infra/**`.
+   PRs that break the contract are blocked from merging.
+
+---
+
 ## CI/CD Pipeline
 
 ### Workflows
@@ -453,6 +511,7 @@ az ad app federated-credential create --id "$APP_ID" --parameters '{
 | **Workflow Health** | `.github/workflows/ghaw-workflow-health.yml` | Weekday schedule, manual |
 | **Test Improver** | `.github/workflows/ghaw-daily-test-improver.yml` | Weekday schedule, manual |
 | **CLI Consistency** | `.github/workflows/ghaw-cli-consistency.yml` | PR to `main`, manual |
+| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | PR / push touching `azure.yaml` or `infra/**` |
 
 ### Build Process
 

@@ -1,0 +1,106 @@
+name: "GH-AW: azd Service-Tag Contract Check"
+
+# Validates that every service declared in azure.yaml has a matching
+# azd-service-name tag in at least one Bicep template under infra/.
+# azd deploy uses these tags to map service names to Azure resources;
+# a missing tag causes deploy to fail with service-mapping errors.
+# Engagement Level: T2 (Advisor) — fails the PR check when the contract diverges.
+
+on:
+  pull_request:
+    branches: [main, staging]
+    paths:
+      - "azure.yaml"
+      - "infra/**"
+  push:
+    branches: [main]
+    paths:
+      - "azure.yaml"
+      - "infra/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-service-tags:
+    name: Validate azd service-tag contract
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install PyYAML
+        run: pip install pyyaml --quiet
+
+      - name: Extract services from azure.yaml
+        id: extract-services
+        run: |
+          python3 - <<'EOF'
+          import yaml, sys
+
+          with open("azure.yaml") as f:
+              doc = yaml.safe_load(f)
+
+          services = list((doc.get("services") or {}).keys())
+          if not services:
+              print("WARNING: No services found in azure.yaml", file=sys.stderr)
+          for svc in services:
+              print(svc)
+          EOF
+
+      - name: Check azd-service-name tags in Bicep templates
+        run: |
+          # Re-parse services in shell so we can iterate
+          services=$(python3 - <<'EOF'
+          import yaml
+          with open("azure.yaml") as f:
+              doc = yaml.safe_load(f)
+          for svc in (doc.get("services") or {}).keys():
+              print(svc)
+          EOF
+          )
+
+          if [ -z "$services" ]; then
+            echo "No services defined in azure.yaml — nothing to check."
+            exit 0
+          fi
+
+          failed=0
+          echo "Checking azd-service-name tags for all services in azure.yaml…"
+          echo ""
+
+          while IFS= read -r service; do
+            # Exact match: 'azd-service-name': '<service>' (no partial-name false positives)
+            if grep -rqE "'azd-service-name'[[:space:]]*:[[:space:]]*'${service}'" infra/; then
+              echo "✅  ${service}  — azd-service-name tag found in infra/"
+            else
+              echo "❌  ${service}  — azd-service-name tag MISSING from infra/*.bicep"
+              failed=1
+            fi
+          done <<< "$services"
+
+          echo ""
+          if [ "$failed" -ne 0 ]; then
+            echo "──────────────────────────────────────────────────────────────────────"
+            echo "ERROR: One or more services in azure.yaml are missing their"
+            echo "azd-service-name tag in infra/*.bicep."
+            echo ""
+            echo "Every service listed under 'services:' in azure.yaml must have a"
+            echo "matching tag on its Azure resource:"
+            echo ""
+            echo "  var serviceTags = union(tags, {"
+            echo "    'azd-service-name': '<service-name>'"
+            echo "  })"
+            echo ""
+            echo "Without this tag azd deploy cannot map the service to its Azure"
+            echo "resource and will fail with a service-mapping error."
+            echo ""
+            echo "See DEPLOYMENT.md#azd-service-tag-contract for details."
+            echo "──────────────────────────────────────────────────────────────────────"
+            exit 1
+          fi
+
+          echo "All services have matching azd-service-name tags. ✅"
