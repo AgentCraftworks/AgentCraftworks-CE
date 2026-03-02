@@ -24,35 +24,14 @@ jobs:
     environment: production
     outputs:
       app_url: ${{ steps.resolve.outputs.app_url }}
+      app_name: ${{ steps.resolve.outputs.app_name }}
+      resource_group: ${{ steps.resolve.outputs.resource_group }}
     permissions:
       contents: read
       packages: write
       id-token: write
 
     steps:
-      - name: Preflight — verify required secrets
-        env:
-          AZURE_ACR_NAME: ${{ secrets.AZURE_ACR_NAME }}
-          AZURE_ACR_LOGIN_SERVER: ${{ secrets.AZURE_ACR_LOGIN_SERVER }}
-          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          AZURE_CONTAINER_APP_NAME: ${{ secrets.AZURE_CONTAINER_APP_NAME }}
-          TYPESCRIPT_PROD_URL: ${{ secrets.TYPESCRIPT_PROD_URL }}
-        run: |
-          MISSING=()
-          [ -z "$AZURE_ACR_NAME" ]           && MISSING+=("AZURE_ACR_NAME")
-          [ -z "$AZURE_ACR_LOGIN_SERVER" ]   && MISSING+=("AZURE_ACR_LOGIN_SERVER")
-          [ -z "$AZURE_RESOURCE_GROUP" ]     && MISSING+=("AZURE_RESOURCE_GROUP")
-          [ -z "$AZURE_CONTAINER_APP_NAME" ] && MISSING+=("AZURE_CONTAINER_APP_NAME")
-          [ -z "$TYPESCRIPT_PROD_URL" ]      && MISSING+=("TYPESCRIPT_PROD_URL")
-          if [ ${#MISSING[@]} -gt 0 ]; then
-            echo "::error::Missing required production secrets: ${MISSING[*]}"
-            echo "::notice::Run deploy-azd.yml (action: 'up (provision + deploy)', environment: production)"
-            echo "::notice::and sync the job-summary outputs to the 'production' environment secrets."
-            echo "::notice::See DEPLOYMENT.md for step-by-step instructions."
-            exit 1
-          fi
-          echo "✅ All required secrets are present."
-
       - name: Checkout code
         uses: actions/checkout@v6
 
@@ -75,14 +54,24 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "$RG_NAME_SECRET" ]; then
-            echo "::error::AZURE_RESOURCE_GROUP secret is required."
+          RG_NAME="$RG_NAME_SECRET"
+          if [ -z "$RG_NAME" ]; then
+            RG_NAME=$(az resource list \
+              --resource-type "Microsoft.App/containerApps" \
+              --query "[?tags.\"azd-service-name\"=='${{ env.AZD_SERVICE_NAME }}'].resourceGroup | [0]" \
+              -o tsv)
+          fi
+          if [ -z "$RG_NAME" ]; then
+            RG_NAME=$(az group list --query "[?contains(name, 'agentcraftworks-production')].name | [0]" -o tsv)
+          fi
+          if [ -z "$RG_NAME" ]; then
+            echo "::error::Could not resolve Azure resource group for production deployment."
             exit 1
           fi
 
           ACR_NAME="$ACR_NAME_SECRET"
           if [ -z "$ACR_NAME" ]; then
-            ACR_NAME=$(az acr list --resource-group "$RG_NAME_SECRET" --query "[0].name" -o tsv)
+            ACR_NAME=$(az acr list --resource-group "$RG_NAME" --query "[0].name" -o tsv)
           fi
           if [ -z "$ACR_NAME" ]; then
             echo "::error::Could not resolve Azure Container Registry name."
@@ -99,18 +88,25 @@ jobs:
           fi
 
           APP_URL="$APP_URL_SECRET"
-          if [ -z "$APP_URL" ]; then
-            APP_NAME="$APP_NAME_SECRET"
-            if [ -z "$APP_NAME" ]; then
-              APP_NAME=$(az resource list \
-                --resource-group "$RG_NAME_SECRET" \
-                --resource-type "Microsoft.App/containerApps" \
-                --query "[?tags.\"azd-service-name\"=='typescript-api'].name | [0]" \
-                -o tsv)
-            fi
+          APP_NAME="$APP_NAME_SECRET"
+          if [ -z "$APP_NAME" ]; then
+            APP_NAME=$(az resource list \
+              --resource-group "$RG_NAME" \
+              --resource-type "Microsoft.App/containerApps" \
+              --query "[?tags.\"azd-service-name\"=='${{ env.AZD_SERVICE_NAME }}'].name | [0]" \
+              -o tsv)
+          fi
+          if [ -z "$APP_NAME" ]; then
+            APP_NAME=$(az resource list \
+              --resource-group "$RG_NAME" \
+              --resource-type "Microsoft.App/containerApps" \
+              --query "[0].name" \
+              -o tsv)
+          fi
 
+          if [ -z "$APP_URL" ]; then
             if [ -n "$APP_NAME" ]; then
-              APP_FQDN=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME_SECRET" --query "properties.configuration.ingress.fqdn" -o tsv)
+              APP_FQDN=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query "properties.configuration.ingress.fqdn" -o tsv)
               if [ -n "$APP_FQDN" ]; then
                 APP_URL="https://$APP_FQDN"
               fi
@@ -124,6 +120,8 @@ jobs:
 
           echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+          echo "resource_group=$RG_NAME" >> "$GITHUB_OUTPUT"
+          echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
           echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
 
       - name: Generate image tags
@@ -153,8 +151,8 @@ jobs:
           azcliversion: latest
           inlineScript: |
             az containerapp update \
-              --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ steps.resolve.outputs.app_name }} \
+              --resource-group ${{ steps.resolve.outputs.resource_group }} \
               --image ${{ steps.resolve.outputs.acr_login_server }}/${{ env.TYPESCRIPT_IMAGE_NAME }}:${{ steps.meta.outputs.version }}
 
   smoke-tests:
@@ -183,9 +181,27 @@ jobs:
         # Fallback: use the TYPESCRIPT_PROD_URL secret if tag lookup yields nothing.
         id: resolve-url
         run: |
+          RG_NAME="${{ needs.build-and-deploy-typescript.outputs.resource_group }}"
+          APP_NAME="${{ needs.build-and-deploy-typescript.outputs.app_name }}"
+
+          if [ -n "$APP_NAME" ] && [ -n "$RG_NAME" ]; then
+            FQDN=$(az containerapp show \
+              --name "$APP_NAME" \
+              --resource-group "$RG_NAME" \
+              --query "properties.configuration.ingress.fqdn" \
+              --output tsv || true)
+          fi
+
+          if [ -n "${FQDN:-}" ]; then
+            APP_URL="https://${FQDN}"
+            echo "discovery_path=build-job-output" >> "$GITHUB_OUTPUT"
+            echo "app_url=${APP_URL}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           LOOKUP_STDERR=$(mktemp)
           FQDN=$(az containerapp list \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --resource-group "$RG_NAME" \
             --query "[?tags.\"azd-service-name\"=='${{ env.AZD_SERVICE_NAME }}'].properties.configuration.ingress.fqdn | [0]" \
             --output tsv 2>"$LOOKUP_STDERR" || true)
           if [ -n "$FQDN" ]; then
