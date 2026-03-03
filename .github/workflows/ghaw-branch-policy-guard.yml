@@ -4,44 +4,44 @@ name: "GH-AW: Branch Policy Guard"
 # Engagement Level: T1 (Observer) - validates PR branch topology only.
 
 on:
-  pull_request:
-    branches:
-      - main
-      - staging
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - edited
+    pull_request:
+        branches:
+            - main
+            - staging
+        types:
+            - opened
+            - reopened
+            - synchronize
+            - edited
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  validate-pr-flow:
-    name: Validate PR Branch Flow
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validate source and target branch policy
-        shell: bash
-        run: |
-          set -euo pipefail
+    validate-pr-flow:
+        name: Validate PR Branch Flow
+        runs-on: ubuntu-latest
+        steps:
+            - name: Validate source and target branch policy
+              shell: bash
+              run: |
+                  set -euo pipefail
 
-          BASE="${{ github.base_ref }}"
-          HEAD="${{ github.head_ref }}"
+                  BASE="${{ github.base_ref }}"
+                  HEAD="${{ github.head_ref }}"
 
-          echo "PR flow: ${HEAD} -> ${BASE}"
+                  echo "PR flow: ${HEAD} -> ${BASE}"
 
-          if [[ "${BASE}" == "main" ]]; then
-            if [[ "${HEAD}" != "staging" ]]; then
-              echo "::error::PRs into main must come from staging. Got ${HEAD} -> main."
-              exit 1
-            fi
-          elif [[ "${BASE}" == "staging" ]]; then
-            if [[ ! "${HEAD}" =~ ^(feature|feat|fix|hotfix|chore|docs)/.+$ ]]; then
-              echo "::error::PRs into staging must come from feature/fix/hotfix/chore/docs branches. Got ${HEAD}."
-              exit 1
-            fi
-          fi
+                  if [[ "${BASE}" == "main" ]]; then
+                    if [[ "${HEAD}" != "staging" ]]; then
+                      echo "::error::PRs into main must come from staging. Got ${HEAD} -> main."
+                      exit 1
+                    fi
+                  elif [[ "${BASE}" == "staging" ]]; then
+                    if [[ ! "${HEAD}" =~ ^(feature|feat|fix|hotfix|chore|docs)/.+$ ]]; then
+                      echo "::error::PRs into staging must come from feature/fix/hotfix/chore/docs branches. Got ${HEAD}."
+                      exit 1
+                    fi
+                  fi
 
-          echo "Branch policy guard passed."
+                  echo "Branch policy guard passed."
