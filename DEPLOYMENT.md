@@ -514,7 +514,7 @@ services:
 #### Core Philosophy
 
 - **Graduated Autonomy**: Each workflow operates at a specific engagement level, from Observer (T1) to Peer Programmer (T3)
-- **Always Advisory**: GH-AW workflows assist and suggest; they never break builds or block PRs unless explicitly configured
+- **Advisory by Default**: Most GH-AW workflows assist and suggest only; designated enforcement workflows such as `ghaw-branch-policy-guard` and `ghaw-azd-service-tag-check` may block PRs or fail checks in the default Community Edition configuration
 - **Production-Safe**: All workflows in AgentCraftworks Community Edition cap at T3 (Peer Programmer) — no autonomous merges or deployments in production
 
 #### Complete Workflow Reference
