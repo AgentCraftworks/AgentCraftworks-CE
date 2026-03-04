@@ -28,7 +28,7 @@ AgentCraftworks Community Edition is a GitHub App + MCP server that intercepts e
 
 ## SDLC Lifecycle Strategy
 
-AgentCraftworks CE supports teams across multiple SDLC phases, from brand-new product idea to production-ready governance.
+AgentCraftworks Community Edition supports teams across multiple SDLC phases, from brand-new product idea to production-ready governance.
 
 - Prototype quickly with low policy friction
 - Introduce staging and validation checks as solutions mature
