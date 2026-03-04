@@ -49,7 +49,16 @@ function Invoke-GhApi([string]$Method, [string]$Path, [string]$Body = "") {
 }
 
 function Get-ExistingStatusChecks([string]$BranchName) {
-    $raw = gh api "repos/$Repo/branches/$BranchName/protection" 2>$null
+    $raw = gh api "repos/$Repo/branches/$BranchName/protection" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        # A 404 / "Branch not protected" means no checks are set yet — safe to return $null.
+        $errorMessage = "$raw"
+        if ($errorMessage -match '404' -or $errorMessage -match 'Branch not protected') {
+            return $null
+        }
+        # Any other error (auth, rate-limit, network) — stop rather than silently wiping checks.
+        throw "Failed to read branch protection for '$BranchName': $errorMessage"
+    }
     if (-not $raw) { return $null }
     $existing = $raw | ConvertFrom-Json
     if (-not $existing.required_status_checks) { return $null }
