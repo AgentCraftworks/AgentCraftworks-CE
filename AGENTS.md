@@ -191,7 +191,7 @@ The `ghaw-accessibility-review` workflow automatically posts an accessibility ch
 
 ### Sync Strategy
 
-The `sync-org-standards` workflow in each product repo detects drift in the `<!-- ORG-STANDARD:BEGIN/END -->` sections of `AGENTS.md` and `.github/copilot/instructions.md` by comparing SHA-256 hashes against the source of truth in the **`AgentCraftworks` repo** (the paid product).
+The `sync-org-standards` workflow in each product repo detects drift in the `<!-- ORG-STANDARD:BEGIN/END -->` sections of `AGENTS.md` and `.github/copilot/instructions.md` by comparing SHA-256 hashes against the source of truth in the **`AgentCraftworks/.github` repo** (the shared org standards repository).
 
 **Standards flow:**
 
