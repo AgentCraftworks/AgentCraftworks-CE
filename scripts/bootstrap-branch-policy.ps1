@@ -56,6 +56,29 @@ function Invoke-GhApi([string]$Method, [string]$Path, [string]$Body = "") {
     $output
 }
 
+function Get-ExistingStatusChecks([string]$BranchName) {
+    $raw = gh api "repos/$Repo/branches/$BranchName/protection" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        # A 404 means branch protection is not yet configured — expected for new repos.
+        if ($raw -match "404|Not Found|Branch not protected") {
+            return $null
+        }
+        Write-Host "WARNING: Could not read branch protection for '$BranchName': $raw" -ForegroundColor Yellow
+        return $null
+    }
+    $existing = $raw | ConvertFrom-Json -ErrorAction SilentlyContinue
+    if (-not $existing -or -not $existing.required_status_checks) { return $null }
+    $sc = $existing.required_status_checks
+    $result = @{
+        strict   = $sc.strict
+        contexts = @($sc.contexts)
+    }
+    if ($sc.checks) {
+        $result.checks = @($sc.checks | ForEach-Object { @{ context = $_.context; app_id = $_.app_id } })
+    }
+    return $result
+}
+
 if ([string]::IsNullOrWhiteSpace($Repo)) {
     $Repo = gh repo view --json nameWithOwner -q '.nameWithOwner' 2>$null
 }
@@ -105,8 +128,16 @@ if ($SyncIntegrationFromMain) {
 
 Write-Header "Protect Branches"
 
+Write-Host "Reading existing branch protection for '$DefaultBranch'..." -ForegroundColor Yellow
+$mainStatusChecks = Get-ExistingStatusChecks -BranchName $DefaultBranch
+if ($mainStatusChecks) {
+    Write-Host "Preserving existing required_status_checks on '$DefaultBranch'." -ForegroundColor Green
+} else {
+    Write-Host "No existing required_status_checks on '$DefaultBranch'; leaving unset." -ForegroundColor Yellow
+}
+
 $mainProtection = @{
-    required_status_checks = $null
+    required_status_checks = $mainStatusChecks
     enforce_admins = $true
     required_pull_request_reviews = @{
         dismiss_stale_reviews = $true
@@ -124,8 +155,16 @@ $mainProtection = @{
     allow_fork_syncing = $true
 } | ConvertTo-Json -Depth 6
 
+Write-Host "Reading existing branch protection for '$IntegrationBranch'..." -ForegroundColor Yellow
+$stagingStatusChecks = Get-ExistingStatusChecks -BranchName $IntegrationBranch
+if ($stagingStatusChecks) {
+    Write-Host "Preserving existing required_status_checks on '$IntegrationBranch'." -ForegroundColor Green
+} else {
+    Write-Host "No existing required_status_checks on '$IntegrationBranch'; leaving unset." -ForegroundColor Yellow
+}
+
 $stagingProtection = @{
-    required_status_checks = $null
+    required_status_checks = $stagingStatusChecks
     enforce_admins = $true
     required_pull_request_reviews = @{
         dismiss_stale_reviews = $true
