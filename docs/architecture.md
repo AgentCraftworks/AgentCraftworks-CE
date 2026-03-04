@@ -2,6 +2,17 @@
 
 This document describes the full end-to-end architecture of AgentCraftworks — from GitHub events to agentic remediation.
 
+## SDLC Lifecycle Context
+
+Architecture decisions in this repository align to a staged SDLC strategy:
+
+- Greenfield ideation and rapid prototyping
+- Validation and staging hardening
+- Productized promotion flow and governance
+- Production operations and incident response
+
+See `docs/SDLC_LIFECYCLE_STRATEGY.md` for the lifecycle model and when to activate stricter repo policy and infrastructure controls.
+
 ## Community Edition Architecture
 
 ```mermaid

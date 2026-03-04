@@ -191,7 +191,7 @@ The `ghaw-accessibility-review` workflow automatically posts an accessibility ch
 
 ### Sync Strategy
 
-The `sync-org-standards` workflow in each product repo detects drift in the `<!-- ORG-STANDARD:BEGIN/END -->` sections of `AGENTS.md` and `.github/copilot/instructions.md` by comparing SHA-256 hashes against the source of truth in the **`AgentCraftworks` repo** (the paid product).
+The `sync-org-standards` workflow in each product repo detects drift in the `<!-- ORG-STANDARD:BEGIN/END -->` sections of `AGENTS.md` and `.github/copilot/instructions.md` by comparing SHA-256 hashes against the source of truth in the **`AgentCraftworks/.github` repo** (the shared org standards repository).
 
 **Standards flow:**
 
@@ -220,7 +220,7 @@ AgentCraftworks_WebSite           ← Consumes standards via ORG-STANDARD sync
 
 ---
 
-<!-- ORG-STANDARD:BEGIN — Synced from https://github.com/AgentCraftworks/AgentCraftworks/blob/main/AGENTS.md -->
+<!-- ORG-STANDARD:BEGIN — Synced from https://github.com/AgentCraftworks/.github/blob/main/AGENTS.md -->
 <!-- Do not edit this section manually. It is updated by the sync-org-standards workflow. -->
 
 ## Security Requirements for Workflows & Authentication
@@ -426,15 +426,15 @@ Rules:
 
 Bootstrap assets for this policy:
 
-- Script: `scripts/bootstrap-branch-policy.ps1`
-- PR guard workflow: `.github/workflows/ghaw-branch-policy-guard.yml`
-- New repo template: `docs/NEW_REPO_BRANCH_POLICY_TEMPLATE.md`
+- A script to initialize and enforce the branch policy for new repositories
+- A PR guard workflow that blocks merges violating the branch policy
+- A new-repo template or checklist documenting how to apply this policy to fresh projects
 
 ## Documentation Standards — Futures vs Implemented
 
 **All strategy evaluations, forward-looking plans, roadmaps, and proposals MUST be:**
 
-1. **Labeled** with status `DRAFT — FUTURE / UNDER EVALUATION` in their front matter
+1. **Labeled** with status `DRAFT` in their front matter
 2. **Placed** in `docs/futures/` (not in `docs/` root)
 3. **Never mixed** with documentation for shipped/implemented features
 
@@ -455,6 +455,7 @@ Bootstrap assets for this policy:
 | `APPROVED` | Accepted into the roadmap — implementation not yet started |
 | `SUPERSEDED` | Replaced by a newer document (retained for historical context) |
 
+_Legacy label mapping:_ If you encounter the combined label `DRAFT — FUTURE / UNDER EVALUATION` in older docs, treat it as the canonical status **`UNDER EVALUATION`**.
 ## Always Ask First
 
 Before making significant changes:

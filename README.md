@@ -26,6 +26,17 @@ AI coding agents are powerful — but completely ungoverned. They merge PRs with
 
 AgentCraftworks Community Edition is a GitHub App + MCP server that intercepts every agent action and routes it through **configurable Agent Engagement Levels** before it reaches your codebase.
 
+## SDLC Lifecycle Strategy
+
+AgentCraftworks CE supports teams across multiple SDLC phases, from brand-new product idea to production-ready governance.
+
+- Prototype quickly with low policy friction
+- Introduce staging and validation checks as solutions mature
+- Enforce productized promotion flow (`feature/* -> staging -> main`)
+- Operate production repos with explicit governance and incident-aware workflows
+
+See `docs/SDLC_LIFECYCLE_STRATEGY.md` for the lifecycle model and phased policy/infrastructure guidance.
+
 ```
 Pull Request / Push Event
          ↓
@@ -128,6 +139,7 @@ AgentCraftworks also powers enterprise deployments with additional incident resp
 - Agent Engagement Levels Reference
 - [MCP Tool Reference](docs/mcp-tools.md)
 - [Architecture Overview](docs/architecture.md)
+- [SDLC Lifecycle Strategy](docs/SDLC_LIFECYCLE_STRATEGY.md)
 - [Accessibility Capability](docs/accessibility.md)
 - [Contributing Guide](CONTRIBUTING.md)
 
