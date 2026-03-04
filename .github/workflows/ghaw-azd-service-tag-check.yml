@@ -9,9 +9,6 @@ name: "GH-AW: azd Service-Tag Contract Check"
 on:
   pull_request:
     branches: [main, staging]
-    paths:
-      - "azure.yaml"
-      - "infra/**"
   push:
     branches: [main]
     paths:
@@ -31,12 +28,36 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for relevant file changes
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+            changed=$(git diff --name-only "$base" "$head")
+            if echo "$changed" | grep -qE '^(azure\.yaml|infra/)'; then
+              echo "relevant=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "relevant=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip check (no relevant files changed)
+        if: steps.filter.outputs.relevant == 'false'
+        run: echo "No changes to azure.yaml or infra/ — skipping azd service-tag contract check."
 
       - name: Install PyYAML
+        if: steps.filter.outputs.relevant == 'true'
         run: pip install pyyaml --quiet
 
       - name: Extract services from azure.yaml
         id: extract-services
+        if: steps.filter.outputs.relevant == 'true'
         run: |
           python3 - <<'EOF'
           import yaml, sys
@@ -52,6 +73,7 @@ jobs:
           EOF
 
       - name: Check azd-service-name tags in Bicep templates
+        if: steps.filter.outputs.relevant == 'true'
         run: |
           # Re-parse services in shell so we can iterate
           services=$(python3 - <<'EOF'

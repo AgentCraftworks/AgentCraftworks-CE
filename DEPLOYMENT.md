@@ -566,7 +566,7 @@ services:
 | **Workflow Health** | `.github/workflows/ghaw-workflow-health.yml` | Weekday schedule, manual |
 | **Test Improver** | `.github/workflows/ghaw-daily-test-improver.yml` | Weekday schedule, manual |
 | **CLI Consistency** | `.github/workflows/ghaw-cli-consistency.yml` | PR to `main`, manual |
-| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | PR / push touching `azure.yaml` or `infra/**` |
+| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | All PRs (exits early when `azure.yaml` / `infra/**` unchanged); push to `main` touching `azure.yaml` or `infra/**` |
 
 ### Build Process
 
