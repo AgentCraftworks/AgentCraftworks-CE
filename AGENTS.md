@@ -85,17 +85,25 @@ The AgentCraftworks org separates **Product**, **Platform Operations**, and **Bu
 
 | Domain | Repos | Audience | Auth |
 |--------|-------|----------|------|
-| **Product** | `AgentCraftworks`, `AgentCraftworks-CE`, `AgentCraftworks-VSCode`, `AgentCraftworks_WebSite` | Customers, contributors | Product App (`GH_APP_ID`) |
+| **Product (Paid)** | `AgentCraftworks` | Customers, enterprise buyers | Product App (`GH_APP_ID`) |
+| **Product (OSS)** | `AgentCraftworks-CE` (this repo), `AgentCraftworks-VSCode`, `AgentCraftworks_WebSite` | Contributors, open-source community | Product App (`GH_APP_ID`) |
 | **Platform Operations** | `AgentCraftworks-PlatformOps` | Engineering team | Internal Ops App (`GH_OPS_APP_ID`) |
 | **Business Operations** | `AgentCraftworks-BizOps` | Business team | TBD |
 
-### Rules for agents in THIS repo (Product)
+### Standards hierarchy
+
+Product-specific agent standards (engagement levels, handoff FSM, action tiers, MCP tools, CODEOWNERS routing) are **authored in `AgentCraftworks`** (the paid product repo) and **consumed here** via the `ORG-STANDARD` sync mechanism. Do not author new product agent standards in this repo — propose them in `AgentCraftworks` first.
+
+`AgentCraftworks-PlatformOps` is the central product development and platform engineering hub for org-wide engineering standards (CI/CD, infrastructure, process automation).
+
+### Rules for agents in THIS repo (Product — OSS)
 
 1. **Never use ops credentials** (`GH_OPS_APP_ID`) — those belong to PlatformOps
 2. **Never create internal cost reports here** — those go to PlatformOps issues
 3. **GH-AW workflows** (`ghaw-*` prefix) belong here — product CI/CD automation
 4. **Ops workflows** (`ops-*` prefix) belong in `AgentCraftworks-PlatformOps`
 5. **Product app credentials** (`GH_APP_ID` / `GH_APP_PRIVATE_KEY`) are for customer-facing webhook processing only
+6. **This repo consumes product standards from `AgentCraftworks`** — do not create new product standards here
 
 ---
 
@@ -183,20 +191,31 @@ The `ghaw-accessibility-review` workflow automatically posts an accessibility ch
 
 ### Sync Strategy
 
-The `sync-org-standards` workflow in each product repo detects drift in the `<!-- ORG-STANDARD:BEGIN/END -->` sections of `AGENTS.md` and `.github/copilot/instructions.md` by comparing SHA-256 hashes against the source of truth in `AgentCraftworks/.github`.
+The `sync-org-standards` workflow in each product repo detects drift in the `<!-- ORG-STANDARD:BEGIN/END -->` sections of `AGENTS.md` and `.github/copilot/instructions.md` by comparing SHA-256 hashes against the source of truth in the **`AgentCraftworks/.github` repo** (the shared org standards repository).
 
-**For cross-org sync (AgentCraftworks → AgentCraftworks-PlatformOps and other orgs):**
+**Standards flow:**
 
-1. The `AgentCraftworks/.github` repo is the single source of truth for all org-wide standards (security, accessibility, quality).
-2. Every product repo (`AgentCraftworks-CE`, `AgentCraftworks`, `AgentCraftworks-VSCode`) embeds the `ORG-STANDARD` sections and runs `sync-org-standards` weekly.
-3. `AgentCraftworks-PlatformOps` must also embed the `ORG-STANDARD` sections and run an equivalent `ops-sync-standards` workflow pointing to the same source of truth.
-4. When the source of truth is updated (e.g., adding accessibility requirements), all repos detect drift within one week and open a sync issue.
+```
+AgentCraftworks-PlatformOps      ← Org-wide engineering standards (CI/CD, infra, process)
+    ↓
+AgentCraftworks (paid product)   ← Source of truth for product-specific agent standards
+    ↓                               (engagement levels, handoff FSM, action tiers, etc.)
+AgentCraftworks-CE (this repo)   ← Consumes standards via ORG-STANDARD sync
+AgentCraftworks-VSCode            ← Consumes standards via ORG-STANDARD sync
+AgentCraftworks_WebSite           ← Consumes standards via ORG-STANDARD sync
+```
+
+1. The `AgentCraftworks` repo (paid product) is the **source of truth** for all product-specific agent standards.
+2. `AgentCraftworks-PlatformOps` is the central product development hub for org-wide engineering standards.
+3. Every downstream product repo (`AgentCraftworks-CE`, `AgentCraftworks-VSCode`) embeds the `ORG-STANDARD` sections and runs `sync-org-standards` weekly.
+4. When the source of truth is updated (e.g., adding engagement level changes), all repos detect drift within one week and open a sync issue.
 
 ### Requirements
 
 - [ ] `AgentCraftworks-PlatformOps` adds the same `ORG-STANDARD:BEGIN/END` markers to its `AGENTS.md` and `copilot/instructions.md`
 - [ ] `AgentCraftworks-PlatformOps` adds an `ops-sync-standards.yml` workflow equivalent to `sync-org-standards.yml` in this repo
-- [ ] All future org-wide standards (accessibility, security, quality) are authored first in `AgentCraftworks/.github/AGENTS.md` and propagated via the sync workflows
+- [ ] All future product-specific agent standards are authored first in `AgentCraftworks/AGENTS.md` and propagated via the sync workflows
+- [ ] Org-wide engineering standards are authored in `AgentCraftworks-PlatformOps` and propagated to all repos
 - [ ] The accessibility agent team (above) is listed in all repos including `AgentCraftworks-PlatformOps` so internal engineering always keeps Accessibility front and center
 
 ---
@@ -391,6 +410,52 @@ After every correction, update agent instruction files so agents don't repeat mi
 6. Merge after approval and CI passes
 7. Delete feature branch and worktree
 
+## Branching and Promotion Policy (MANDATORY)
+
+Standard promotion flow for this repository:
+
+`feature/*` -> `staging` -> `main`
+
+Rules:
+
+1. Never push directly to `main` or `staging`.
+2. Create work branches from `main` using `feature/*`, `feat/*`, `fix/*`, `hotfix/*`, `chore/*`, or `docs/*`.
+3. Merge to `staging` first for full integration testing.
+4. Promote to `main` only by PR from `staging`.
+5. PRs into `main` from non-`staging` branches are disallowed.
+
+Bootstrap assets for this policy:
+
+- A script to initialize and enforce the branch policy for new repositories
+- A PR guard workflow that blocks merges violating the branch policy
+- A new-repo template or checklist documenting how to apply this policy to fresh projects
+
+## Documentation Standards — Futures vs Implemented
+
+**All strategy evaluations, forward-looking plans, roadmaps, and proposals MUST be:**
+
+1. **Labeled** with status `DRAFT` in their front matter
+2. **Placed** in `docs/futures/` (not in `docs/` root)
+3. **Never mixed** with documentation for shipped/implemented features
+
+### Rules
+
+- `docs/` contains documentation for features that are **implemented and shipping**
+- `docs/futures/` contains plans and proposals that are **under evaluation or not yet started**
+- Every `docs/futures/` folder MUST have a `README.md` explaining its purpose and listing document statuses
+- When a future plan is approved and implementation begins, graduate relevant docs from `docs/futures/` to `docs/` and update status
+- Agents performing implementation or bug-fixing work should **ignore** `docs/futures/` — those documents describe things that do not exist yet
+
+### Status values for futures documents
+
+| Status | Meaning |
+|---|---|
+| `DRAFT` | Initial proposal, still being shaped |
+| `UNDER EVALUATION` | Being actively assessed for feasibility and value |
+| `APPROVED` | Accepted into the roadmap — implementation not yet started |
+| `SUPERSEDED` | Replaced by a newer document (retained for historical context) |
+
+_Legacy label mapping:_ If you encounter the combined label `DRAFT — FUTURE / UNDER EVALUATION` in older docs, treat it as the canonical status **`UNDER EVALUATION`**.
 ## Always Ask First
 
 Before making significant changes:
