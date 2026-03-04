@@ -31,6 +31,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# Enable native command failure propagation on PowerShell 7+
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    $PSNativeCommandUseErrorActionPreference = $true
+}
 
 function Write-Header([string]$Text) {
     Write-Host ""
@@ -41,11 +45,15 @@ function Write-Header([string]$Text) {
 
 function Invoke-GhApi([string]$Method, [string]$Path, [string]$Body = "") {
     if ([string]::IsNullOrWhiteSpace($Body)) {
-        gh api --method $Method $Path 2>&1
+        $output = gh api --method $Method $Path
     }
     else {
-        $Body | gh api --method $Method $Path --input - 2>&1
+        $output = $Body | gh api --method $Method $Path --input -
     }
+    if ($LASTEXITCODE -ne 0) {
+        throw "gh api $Method $Path failed with exit code $LASTEXITCODE"
+    }
+    $output
 }
 
 if ([string]::IsNullOrWhiteSpace($Repo)) {
