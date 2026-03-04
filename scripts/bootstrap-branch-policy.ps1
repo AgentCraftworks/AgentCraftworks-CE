@@ -54,10 +54,19 @@ function Get-ExistingStatusChecks([string]$BranchName) {
     $existing = $raw | ConvertFrom-Json
     if (-not $existing.required_status_checks) { return $null }
     $sc = $existing.required_status_checks
-    return @{
-        strict   = [bool]$sc.strict
-        contexts = if ($sc.contexts) { @($sc.contexts) } else { @() }
+
+    # Start from the existing required_status_checks object so that any
+    # additional properties are preserved, then normalize strict/contexts.
+    $result = @{}
+    foreach ($prop in $sc.PSObject.Properties) {
+        $result[$prop.Name] = $prop.Value
     }
+
+    # Ensure strict is a boolean and contexts is always an array.
+    $result['strict'] = [bool]$sc.strict
+    $result['contexts'] = if ($sc.contexts) { @($sc.contexts) } else { @() }
+
+    return $result
 }
 
 if ([string]::IsNullOrWhiteSpace($Repo)) {
