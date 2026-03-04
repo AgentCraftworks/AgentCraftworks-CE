@@ -31,6 +31,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# Enable native command failure propagation on PowerShell 7+
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    $PSNativeCommandUseErrorActionPreference = $true
+}
 
 function Write-Header([string]$Text) {
     Write-Host ""
@@ -41,11 +45,38 @@ function Write-Header([string]$Text) {
 
 function Invoke-GhApi([string]$Method, [string]$Path, [string]$Body = "") {
     if ([string]::IsNullOrWhiteSpace($Body)) {
-        gh api --method $Method $Path 2>&1
+        $output = gh api --method $Method $Path
     }
     else {
-        $Body | gh api --method $Method $Path --input - 2>&1
+        $output = $Body | gh api --method $Method $Path --input -
     }
+    if ($LASTEXITCODE -ne 0) {
+        throw "gh api $Method $Path failed with exit code $LASTEXITCODE"
+    }
+    $output
+}
+
+function Get-ExistingStatusChecks([string]$BranchName) {
+    $raw = gh api "repos/$Repo/branches/$BranchName/protection" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        # A 404 means branch protection is not yet configured — expected for new repos.
+        if ($raw -match "404|Not Found|Branch not protected") {
+            return $null
+        }
+        Write-Host "WARNING: Could not read branch protection for '$BranchName': $raw" -ForegroundColor Yellow
+        return $null
+    }
+    $existing = $raw | ConvertFrom-Json -ErrorAction SilentlyContinue
+    if (-not $existing -or -not $existing.required_status_checks) { return $null }
+    $sc = $existing.required_status_checks
+    $result = @{
+        strict   = $sc.strict
+        contexts = @($sc.contexts)
+    }
+    if ($sc.checks) {
+        $result.checks = @($sc.checks | ForEach-Object { @{ context = $_.context; app_id = $_.app_id } })
+    }
+    return $result
 }
 
 if ([string]::IsNullOrWhiteSpace($Repo)) {
@@ -97,8 +128,16 @@ if ($SyncIntegrationFromMain) {
 
 Write-Header "Protect Branches"
 
+Write-Host "Reading existing branch protection for '$DefaultBranch'..." -ForegroundColor Yellow
+$mainStatusChecks = Get-ExistingStatusChecks -BranchName $DefaultBranch
+if ($mainStatusChecks) {
+    Write-Host "Preserving existing required_status_checks on '$DefaultBranch'." -ForegroundColor Green
+} else {
+    Write-Host "No existing required_status_checks on '$DefaultBranch'; leaving unset." -ForegroundColor Yellow
+}
+
 $mainProtection = @{
-    required_status_checks = $null
+    required_status_checks = $mainStatusChecks
     enforce_admins = $true
     required_pull_request_reviews = @{
         dismiss_stale_reviews = $true
@@ -116,8 +155,16 @@ $mainProtection = @{
     allow_fork_syncing = $true
 } | ConvertTo-Json -Depth 6
 
-$integrationProtection = @{
-    required_status_checks = $null
+Write-Host "Reading existing branch protection for '$IntegrationBranch'..." -ForegroundColor Yellow
+$stagingStatusChecks = Get-ExistingStatusChecks -BranchName $IntegrationBranch
+if ($stagingStatusChecks) {
+    Write-Host "Preserving existing required_status_checks on '$IntegrationBranch'." -ForegroundColor Green
+} else {
+    Write-Host "No existing required_status_checks on '$IntegrationBranch'; leaving unset." -ForegroundColor Yellow
+}
+
+$stagingProtection = @{
+    required_status_checks = $stagingStatusChecks
     enforce_admins = $true
     required_pull_request_reviews = @{
         dismiss_stale_reviews = $true
