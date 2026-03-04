@@ -220,7 +220,7 @@ AgentCraftworks_WebSite           ← Consumes standards via ORG-STANDARD sync
 
 ---
 
-<!-- ORG-STANDARD:BEGIN — Synced from https://github.com/AgentCraftworks/AgentCraftworks/blob/main/AGENTS.md -->
+<!-- ORG-STANDARD:BEGIN — Synced from https://github.com/AgentCraftworks/.github/blob/main/AGENTS.md -->
 <!-- Do not edit this section manually. It is updated by the sync-org-standards workflow. -->
 
 ## Security Requirements for Workflows & Authentication
