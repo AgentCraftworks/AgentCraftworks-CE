@@ -492,6 +492,57 @@ Version tags matching `v*` are protected via repository ruleset (ID: **13516390*
 > respects these rules automatically when targeting `environment: staging` or
 > `environment: production`.
 
+### CODEOWNERS
+
+A `.github/CODEOWNERS` file was added to define required reviewers for all sensitive paths in the repository. This file directly enables the "1 approving review from CODEOWNERS (enforced)" requirement described in the [Branch Protection](#branch-protection) section above.
+
+| Path pattern | Required reviewer(s) |
+|---|---|
+| `*` (default) | `@AgentCraftworks/maintainers` |
+| `/typescript/` | `@AgentCraftworks/maintainers` |
+| `/typescript/src/mcp/` | `@AgentCraftworks/maintainers` |
+| `/.github/workflows/` | `@AgentCraftworks/maintainers` |
+| `/infra/`, `azure.yaml`, `docker-compose.yml` | `@AgentCraftworks/maintainers` |
+| `docs/accessibility.md` | `@AgentCraftworks/accessibility-lead` |
+
+### CI Workflow Alignment
+
+Three GitHub Actions workflow job names were updated to **exactly match** the required status check names configured in branch protection. GitHub matches required status checks by job name — a mismatch means a check never satisfies the requirement and PRs are permanently blocked.
+
+| Workflow file | Old job name | New job name |
+|---|---|---|
+| `.github/workflows/cla.yml` | `cla_assistant` | `cla` |
+| `.github/workflows/ghaw-accessibility-review.yml` | `Post Accessibility Checklist` | `ghaw-accessibility-review` |
+| `.github/workflows/ghaw-azd-service-tag-check.yml` | `Validate azd service-tag contract` | `ghaw-azd-service-tag-check` |
+
+### Release Script Update
+
+`scripts/tag-release.sh` was updated to use the full product name "AgentCraftworks Community Edition" in annotated tag messages (previously "AgentCraftworks CE"). No behavioral change.
+
+### Governance Changes Verification
+
+Use these steps to verify the protection rules and associated changes are working correctly:
+
+**Branch protection and required status checks:**
+```bash
+# Confirm job names match required status check names (Settings → Branches → Edit)
+# After a PR is opened, the following checks must appear and pass:
+#   cla, ghaw-accessibility-review, ghaw-azd-service-tag-check, build-and-test
+gh api repos/AgentCraftworks/AgentCraftworks-CE/branches/main \
+  --jq '.protection.required_status_checks.contexts'
+# Replace 'main' with 'staging' to verify that branch's required checks
+```
+
+**CODEOWNERS in effect:**
+Open a PR touching `/.github/workflows/` or `/typescript/src/mcp/` and confirm that `@AgentCraftworks/maintainers` is auto-requested as a reviewer.
+
+**Tag protection ruleset:**
+```bash
+gh api repos/AgentCraftworks/AgentCraftworks-CE/rulesets/13516390 \
+  --jq '{name: .name, enforcement: .enforcement}'
+# Expected: enforcement: "active"
+```
+
 ---
 
 ## azd Service-Tag Contract
