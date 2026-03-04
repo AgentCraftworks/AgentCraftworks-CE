@@ -106,8 +106,8 @@ if (-not $mainRef) {
     throw "Branch '$DefaultBranch' not found in $Repo"
 }
 
-$stagingRef = gh api "repos/$Repo/git/ref/heads/$IntegrationBranch" --jq '.ref' 2>$null
-if (-not $stagingRef) {
+$integrationRef = gh api "repos/$Repo/git/ref/heads/$IntegrationBranch" --jq '.ref' 2>$null
+if (-not $integrationRef) {
     Write-Host "Creating $IntegrationBranch from $DefaultBranch..." -ForegroundColor Yellow
     $mainSha = gh api "repos/$Repo/git/ref/heads/$DefaultBranch" --jq '.object.sha'
     $createBody = @{ ref = "refs/heads/$IntegrationBranch"; sha = $mainSha } | ConvertTo-Json
@@ -185,7 +185,7 @@ $stagingProtection = @{
 Invoke-GhApi -Method "PUT" -Path "repos/$Repo/branches/$DefaultBranch/protection" -Body $mainProtection | Out-Null
 Write-Host "Protection applied: $DefaultBranch" -ForegroundColor Green
 
-Invoke-GhApi -Method "PUT" -Path "repos/$Repo/branches/$IntegrationBranch/protection" -Body $stagingProtection | Out-Null
+Invoke-GhApi -Method "PUT" -Path "repos/$Repo/branches/$IntegrationBranch/protection" -Body $integrationProtection | Out-Null
 Write-Host "Protection applied: $IntegrationBranch" -ForegroundColor Green
 
 Write-Header "Ensure Environments"
