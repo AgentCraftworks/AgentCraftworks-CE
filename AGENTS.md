@@ -434,7 +434,7 @@ Bootstrap assets for this policy:
 
 **All strategy evaluations, forward-looking plans, roadmaps, and proposals MUST be:**
 
-1. **Labeled** with status `DRAFT — FUTURE / UNDER EVALUATION` in their front matter
+1. **Labeled** with status `DRAFT` in their front matter
 2. **Placed** in `docs/futures/` (not in `docs/` root)
 3. **Never mixed** with documentation for shipped/implemented features
 
