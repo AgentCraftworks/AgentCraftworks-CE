@@ -79,6 +79,36 @@ function Get-ExistingStatusChecks([string]$BranchName) {
     return $result
 }
 
+function Get-ExistingStatusChecks([string]$BranchName) {
+    $raw = gh api "repos/$Repo/branches/$BranchName/protection" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        # A 404 / "Branch not protected" means no checks are set yet — safe to return $null.
+        $errorMessage = "$raw"
+        if ($errorMessage -match '404' -or $errorMessage -match 'Branch not protected') {
+            return $null
+        }
+        # Any other error (auth, rate-limit, network) — stop rather than silently wiping checks.
+        throw "Failed to read branch protection for '$BranchName': $errorMessage"
+    }
+    if (-not $raw) { return $null }
+    $existing = $raw | ConvertFrom-Json
+    if (-not $existing.required_status_checks) { return $null }
+    $sc = $existing.required_status_checks
+
+    # Start from the existing required_status_checks object so that any
+    # additional properties are preserved, then normalize strict/contexts.
+    $result = @{}
+    foreach ($prop in $sc.PSObject.Properties) {
+        $result[$prop.Name] = $prop.Value
+    }
+
+    # Ensure strict is a boolean and contexts is always an array.
+    $result['strict'] = [bool]$sc.strict
+    $result['contexts'] = if ($sc.contexts) { @($sc.contexts) } else { @() }
+
+    return $result
+}
+
 if ([string]::IsNullOrWhiteSpace($Repo)) {
     $Repo = gh repo view --json nameWithOwner -q '.nameWithOwner' 2>$null
 }
