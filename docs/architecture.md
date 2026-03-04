@@ -23,11 +23,11 @@ graph TD
     end
 
     subgraph Actions["Agent Actions"]
-        L1[Observer \(T1\): Read, view, list]
-        L2[Advisor \(T2\): Comment, suggest]
-        L3[Peer Programmer \(T3\): Label, assign, approve, edit file]
-        L4[Agent Team \(T4\): Merge, close, create branch, push commit]
-        L5[Full Agent Team \(T5\): Deploy, modify CI, orchestrate agents]
+        L1[Observer (T1): Read, view, list]
+        L2[Advisor (T2): Comment, suggest]
+        L3[Peer Programmer (T3): Label, assign, approve, edit file]
+        L4[Agent Team (T4): Merge, close, create branch, push commit]
+        L5[Full Agent Team (T5): Deploy, modify CI, orchestrate agents]
     end
 
     PR --> WH
