@@ -1,6 +1,6 @@
 # Contributing to AgentCraftworks Community Edition
 
-Thank you for contributing! AgentCraftworks CE is an MIT-licensed open platform for agentic DevOps.
+Thank you for contributing! AgentCraftworks Community Edition is an MIT-licensed open platform for agentic DevOps.
 
 ## Contributor License Agreement
 
@@ -41,10 +41,10 @@ npm test
 
 ## What Belongs in CE vs Enterprise
 
-| CE (this repo) | Enterprise |
+| Community Edition (this repo) | Enterprise |
 |---|---|
 | Webhook routing + FSM | SRE incident response |
-| Autonomy Dial protocol | Self-healing orchestration |
+| Agent Engagement Levels (Observer → Full Agent Team) | Self-healing orchestration |
 | MCP 6-tool interface | Chronicle AI ledger |
 | CODEOWNERS routing | Governance Monitor |
 | GitHub App scaffolding | CI autofix engine |

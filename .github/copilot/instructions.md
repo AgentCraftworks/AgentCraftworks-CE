@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions — AgentCraftworks CE
+# GitHub Copilot Instructions — AgentCraftworks Community Edition
 
 > This file is **self-contained** — it includes organization-wide standards so that clones
 > and forks of this repo receive the full Copilot instructions without org-level inheritance.
