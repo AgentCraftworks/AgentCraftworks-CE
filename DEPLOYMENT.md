@@ -455,7 +455,7 @@ Both `main` and `staging` branches are protected with:
   - `cla` — Contributor License Agreement check
 - **Additional conditional checks (via rulesets / required workflows):**
   - `ghaw-accessibility-review` — WCAG 2.2 AA conformance (runs on all PRs; posts checklist only when UI/content files are changed)
-  - `ghaw-azd-service-tag-check` — Azure service-tag contract validation (runs only for relevant infra changes)
+  - `ghaw-azd-service-tag-check` — Azure service-tag contract validation (workflow triggers on all PRs but exits early when \`azure.yaml\` / \`infra/**\` are unchanged)
 - **Required reviews:**
   - 1 approving review from CODEOWNERS (enforced)
   - Stale reviews dismissed on new commits
