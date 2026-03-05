@@ -81,7 +81,7 @@ jobs:
 
       - name: Configure environment secrets
         env:
-          GH_APP_PRIVATE_KEY_VALUE: ${{ secrets.GH_CE_APP_PRIVATE_KEY }}
+          GH_CE_APP_PRIVATE_KEY_VALUE: ${{ secrets.GH_CE_APP_PRIVATE_KEY }}
           POSTGRES_PASSWORD_SECRET: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           azd env set ghAppId "${{ secrets.GH_CE_APP_ID }}"
@@ -89,7 +89,7 @@ jobs:
 
           # Store PEM key as single line to avoid JSON parse errors in parameters.json substitution.
           # azd env set writes to .env; multiline values break JSON when ${ghAppPrivateKey} is resolved.
-          SINGLE_LINE_KEY=$(printf '%s' "$GH_APP_PRIVATE_KEY_VALUE" | tr '\n' '|' | sed 's/|/\\n/g')
+          SINGLE_LINE_KEY=$(printf '%s' "$GH_CE_APP_PRIVATE_KEY_VALUE" | tr '\n' '|' | sed 's/|/\\n/g')
           azd env set ghAppPrivateKey "$SINGLE_LINE_KEY"
 
           # Prefer a stable password from POSTGRES_PASSWORD secret when provided.
