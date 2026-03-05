@@ -136,7 +136,7 @@ export async function getInstallationToken(
  *
  * @param payload   - Raw request body (string or Buffer)
  * @param signature - Value of `X-Hub-Signature-256` header
- * @param secret    - Webhook secret (defaults to GH_WEBHOOK_SECRET env var)
+ * @param secret    - Webhook secret (defaults to GH_CE_WEBHOOK_SECRET env var)
  * @returns true if signature is valid
  */
 export function verifyWebhookSignature(
