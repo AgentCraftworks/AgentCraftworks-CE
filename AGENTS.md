@@ -185,6 +185,33 @@ The `ghaw-accessibility-review` workflow automatically posts an accessibility ch
 
 ---
 
+## Security & Quality Scanning
+
+This repository includes automated CodeQL security analysis enabled by default across all branches and pull requests.
+
+### CodeQL (Shift-Left Security)
+
+**CodeQL workflow**: `.github/workflows/codeql.yml`
+**Engagement Level**: T1 (Observer) — analysis only, no changes permitted.
+
+CodeQL runs on every push and pull request with:
+- ✅ **Automatic detection** of security vulnerabilities in JavaScript/TypeScript code
+- ✅ **Shift-left scanning** — catch issues before they reach main or staging
+- ✅ **Community fork safety** — when you clone this repo, CodeQL comes with it
+- ✅ **Weekly scheduled scans** (Monday 2 AM UTC) for continuous oversight
+- ✅ **Query suite**: `security-and-quality` (covers OWASP Top 10, CWE, and code quality)
+
+When CodeQL finds issues:
+1. Alerts appear in the **Security** tab of the repository
+2. PRs will show CodeQL checks in the status (may block merge if severe)
+3. Review findings and either:
+   - Fix the issue in your branch
+   - Suppress the alert with a comment (if false positive): `// lgtm [js/sql-injection]`
+
+**For contributors**: If you fork this repo, CodeQL will automatically run in your fork as well, helping you maintain security standards from day one.
+
+---
+
 ## PlatformOps Cross-Organization Sync
 
 > **Planning item** — AgentCraftworks operates multiple GitHub organizations. The following policy ensures accessibility (and all other engineering standards) remain in sync across orgs.

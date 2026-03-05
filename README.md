@@ -94,7 +94,7 @@ npm install
 
 # Configure environment
 cp .env.example .env
-# Add your GitHub App credentials (see docs/setup.md)
+# Add your GitHub App credentials (see Quick Start section above)
 
 # Build and start
 npm run build
@@ -135,9 +135,9 @@ AgentCraftworks also powers enterprise deployments with additional incident resp
 
 ## Documentation
 
-- [Setup Guide](docs/setup.md)
-- Agent Engagement Levels Reference
-- [MCP Tool Reference](docs/mcp-tools.md)
+- [Quick Start Guide](#quick-start)
+- [Agent Engagement Levels Reference](docs/architecture.md#agent-engagement-levels-reference)
+- [MCP Tool Reference](docs/architecture.md)
 - [Architecture Overview](docs/architecture.md)
 - [SDLC Lifecycle Strategy](docs/SDLC_LIFECYCLE_STRATEGY.md)
 - [Accessibility Capability](docs/accessibility.md)
