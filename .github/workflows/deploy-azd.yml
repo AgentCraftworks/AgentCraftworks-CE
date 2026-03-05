@@ -84,23 +84,23 @@ jobs:
           GH_APP_PRIVATE_KEY_VALUE: ${{ secrets.GH_CE_APP_PRIVATE_KEY }}
           POSTGRES_PASSWORD_SECRET: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
-          azd env set ghAppId "${{ secrets.GH_CE_APP_ID }}"
-          azd env set ghWebhookSecret "${{ secrets.GH_CE_WEBHOOK_SECRET }}"
+          azd env set GH_CE_APP_ID "${{ secrets.GH_CE_APP_ID }}"
+          azd env set GH_CE_WEBHOOK_SECRET "${{ secrets.GH_CE_WEBHOOK_SECRET }}"
 
           # Store PEM key as single line to avoid JSON parse errors in parameters.json substitution.
-          # azd env set writes to .env; multiline values break JSON when ${ghAppPrivateKey} is resolved.
+          # azd env set writes to .env; multiline values break JSON when ${GH_CE_APP_PRIVATE_KEY} is resolved.
           SINGLE_LINE_KEY=$(printf '%s' "$GH_APP_PRIVATE_KEY_VALUE" | tr '\n' '|' | sed 's/|/\\n/g')
-          azd env set ghAppPrivateKey "$SINGLE_LINE_KEY"
+          azd env set GH_CE_APP_PRIVATE_KEY "$SINGLE_LINE_KEY"
 
           # Prefer a stable password from POSTGRES_PASSWORD secret when provided.
           if [ -n "$POSTGRES_PASSWORD_SECRET" ]; then
-            azd env set postgresPassword "$POSTGRES_PASSWORD_SECRET"
+            azd env set POSTGRES_PASSWORD "$POSTGRES_PASSWORD_SECRET"
           else
             # If already set in azd env, keep existing value; otherwise generate once.
-            if azd env get-values | grep -q '^postgresPassword='; then
-              echo "::notice::postgresPassword already set in azd environment; leaving unchanged."
+            if azd env get-values | grep -q '^POSTGRES_PASSWORD='; then
+              echo "::notice::POSTGRES_PASSWORD already set in azd environment; leaving unchanged."
             else
-              azd env set postgresPassword "$(openssl rand -base64 32)"
+              azd env set POSTGRES_PASSWORD "$(openssl rand -base64 32)"
             fi
           fi
 

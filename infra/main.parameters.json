@@ -12,16 +12,16 @@
       "value": "${AZURE_PRINCIPAL_ID}"
     },
     "postgresPassword": {
-      "value": "${postgresPassword}"
+      "value": "${POSTGRES_PASSWORD}"
     },
     "ghWebhookSecret": {
-      "value": "${ghWebhookSecret}"
+      "value": "${GH_CE_WEBHOOK_SECRET}"
     },
     "ghAppId": {
-      "value": "${ghAppId}"
+      "value": "${GH_CE_APP_ID}"
     },
     "ghAppPrivateKey": {
-      "value": "${ghAppPrivateKey}"
+      "value": "${GH_CE_APP_PRIVATE_KEY}"
     }
   }
 }

@@ -44,6 +44,7 @@ azd init    # Environment name: agentcraftworks-dev, Location: eastus
 azd env set GH_CE_WEBHOOK_SECRET "$(openssl rand -hex 32)"
 azd env set GH_CE_APP_ID "your-app-id"
 azd env set GH_CE_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
+azd env set POSTGRES_PASSWORD "$(openssl rand -base64 32)"
 
 # 5. Deploy (provisions infrastructure + deploys app)
 azd up
@@ -259,6 +260,7 @@ azd init
 azd env set GH_CE_APP_ID "123456"
 azd env set GH_CE_WEBHOOK_SECRET "your_webhook_secret"
 azd env set GH_CE_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
+azd env set POSTGRES_PASSWORD "$(openssl rand -base64 32)"
 
 # 4. Provision and deploy
 azd up
