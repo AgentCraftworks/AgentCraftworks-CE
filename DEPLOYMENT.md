@@ -4,10 +4,24 @@ Complete guide for deploying AgentCraftworks Community Edition to Azure and runn
 
 ## Table of Contents
 
+- [Quick Start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [GitHub App Setup](#github-app-setup)
+- [Local Development](#local-development)
+- [Azure Deployment](#azure-deployment)
+- [GitHub Secrets for CI/CD](#github-secrets-for-cicd)
+- [azd Service-Tag Contract](#azd-service-tag-contract)
+- [CI/CD Pipeline](#cicd-pipeline)
   - [Workflows](#workflows)
   - [GH-AW Workflow Index](#gh-aw-workflow-index)
   - [Build Process](#build-process)
   - [Deployment Strategy](#deployment-strategy)
+- [Smoke Tests](#smoke-tests)
+- [Production Deployment Checklist](#production-deployment-checklist)
+- [Monitoring & Health Checks](#monitoring--health-checks)
+- [Cost Estimation](#cost-estimation)
+- [Cleanup](#cleanup)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
