@@ -494,7 +494,7 @@ Version tags matching `v*` are protected via repository ruleset (ID: **13516390*
 
 ### CODEOWNERS
 
-A `.github/CODEOWNERS` file was added to define required reviewers for all sensitive paths in the repository. This file directly enables the "1 approving review from CODEOWNERS (enforced)" requirement described in the [Branch Protection](#branch-protection) section above.
+The repository uses a `.github/CODEOWNERS` file to define required reviewers for all sensitive paths in the repository. This file directly enables the "1 approving review from CODEOWNERS (enforced)" requirement described in the [Branch Protection](#branch-protection) section above.
 
 | Path pattern | Required reviewer(s) |
 |---|---|
