@@ -455,7 +455,7 @@ Both `main` and `staging` branches are protected with:
   - `cla` — Contributor License Agreement check
 - **Additional conditional checks (via rulesets / required workflows):**
   - `ghaw-accessibility-review` — WCAG 2.2 AA conformance (runs on all PRs; posts checklist only when UI/content files are changed)
-  - `ghaw-azd-service-tag-check` — Azure service-tag contract validation (runs only for relevant infra changes)
+  - `ghaw-azd-service-tag-check` — Azure service-tag contract validation (workflow triggers on all PRs but exits early when \`azure.yaml\` / \`infra/**\` are unchanged)
 - **Required reviews:**
   - 1 approving review from CODEOWNERS (enforced)
   - Stale reviews dismissed on new commits
@@ -494,7 +494,7 @@ Version tags matching `v*` are protected via repository ruleset (ID: **13516390*
 
 ### CODEOWNERS
 
-A `.github/CODEOWNERS` file was added to define required reviewers for all sensitive paths in the repository. This file directly enables the "1 approving review from CODEOWNERS (enforced)" requirement described in the [Branch Protection](#branch-protection) section above.
+The repository uses a `.github/CODEOWNERS` file to define required reviewers for all sensitive paths in the repository. This file directly enables the "1 approving review from CODEOWNERS (enforced)" requirement described in the [Branch Protection](#branch-protection) section above.
 
 | Path pattern | Required reviewer(s) |
 |---|---|
@@ -503,7 +503,7 @@ A `.github/CODEOWNERS` file was added to define required reviewers for all sensi
 | `/typescript/src/mcp/` | `@AgentCraftworks/maintainers` |
 | `/.github/workflows/` | `@AgentCraftworks/maintainers` |
 | `/infra/`, `azure.yaml`, `docker-compose.yml` | `@AgentCraftworks/maintainers` |
-| `docs/accessibility.md` | `@AgentCraftworks/accessibility-lead` |
+| `/docs/accessibility.md` | `@AgentCraftworks/accessibility-lead` |
 
 ### CI Workflow Alignment
 
