@@ -51,7 +51,7 @@ export function verifyWebhookSignatureMiddleware(
       const message =
         error instanceof Error ? error.message : "Signature verification failed";
 
-      if (message.includes("GH_WEBHOOK_SECRET is required")) {
+      if (message.includes("GH_CE_WEBHOOK_SECRET is required")) {
         res.status(500).json({
           error: "Internal Server Error",
           message: "Webhook secret not configured",

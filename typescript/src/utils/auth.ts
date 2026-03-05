@@ -9,9 +9,9 @@
  *   - Octokit instance creation for installations
  *
  * Environment variables:
- *   GH_APP_ID         — GitHub App ID
- *   GH_APP_PRIVATE_KEY — PEM-encoded private key (or base64-encoded)
- *   GH_WEBHOOK_SECRET  — Webhook secret for HMAC-SHA256 verification
+ *   GH_CE_APP_ID         — GitHub App ID (Community Edition)
+ *   GH_CE_APP_PRIVATE_KEY — PEM-encoded private key (or base64-encoded)
+ *   GH_CE_WEBHOOK_SECRET  — Webhook secret for HMAC-SHA256 verification
  */
 
 import crypto from "node:crypto";
@@ -43,14 +43,14 @@ export function generateAppJwt(
   appId?: string,
   privateKey?: string,
 ): string {
-  const resolvedAppId = appId ?? process.env["GH_APP_ID"];
-  let resolvedKey = privateKey ?? process.env["GH_APP_PRIVATE_KEY"];
+  const resolvedAppId = appId ?? process.env["GH_CE_APP_ID"];
+  let resolvedKey = privateKey ?? process.env["GH_CE_APP_PRIVATE_KEY"];
 
   if (!resolvedAppId) {
-    throw new Error("GH_APP_ID is required (env var or parameter)");
+    throw new Error("GH_CE_APP_ID is required (env var or parameter)");
   }
   if (!resolvedKey) {
-    throw new Error("GH_APP_PRIVATE_KEY is required (env var or parameter)");
+    throw new Error("GH_CE_APP_PRIVATE_KEY is required (env var or parameter)");
   }
 
   // Support base64-encoded keys (common in CI/CD)
@@ -144,10 +144,10 @@ export function verifyWebhookSignature(
   signature: string | undefined | null,
   secret?: string,
 ): boolean {
-  const resolvedSecret = secret ?? process.env["GH_WEBHOOK_SECRET"];
+  const resolvedSecret = secret ?? process.env["GH_CE_WEBHOOK_SECRET"];
 
   if (!resolvedSecret) {
-    throw new Error("GH_WEBHOOK_SECRET is required (env var or parameter)");
+    throw new Error("GH_CE_WEBHOOK_SECRET is required (env var or parameter)");
   }
 
   if (!signature) {
@@ -244,8 +244,8 @@ export async function getOctokit(
   repo: string,
 ): Promise<Octokit> {
   // If we don't have app credentials, use unauthenticated access
-  const appId = process.env["GH_APP_ID"];
-  const privateKey = process.env["GH_APP_PRIVATE_KEY"];
+  const appId = process.env["GH_CE_APP_ID"];
+  const privateKey = process.env["GH_CE_APP_PRIVATE_KEY"];
   
   if (!appId || !privateKey) {
     // Unauthenticated Octokit for public repos
