@@ -136,7 +136,7 @@ AgentCraftworks also powers enterprise deployments with additional incident resp
 ## Documentation
 
 - [Setup Guide](docs/setup.md)
-- [Agent Engagement Levels Reference](docs/architecture.md#agent-engagement-levels)
+- [Agent Engagement Levels Reference](docs/architecture.md#agent-engagement-levels-reference)
 - [MCP Tool Reference](docs/mcp-tools.md)
 - [Architecture Overview](docs/architecture.md)
 - [SDLC Lifecycle Strategy](docs/SDLC_LIFECYCLE_STRATEGY.md)
