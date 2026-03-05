@@ -24,21 +24,21 @@ graph TD
         WF[Workflow Event]
     end
 
-    subgraph CE["AgentCraftworks CE (Open Source)"]
+    subgraph CE["AgentCraftworks Community Edition (Open Source)"]
         WH[Webhook Handler<br/>POST /api/webhook]
         AUTH[HMAC Signature Verification]
-        FSM[Event FSM<br/>RECEIVED → CLASSIFIED → ROUTED → EXECUTING → COMPLETE]
-        AD[Autonomy Dial<br/>Level 1–5]
+        FSM[Event FSM<br/>RECEIVED → CLASSIFIED → ROUTED → GOVERNANCE_CHECK → EXECUTING → COMPLETE]
+        AD[Agent Engagement Levels<br/>Observer → Full Agent Team]
         COD[CODEOWNERS Router]
         MCP[MCP Server<br/>6 Core Tools]
     end
 
     subgraph Actions["Agent Actions"]
-        L1[Level 1: Alert Only]
-        L2[Level 2: Post Comment + Suggest]
-        L3[Level 3: Create Fix PR]
-        L4[Level 4: Auto-Remediate]
-        L5[Level 5: Full Autonomous Deploy]
+        L1[Observer (T1): Read, view, list]
+        L2[Advisor (T2): Comment, suggest]
+        L3[Peer Programmer (T3): Label, assign, approve, edit file]
+        L4[Agent Team (T4): Merge, close, create branch, push commit]
+        L5[Full Agent Team (T5): Deploy, modify CI, orchestrate agents]
     end
 
     PR --> WH
@@ -67,146 +67,15 @@ graph TD
     MCP -->|escalate| GH_API
 ```
 
-## Enterprise Architecture (Full Stack)
 
-```mermaid
-graph TD
-    subgraph AzureMonitor["Azure Monitor"]
-        AM_ALERTS[Alert Rules]
-        AM_METRICS[Metrics]
-        AM_LOGS[Log Analytics]
-    end
+## Agent Engagement Levels Reference
 
-    subgraph CE["AgentCraftworks CE Layer"]
-        WH[Webhook Handler]
-        FSM[Event FSM]
-        AD[Autonomy Dial]
-        COD[CODEOWNERS Router]
-        MCP[MCP Server]
-    end
+| Level | Name | Action Tier | Permitted Actions | Human Required |
+|---|---|---|---|---|
+| 1 | Observer | T1 | Read, view, list | Always |
+| 2 | Advisor | T2 | Comment, suggest | Always |
+| 3 | Peer Programmer | T3 | Label, assign, approve, edit file | For merge |
+| 4 | Agent Team | T4 | Merge, close, create branch, push commit | Escalation only |
+| 5 | Full Agent Team | T5 | Deploy, modify CI, orchestrate agents | Never |
 
-    subgraph Enterprise["AgentCraftworks Enterprise Layer"]
-        SRE[SRE Integration<br/>Incident Detection]
-        SHO[Self-Healing Orchestrator]
-        CI_FIX[CI Autofix Engine]
-        CI_CB[CI Circuit Breaker]
-        GOV[Governance Monitor]
-        CHRON[Chronicle Ledger<br/>AI Audit Trail]
-        COPILOT[Copilot Agent Dispatch]
-        TRIAGE[Auto-Triage Engine]
-    end
-
-    subgraph Dashboard["Real-time Dashboard (Next.js)"]
-        SRE_DASH[SRE Incident Dashboard]
-        CHRON_DASH[Chronicle Dashboard]
-        GOV_DASH[Governance Dashboard]
-    end
-
-    subgraph AzureInfra["Azure Infrastructure"]
-        ACA[Azure Container Apps]
-        PG[PostgreSQL]
-        REDIS[Redis Cache]
-        ACR[Container Registry]
-    end
-
-    AM_ALERTS --> SRE
-    AM_METRICS --> SRE
-    AM_LOGS --> SRE
-    SRE --> AD
-    AD --> SHO
-    SHO --> CI_FIX
-    SHO --> CI_CB
-    SHO --> COPILOT
-    CI_FIX --> MCP
-    COPILOT --> MCP
-    MCP --> GH_API[GitHub API]
-    WH --> FSM
-    FSM --> GOV
-    GOV --> CHRON
-    GOV --> TRIAGE
-    TRIAGE --> AD
-    CHRON --> PG
-    SRE --> REDIS
-    ACA --> WH
-    ACA --> Dashboard
-    SRE_DASH --> SRE
-    CHRON_DASH --> CHRON
-    GOV_DASH --> GOV
-```
-
-## Data Flow: SRE Incident to Resolution
-
-```mermaid
-sequenceDiagram
-    participant AM as Azure Monitor
-    participant SRE as SRE Integration
-    participant GOV as Governance Monitor
-    participant AD as Autonomy Dial
-    participant SHO as Self-Healing Orchestrator
-    participant GH as GitHub API
-    participant DEV as Developer
-
-    AM->>SRE: Alert: 5xx error rate spike
-    SRE->>SRE: Classify: high-error-rate
-    SRE->>GOV: Check governance level for repo
-    GOV-->>SRE: Level 3 (Peer Programmer)
-    SRE->>AD: Request remediation at Level 3
-    AD->>SHO: Route to Self-Healing Orchestrator
-    SHO->>SHO: Analyze recent commits + CI logs
-    SHO->>GH: Create fix PR with rollback diff
-    GH-->>DEV: Notify: Fix PR #42 opened by AgentCraftworks
-    DEV->>GH: Approve + merge
-    GH-->>SRE: Resolved ✅
-    SRE->>SRE: Update MTTR metrics
-```
-
-## Autonomy Dial Reference
-
-| Level | Name | Allowed Actions | Human Required |
-|---|---|---|---|
-| 1 | Observer | Alert, log | Always |
-| 2 | Advisor | Comment, suggest fix | Always |
-| 3 | Peer Programmer | Open fix PR | For merge |
-| 4 | Agent Team | Auto-merge, rollback | Escalation only |
-| 5 | Full Agent Team | Deploy, scale, remediate | Never |
-
-## Deployment: Azure Container Apps
-
-```
-                    ┌─────────────────────────────────┐
-                    │     Azure Container Apps Env     │
-                    │                                 │
-  GitHub ────────▶ │  AgentCraftworks (Container)    │
-                    │     Port 3000                   │
-                    │                                 │
-                    │  Next.js Dashboard (Container)  │
-                    │     Port 3000                   │
-                    └──────────┬──────────────────────┘
-                               │
-              ┌────────────────┼────────────────┐
-              ▼                ▼                ▼
-         PostgreSQL          Redis            Azure
-         Flexible           Cache          Container
-          Server                           Registry
-```
-
-## CE vs Enterprise: Component Map
-
-| Component | CE | Enterprise |
-|---|:---:|:---:|
-| `webhook-handler.ts` | ✅ | ✅ (extended) |
-| `autonomy-dial.ts` | ✅ | ✅ (extended) |
-| `event-fsm.ts` | ✅ | ✅ (extended) |
-| `mcp-server.ts` | ✅ | ✅ (extended) |
-| `codeowners-router.ts` | ✅ | ✅ |
-| `handoff-service.ts` | ✅ | ✅ (3KB larger) |
-| `sre-integration.ts` | ❌ | ✅ |
-| `self-healing-orchestrator.ts` | ❌ | ✅ |
-| `ci-autofix-engine.ts` | ❌ | ✅ |
-| `chronicle-*.ts` | ❌ | ✅ |
-| `governance-monitor.ts` | ❌ | ✅ |
-| `copilot-agent-dispatch.ts` | ❌ | ✅ |
-| `incident-manager.ts` | ❌ | ✅ |
-| `alert-service.ts` | ❌ | ✅ |
-| Next.js Dashboard | ❌ | ✅ |
-| Azure Bicep Infra | ❌ | ✅ |
+Environment caps: local=5, dev=5, staging=4, production=3

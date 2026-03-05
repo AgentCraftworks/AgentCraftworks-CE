@@ -1,0 +1,35 @@
+# Code Owners for AgentCraftworks Community Edition
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default — fallback for all files
+* @AgentCraftworks/maintainers
+
+# TypeScript service and application logic
+/typescript/ @AgentCraftworks/maintainers
+/typescript/src/ @AgentCraftworks/maintainers
+/typescript/test/ @AgentCraftworks/maintainers
+
+# MCP Server (highest criticality)
+/typescript/src/mcp/ @AgentCraftworks/maintainers
+
+# Infrastructure as Code — requires devops review
+/infra/ @AgentCraftworks/maintainers
+/azure.yaml @AgentCraftworks/maintainers
+/docker-compose.yml @AgentCraftworks/maintainers
+
+# GitHub Actions Workflows — requires security/devops review
+/.github/workflows/ @AgentCraftworks/maintainers
+/.github/CLA.md @AgentCraftworks/maintainers
+
+# Documentation
+/docs/ @AgentCraftworks/maintainers
+*.md @AgentCraftworks/maintainers
+
+# Accessibility documentation — requires accessibility agent team
+/docs/accessibility.md @accessibility-lead
+
+# Root-level configuration
+/package.json @AgentCraftworks/maintainers
+/tsconfig.json @AgentCraftworks/maintainers
+/CONTRIBUTING.md @AgentCraftworks/maintainers
+/README.md @AgentCraftworks/maintainers

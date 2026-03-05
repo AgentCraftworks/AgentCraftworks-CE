@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Release Tagging Script
-# Creates a Git tag with release notes for AgentCraftworks CE
+# Creates a Git tag with release notes for AgentCraftworks Community Edition
 
 set -e
 
@@ -27,7 +27,7 @@ if git rev-parse "$VERSION" >/dev/null 2>&1; then
 fi
 
 # Create annotated tag with release notes
-git tag -a "$VERSION" -m "AgentCraftworks CE $VERSION
+git tag -a "$VERSION" -m "AgentCraftworks Community Edition $VERSION
 
 Key Features:
 - Webhook-driven Express server (GitHub App)

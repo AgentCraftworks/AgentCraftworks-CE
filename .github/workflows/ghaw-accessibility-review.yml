@@ -32,7 +32,6 @@ permissions:
 
 jobs:
   accessibility-review:
-    name: Post Accessibility Checklist
     runs-on: ubuntu-latest
 
     steps:

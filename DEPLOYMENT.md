@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Complete guide for deploying AgentCraftworks CE to Azure and running locally with Docker.
+Complete guide for deploying AgentCraftworks Community Edition to Azure and running locally with Docker.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ Complete guide for deploying AgentCraftworks CE to Azure and running locally wit
 
 ## Quick Start
 
-Get AgentCraftworks CE running on Azure with the Azure Developer CLI:
+Get AgentCraftworks Community Edition running on Azure with the Azure Developer CLI:
 
 ```bash
 # 1. Install Azure Developer CLI (if not already installed)
