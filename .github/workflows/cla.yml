@@ -24,6 +24,7 @@ jobs:
     steps:
       - name: Generate GitHub App Token
         id: app-token
+        if: ${{ secrets.GH_APP_ID != '' && secrets.GH_APP_PRIVATE_KEY != '' }}
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.GH_APP_ID }}
@@ -33,7 +34,7 @@ jobs:
         uses: contributor-assistant/github-action@v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PERSONAL_ACCESS_TOKEN: ${{ steps.app-token.outputs.token }}
+          PERSONAL_ACCESS_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: "signatures/version1/cla.json"
           path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/main/.github/CLA.md"
