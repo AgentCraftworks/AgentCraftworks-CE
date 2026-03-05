@@ -10,6 +10,7 @@ Complete guide for deploying AgentCraftworks Community Edition to Azure and runn
 - [Local Development](#local-development)
 - [Azure Deployment](#azure-deployment)
 - [GitHub Secrets for CI/CD](#github-secrets-for-cicd)
+- [Repository Protection Rules](#repository-protection-rules)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Smoke Tests](#smoke-tests)
 - [Production Deployment Checklist](#production-deployment-checklist)
@@ -441,6 +442,109 @@ az ad app federated-credential create --id "$APP_ID" --parameters '{
 
 ---
 
+## Repository Protection Rules
+
+AgentCraftworks Community Edition enforces the following protection rules to ensure quality and stability:
+
+### Branch Protection
+
+Both `main` and `staging` branches are protected with:
+
+- **Required status checks (strict):**
+  - `build-and-test` — TypeScript compilation, linting, and tests
+  - `cla` — Contributor License Agreement check
+- **Additional conditional checks (via rulesets / required workflows):**
+  - `ghaw-accessibility-review` — WCAG 2.2 AA conformance (runs on all PRs; posts checklist only when UI/content files are changed)
+  - `ghaw-azd-service-tag-check` — Azure service-tag contract validation (runs only for relevant infra changes)
+- **Required reviews:**
+  - 1 approving review from CODEOWNERS (enforced)
+  - Stale reviews dismissed on new commits
+- **Admin enforcement:** Enabled (rules apply to admins too)
+- **Force-push:** Blocked
+- **Branch deletion:** Blocked
+
+### Tag Protection
+
+Version tags matching `v*` are protected via repository ruleset (ID: **13516390**):
+
+- **Updates:** Blocked (tags are immutable once created)
+- **Deletion:** Blocked (preserves release history)
+- **Enforcement:** Active
+- **Bypass actors:** None (no exceptions)
+
+### Environment Protection
+
+#### `staging`
+
+- **Required reviewers:** `@AgentCraftworks/maintainers` team approval
+- **Deployment branch policy:** Protected branches only (`main`, `staging`)
+- **Purpose:** Validate changes in a production-like environment before promoting to `main`
+
+#### `production`
+
+- **Required reviewers:** `@AgentCraftworks/maintainers` team approval
+- **Wait timer:** 1 hour (cooldown period to catch urgent issues)
+- **Deployment branch policy:** Protected branches only (`main`, `staging`)
+- **Purpose:** Final gate before customer-visible deployment
+
+> **Note:** Environment protection ensures that only authorized maintainers can approve
+> deployments to staging and production environments. The `deploy-azd.yml` workflow
+> respects these rules automatically when targeting `environment: staging` or
+> `environment: production`.
+
+### CODEOWNERS
+
+A `.github/CODEOWNERS` file was added to define required reviewers for all sensitive paths in the repository. This file directly enables the "1 approving review from CODEOWNERS (enforced)" requirement described in the [Branch Protection](#branch-protection) section above.
+
+| Path pattern | Required reviewer(s) |
+|---|---|
+| `*` (default) | `@AgentCraftworks/maintainers` |
+| `/typescript/` | `@AgentCraftworks/maintainers` |
+| `/typescript/src/mcp/` | `@AgentCraftworks/maintainers` |
+| `/.github/workflows/` | `@AgentCraftworks/maintainers` |
+| `/infra/`, `azure.yaml`, `docker-compose.yml` | `@AgentCraftworks/maintainers` |
+| `docs/accessibility.md` | `@AgentCraftworks/accessibility-lead` |
+
+### CI Workflow Alignment
+
+Three GitHub Actions workflow job names were updated to **exactly match** the required status check names configured in branch protection. GitHub matches required status checks by job name — a mismatch means a check never satisfies the requirement and PRs are permanently blocked.
+
+| Workflow file | Old job name | New job name |
+|---|---|---|
+| `.github/workflows/cla.yml` | `cla_assistant` | `cla` |
+| `.github/workflows/ghaw-accessibility-review.yml` | `Post Accessibility Checklist` | `ghaw-accessibility-review` |
+| `.github/workflows/ghaw-azd-service-tag-check.yml` | `Validate azd service-tag contract` | `ghaw-azd-service-tag-check` |
+
+### Release Script Update
+
+`scripts/tag-release.sh` was updated to use the full product name "AgentCraftworks Community Edition" in annotated tag messages (previously "AgentCraftworks CE"). No behavioral change.
+
+### Governance Changes Verification
+
+Use these steps to verify the protection rules and associated changes are working correctly:
+
+**Branch protection and required status checks:**
+```bash
+# Confirm job names match required status check names (Settings → Branches → Edit)
+# After a PR is opened, the following checks must appear and pass:
+#   cla, ghaw-accessibility-review, ghaw-azd-service-tag-check, build-and-test
+gh api repos/AgentCraftworks/AgentCraftworks-CE/branches/main \
+  --jq '.protection.required_status_checks.contexts'
+# Replace 'main' with 'staging' to verify that branch's required checks
+```
+
+**CODEOWNERS in effect:**
+Open a PR touching `/.github/workflows/` or `/typescript/src/mcp/` and confirm that `@AgentCraftworks/maintainers` is auto-requested as a reviewer.
+
+**Tag protection ruleset:**
+```bash
+gh api repos/AgentCraftworks/AgentCraftworks-CE/rulesets/13516390 \
+  --jq '{name: .name, enforcement: .enforcement}'
+# Expected: enforcement: "active"
+```
+
+---
+
 ## azd Service-Tag Contract
 
 `azd deploy` maps each service in `azure.yaml` to its Azure resource using an
@@ -514,7 +618,7 @@ services:
 | **Workflow Health** | `.github/workflows/ghaw-workflow-health.yml` | Weekday schedule, manual |
 | **Test Improver** | `.github/workflows/ghaw-daily-test-improver.yml` | Weekday schedule, manual |
 | **CLI Consistency** | `.github/workflows/ghaw-cli-consistency.yml` | PR to `main`, manual |
-| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | PR / push touching `azure.yaml` or `infra/**` |
+| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | All PRs (exits early when `azure.yaml` / `infra/**` unchanged); push to `main` touching `azure.yaml` or `infra/**` |
 
 ### Build Process
 

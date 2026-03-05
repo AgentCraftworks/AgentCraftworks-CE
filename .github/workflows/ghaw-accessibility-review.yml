@@ -7,23 +7,6 @@ name: "GH-AW: Accessibility Review"
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths:
-      - "**/*.jsx"
-      - "**/*.tsx"
-      - "**/*.vue"
-      - "**/*.html"
-      - "**/*.css"
-      - "**/*.scss"
-      - "**/*.less"
-      - "**/*.svelte"
-      - "**/*.md"
-
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: "PR number to post accessibility checklist on"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -32,13 +15,39 @@ permissions:
 
 jobs:
   accessibility-review:
+    name: ghaw-accessibility-review
     runs-on: ubuntu-latest
 
     steps:
-      - name: Post accessibility checklist on PR
+      - name: Check for relevant file changes
+        id: check-files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          # For workflow_dispatch there is no PR diff to inspect; always proceed.
+          if [ -z "$PR_NUMBER" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CHANGED=$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json files \
+            --jq '[.files[].path | select(test("\\.(jsx|tsx|vue|html|css|scss|less|svelte|md|docx|xlsx|pptx|pdf)$"))] | length' 2>/dev/null || echo "0")
+
+          if [ "$CHANGED" -eq "0" ]; then
+            echo "No UI or documentation files changed — skipping accessibility checklist."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$CHANGED relevant file(s) changed — accessibility checklist will be posted."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post accessibility checklist on PR
+        if: steps.check-files.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
         run: |
           # Check if we already posted an accessibility checklist on this PR
@@ -50,42 +59,40 @@ jobs:
             exit 0
           fi
 
-          cat <<'EOF' > /tmp/ghaw-accessibility-review-comment.md
-<!-- ghaw-accessibility-review -->
-## ♿ Accessibility Review Required
+          # Post accessibility checklist comment
+          gh pr comment "$PR_NUMBER" --repo "$REPOSITORY" --body "<!-- ghaw-accessibility-review -->
+          ## ♿ Accessibility Review Required
 
-This PR touches UI or documentation files. Please ensure the following accessibility requirements are met before merging.
+          This PR touches UI or documentation files. Please ensure the following accessibility requirements are met before merging.
 
-> ⚠️ **AI tools are not perfect.** Always verify with VoiceOver, NVDA, JAWS, and keyboard-only navigation. This checklist is a starting point, not a substitute for real assistive technology testing.
+          > ⚠️ **AI tools are not perfect.** Always verify with VoiceOver, NVDA, JAWS, and keyboard-only navigation. This checklist is a starting point, not a substitute for real assistive technology testing.
 
-### Checklist
+          ### Checklist
 
-- [ ] `@accessibility-lead` has reviewed all UI changes ([install agents](https://github.com/Community-Access/accessibility-agents))
-- [ ] All interactive elements are keyboard-accessible (Tab, Arrow keys, Enter, Escape)
-- [ ] Color contrast meets WCAG AA minimums (4.5:1 text, 3:1 UI components/focus indicators)
-- [ ] ARIA roles and states are used correctly (prefer native HTML semantics first)
-- [ ] Focus management is correct for dialogs, modals, and dynamic content
-- [ ] All images have meaningful alt text (or `alt=""` for decorative images)
-- [ ] Forms have associated `<label>` elements and clear, programmatically-associated error messages
-- [ ] Markdown documentation passes `@markdown-a11y-assistant` review (if `.md` files changed)
-- [ ] Changes tested with at least one screen reader (VoiceOver, NVDA, or JAWS)
+          - [ ] \`@accessibility-lead\` has reviewed all UI changes ([install agents](https://github.com/Community-Access/accessibility-agents))
+          - [ ] All interactive elements are keyboard-accessible (Tab, Arrow keys, Enter, Escape)
+          - [ ] Color contrast meets WCAG AA minimums (4.5:1 text, 3:1 UI components/focus indicators)
+          - [ ] ARIA roles and states are used correctly (prefer native HTML semantics first)
+          - [ ] Focus management is correct for dialogs, modals, and dynamic content
+          - [ ] All images have meaningful alt text (or \`alt=\"\"\` for decorative images)
+          - [ ] Forms have associated \`<label>\` elements and clear, programmatically-associated error messages
+          - [ ] Markdown documentation passes \`@markdown-a11y-assistant\` review (if \`.md\` files changed)
+          - [ ] Changes tested with at least one screen reader (VoiceOver, NVDA, or JAWS)
 
-### Accessibility Agent Team
+          ### Accessibility Agent Team
 
-Run the accessibility agent team locally by tagging `@accessibility-lead` in your AI coding tool (Claude Code, GitHub Copilot, Gemini CLI). The lead will orchestrate the relevant specialists based on what changed.
+          Run the accessibility agent team locally by tagging \`@accessibility-lead\` in your AI coding tool (Claude Code, GitHub Copilot, Gemini CLI). The lead will orchestrate the relevant specialists based on what changed.
 
-For installation: `curl -fsSL https://raw.githubusercontent.com/Community-Access/accessibility-agents/main/install.sh | bash`
+          For installation: \`curl -fsSL https://raw.githubusercontent.com/Community-Access/accessibility-agents/main/install.sh | bash\`
 
-See [docs/accessibility.md](docs/accessibility.md) for the full accessibility capability documentation.
+          See [docs/accessibility.md](docs/accessibility.md) for the full accessibility capability documentation.
 
----
-*Posted by the `ghaw-accessibility-review` workflow. Powered by [Community-Access/accessibility-agents](https://github.com/Community-Access/accessibility-agents).*
-EOF
-
-          gh pr comment "$PR_NUMBER" --repo "$REPOSITORY" --body-file /tmp/ghaw-accessibility-review-comment.md
+          ---
+          *Posted by the \`ghaw-accessibility-review\` workflow. Powered by [Community-Access/accessibility-agents](https://github.com/Community-Access/accessibility-agents).*"
           echo "✅ Accessibility checklist posted on PR #$PR_NUMBER"
 
       - name: Add accessibility-review label
+        if: steps.check-files.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
