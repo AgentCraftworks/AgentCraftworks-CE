@@ -4,10 +4,24 @@ Complete guide for deploying AgentCraftworks Community Edition to Azure and runn
 
 ## Table of Contents
 
+- [Quick Start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [GitHub App Setup](#github-app-setup)
+- [Local Development](#local-development)
+- [Azure Deployment](#azure-deployment)
+- [GitHub Secrets for CI/CD](#github-secrets-for-cicd)
+- [azd Service-Tag Contract](#azd-service-tag-contract)
+- [CI/CD Pipeline](#cicd-pipeline)
   - [Workflows](#workflows)
   - [GH-AW Workflow Index](#gh-aw-workflow-index)
   - [Build Process](#build-process)
   - [Deployment Strategy](#deployment-strategy)
+- [Smoke Tests](#smoke-tests)
+- [Production Deployment Checklist](#production-deployment-checklist)
+- [Monitoring & Health Checks](#monitoring--health-checks)
+- [Cost Estimation](#cost-estimation)
+- [Cleanup](#cleanup)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -514,7 +528,7 @@ services:
 #### Core Philosophy
 
 - **Graduated Autonomy**: Each workflow operates at a specific engagement level, from Observer (T1) to Peer Programmer (T3)
-- **Always Advisory**: GH-AW workflows assist and suggest; they never break builds or block PRs unless explicitly configured
+- **Advisory by Default**: Most GH-AW workflows assist and suggest only; designated enforcement workflows such as `ghaw-branch-policy-guard` and `ghaw-azd-service-tag-check` may block PRs or fail checks in the default Community Edition configuration
 - **Production-Safe**: All workflows in AgentCraftworks Community Edition cap at T3 (Peer Programmer) — no autonomous merges or deployments in production
 
 #### Complete Workflow Reference
@@ -522,11 +536,11 @@ services:
 | Workflow | File | Engagement Level | Purpose | Trigger |
 |----------|------|------------------|---------|---------|
 | **Accessibility Review** | `.github/workflows/ghaw-accessibility-review.yml` | T2 (Advisor) | Posts accessibility checklist on PRs touching UI files; tags `@accessibility-lead` for review | PR touching `.jsx`, `.tsx`, `.vue`, `.html`, `.css`, `.scss`, `.less`, `.svelte`, `.md` |
-| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | T2 (Advisor) | Validates every service in `azure.yaml` has a matching `azd-service-name` tag in Bicep templates; prevents deploy failures | PR/push to `main` or `staging` touching `azure.yaml` or `infra/**` |
+| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | T2 (Advisor) | Validates every service in `azure.yaml` has a matching `azd-service-name` tag in Bicep templates; prevents deploy failures | PR to `main` or `staging` touching `azure.yaml` or `infra/**`; push to `main` touching `azure.yaml` or `infra/**` |
 | **Branch Policy Guard** | `.github/workflows/ghaw-branch-policy-guard.yml` | T1 (Observer) | Enforces promotion flow (`feature/* → staging → main`); blocks PRs that violate branch policy | PR to `main` or `staging` |
 | **Changeset** | `.github/workflows/ghaw-changeset.yml` | T3 (Peer Programmer) | Automated version bumps and changelog generation; analyzes merged PRs, determines semver bump, updates `CHANGELOG.md` | Push to `main`, manual |
 | **CI Coach** | `.github/workflows/ghaw-ci-coach.yml` | T2 (Advisor) | Analyzes CI failures and posts suggested fixes as PR comments | CI workflow failure |
-| **CLI Consistency Checker** | `.github/workflows/ghaw-cli-consistency.yml` | T2 (Advisor) | Validates CLI, API, and MCP tool naming conventions; posts findings as PR comments | PR to `main` touching `handlers/`, `mcp/`, or `jobs/` |
+| **CLI Consistency Checker** | `.github/workflows/ghaw-cli-consistency.yml` | T2 (Advisor) | Validates CLI, API, and MCP tool naming conventions; posts findings as PR comments | PR to `main` touching `typescript/src/handlers/**`, `typescript/src/mcp/**`, or `typescript/src/jobs/**` |
 | **Daily Test Improver** | `.github/workflows/ghaw-daily-test-improver.yml` | T2 (Advisor) | Identifies test coverage gaps and creates issues with specific test suggestions | Weekday 9 AM UTC schedule, manual |
 | **PR Fix** | `.github/workflows/ghaw-pr-fix.yml` | T2 (Advisor) | Auto-suggests fixes for failing PR checks by analyzing CI logs and posting review comments | Check run failure, manual |
 | **Workflow Health Manager** | `.github/workflows/ghaw-workflow-health.yml` | T2 (Advisor) | Monitors all GH-AW workflows for failures, stale runs, and performance regressions; posts health summary as GitHub issue | Weekday 7 AM UTC schedule (before standup), manual |
@@ -547,7 +561,7 @@ To adjust workflow behavior for your organization:
 
 1. **Disable workflows**: Add `if: false` to the job level for any workflow you don't need
 2. **Adjust triggers**: Modify the `on:` block to change when workflows run (e.g., reduce daily schedules to weekly)
-3. **Engagement level overrides**: See `docs/ENGAGEMENT_LEVEL_GOVERNANCE.md` for per-repo and per-environment overrides
+3. **Engagement level overrides**: Configure per-repo and per-environment overrides according to your engagement-level governance documentation
 
 ### Build Process
 
