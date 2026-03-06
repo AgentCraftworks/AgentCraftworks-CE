@@ -18,53 +18,53 @@ See `docs/SDLC_LIFECYCLE_STRATEGY.md` for the lifecycle model and when to activa
 ```mermaid
 graph TD
     subgraph GitHub["GitHub"]
-        PR[Pull Request]
-        PUSH[Push Event]
-        ISSUE[Issue Event]
-        WF[Workflow Event]
+        prEvent["Pull Request"]
+        pushEvent["Push Event"]
+        issueEvent["Issue Event"]
+        workflowEvent["Workflow Event"]
     end
 
     subgraph CE["AgentCraftworks Community Edition (Open Source)"]
-        WH[Webhook Handler<br/>POST /api/webhook]
-        AUTH[HMAC Signature Verification]
-        FSM[Event FSM<br/>RECEIVED → CLASSIFIED → ROUTED → EXECUTING → COMPLETE]
-        AD[Agent Engagement Levels<br/>Observer → Full Agent Team]
-        COD[CODEOWNERS Router]
-        MCP[MCP Server<br/>6 Core Tools]
+        webhookHandler["Webhook Handler<br/>POST /api/webhook"]
+        signatureVerify["HMAC Signature Verification"]
+        eventFsm["Event FSM<br/>RECEIVED → CLASSIFIED → ROUTED → GOVERNANCE_CHECK → EXECUTING → COMPLETE"]
+        engagementLevels["Agent Engagement Levels<br/>Observer → Full Agent Team"]
+        codeownersRouter["CODEOWNERS Router"]
+        mcpServer["MCP Server<br/>6 Core Tools"]
     end
 
     subgraph Actions["Agent Actions"]
-        L1[Observer (T1): Read, view, list]
-        L2[Advisor (T2): Comment, suggest]
-        L3[Peer Programmer (T3): Label, assign, approve, edit file]
-        L4[Agent Team (T4): Merge, close, create branch, push commit]
-        L5[Full Agent Team (T5): Deploy, modify CI, orchestrate agents]
+        level1["Observer (T1): Read, view, list"]
+        level2["Advisor (T2): Comment, suggest"]
+        level3["Peer Programmer (T3): Label, assign, approve, edit file"]
+        level4["Agent Team (T4): Merge, close, create branch, push commit"]
+        level5["Full Agent Team (T5): Deploy, modify CI, orchestrate agents"]
     end
 
-    PR --> WH
-    PUSH --> WH
-    ISSUE --> WH
-    WF --> WH
-    WH --> AUTH
-    AUTH --> FSM
-    FSM --> AD
-    AD --> COD
-    COD --> L1
-    COD --> L2
-    COD --> L3
-    COD --> L4
-    COD --> L5
-    L1 --> MCP
-    L2 --> MCP
-    L3 --> MCP
-    L4 --> MCP
-    L5 --> MCP
-    MCP -->|analyze| GH_API[GitHub API]
-    MCP -->|fix| GH_API
-    MCP -->|review| GH_API
-    MCP -->|comment| GH_API
-    MCP -->|rollback| GH_API
-    MCP -->|escalate| GH_API
+    prEvent --> webhookHandler
+    pushEvent --> webhookHandler
+    issueEvent --> webhookHandler
+    workflowEvent --> webhookHandler
+    webhookHandler --> signatureVerify
+    signatureVerify --> eventFsm
+    eventFsm --> engagementLevels
+    engagementLevels --> codeownersRouter
+    codeownersRouter --> level1
+    codeownersRouter --> level2
+    codeownersRouter --> level3
+    codeownersRouter --> level4
+    codeownersRouter --> level5
+    level1 --> mcpServer
+    level2 --> mcpServer
+    level3 --> mcpServer
+    level4 --> mcpServer
+    level5 --> mcpServer
+    mcpServer -->|analyze| ghApi["GitHub API"]
+    mcpServer -->|fix| ghApi
+    mcpServer -->|review| ghApi
+    mcpServer -->|comment| ghApi
+    mcpServer -->|rollback| ghApi
+    mcpServer -->|escalate| ghApi
 ```
 
 

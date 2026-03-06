@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   cla:
+    name: CLA Assistant
     runs-on: ubuntu-latest
     # Skip CLA for internal staging→main promotion PRs; only gate external contributors.
     if: |

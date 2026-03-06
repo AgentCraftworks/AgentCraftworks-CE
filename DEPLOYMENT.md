@@ -10,7 +10,13 @@ Complete guide for deploying AgentCraftworks Community Edition to Azure and runn
 - [Local Development](#local-development)
 - [Azure Deployment](#azure-deployment)
 - [GitHub Secrets for CI/CD](#github-secrets-for-cicd)
+- [azd Service-Tag Contract](#azd-service-tag-contract)
+- [Repository Protection Rules](#repository-protection-rules)
 - [CI/CD Pipeline](#cicd-pipeline)
+  - [Workflows](#workflows)
+  - [GH-AW Workflow Index](#gh-aw-workflow-index)
+  - [Build Process](#build-process)
+  - [Deployment Strategy](#deployment-strategy)
 - [Smoke Tests](#smoke-tests)
 - [Production Deployment Checklist](#production-deployment-checklist)
 - [Monitoring & Health Checks](#monitoring--health-checks)
@@ -40,9 +46,9 @@ azd auth login
 azd init    # Environment name: agentcraftworks-dev, Location: eastus
 
 # 4. Configure secrets
-azd env set GH_WEBHOOK_SECRET "$(openssl rand -hex 32)"
-azd env set GH_APP_ID "your-app-id"
-azd env set GH_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
+azd env set GH_CE_WEBHOOK_SECRET "$(openssl rand -hex 32)"
+azd env set GH_CE_APP_ID "your-app-id"
+azd env set GH_CE_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
 
 # 5. Deploy (provisions infrastructure + deploys app)
 azd up
@@ -115,7 +121,7 @@ Several workflows use `actions/create-github-app-token@v1` to generate short-liv
 tokens at runtime, replacing long-lived PATs. These workflows **will fail** if
 the secrets below are not configured.
 
-#### Workflows that require `GH_APP_ID` + `GH_APP_PRIVATE_KEY`
+#### Workflows that require `GH_CE_APP_ID` + `GH_CE_APP_PRIVATE_KEY`
 
 | Workflow | File | Why It Needs App Token |
 |----------|------|-----------------------|
@@ -141,15 +147,15 @@ the secrets below are not configured.
 
    | Secret Name | Value |
    |-------------|-------|
-   | `GH_APP_ID` | The numeric App ID (e.g., `123456`) |
-   | `GH_APP_PRIVATE_KEY` | The **entire** contents of the `.pem` file, including `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----` headers |
+   | `GH_CE_APP_ID` | The numeric App ID (e.g., `123456`) |
+   | `GH_CE_APP_PRIVATE_KEY` | The **entire** contents of the `.pem` file, including `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----` headers |
 
    > **Tip:** To copy the full PEM contents on macOS/Linux: `cat your-app.pem | pbcopy`
    > On Windows PowerShell: `Get-Content your-app.pem -Raw | Set-Clipboard`
 
 4. **Verify the secrets are set:**
    - Go to **Settings → Secrets and variables → Actions**
-   - You should see both `GH_APP_ID` and `GH_APP_PRIVATE_KEY` listed (values are hidden)
+   - You should see both `GH_CE_APP_ID` and `GH_CE_APP_PRIVATE_KEY` listed (values are hidden)
 
 5. **Test by re-running a workflow:**
    - Go to **Actions** → select the failing workflow run → click **Re-run all jobs**
@@ -160,7 +166,7 @@ the secrets below are not configured.
 > They are the recommended approach for GitHub Actions. See [GitHub docs](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow).
 
 > **Organization-level alternative:** If you want all repos in the org to share one
-> App Token, set `GH_APP_ID` and `GH_APP_PRIVATE_KEY` as **organization secrets**
+> App Token, set `GH_CE_APP_ID` and `GH_CE_APP_PRIVATE_KEY` as **organization secrets**
 > at **https://github.com/organizations/AgentCraftworks/settings/secrets/actions**
 > instead of per-repository.
 
@@ -216,9 +222,9 @@ cd typescript
 npm install
 
 # Set environment variables
-export GH_APP_ID=123456
-export GH_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)"
-export GH_WEBHOOK_SECRET=your_webhook_secret
+export GH_CE_APP_ID=123456
+export GH_CE_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)"
+export GH_CE_WEBHOOK_SECRET=your_webhook_secret
 export PORT=3000
 
 # Development mode (watch)
@@ -235,9 +241,9 @@ npm start
 cd typescript
 docker build -t agentcraftworks-ts .
 docker run -p 3000:3000 \
-  -e GH_WEBHOOK_SECRET="test-secret" \
-  -e GH_APP_ID="test-id" \
-  -e GH_APP_PRIVATE_KEY="test-key" \
+  -e GH_CE_WEBHOOK_SECRET="test-secret" \
+  -e GH_CE_APP_ID="test-id" \
+  -e GH_CE_APP_PRIVATE_KEY="test-key" \
   agentcraftworks-ts
 ```
 
@@ -255,9 +261,9 @@ azd auth login
 azd init
 
 # 3. Set secrets
-azd env set GH_APP_ID "123456"
-azd env set GH_WEBHOOK_SECRET "your_webhook_secret"
-azd env set GH_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
+azd env set GH_CE_APP_ID "123456"
+azd env set GH_CE_WEBHOOK_SECRET "your_webhook_secret"
+azd env set GH_CE_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
 
 # 4. Provision and deploy
 azd up
@@ -328,7 +334,7 @@ az containerapp create \
   --image agentcraftworks.azurecr.io/typescript-api:latest \
   --target-port 3000 \
   --ingress external \
-  --env-vars GH_APP_ID=123456 GH_WEBHOOK_SECRET=secretref:webhook-secret
+  --env-vars GH_CE_APP_ID=123456 GH_CE_WEBHOOK_SECRET=secretref:webhook-secret
 ```
 
 ---
@@ -359,9 +365,9 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 
 | Secret | Description | Required By |
 |--------|-------------|-------------|
-| `GH_APP_ID` | GitHub App ID (from app settings page) | `cla.yml`, `ghaw-changeset.yml`, `sync-org-standards.yml`, `deploy-azd.yml` |
-| `GH_APP_PRIVATE_KEY` | Full PEM file contents including headers | Same as above |
-| `GH_WEBHOOK_SECRET` | Webhook validation secret (generate: `openssl rand -hex 32`) | Runtime only (not CI/CD) |
+| `GH_CE_APP_ID` | GitHub App ID (from app settings page) | `cla.yml`, `ghaw-changeset.yml`, `sync-org-standards.yml`, `deploy-azd.yml` |
+| `GH_CE_APP_PRIVATE_KEY` | Full PEM file contents including headers | Same as above |
+| `GH_CE_WEBHOOK_SECRET` | Webhook validation secret (generate: `openssl rand -hex 32`) | Runtime only (not CI/CD) |
 | `POSTGRES_PASSWORD` | PostgreSQL admin password (generate: `openssl rand -base64 32`) | `deploy-azd.yml` |
 
 > **Managing the PostgreSQL password (`POSTGRES_PASSWORD`):**
@@ -441,6 +447,109 @@ az ad app federated-credential create --id "$APP_ID" --parameters '{
 
 ---
 
+## Repository Protection Rules
+
+AgentCraftworks Community Edition enforces the following protection rules to ensure quality and stability:
+
+### Branch Protection
+
+Both `main` and `staging` branches are protected with:
+
+- **Required status checks (strict):**
+  - `build-and-test` — TypeScript compilation, linting, and tests
+  - `cla` — Contributor License Agreement check
+- **Additional conditional checks (via rulesets / required workflows):**
+  - `ghaw-accessibility-review` — WCAG 2.2 AA conformance (runs on all PRs; posts checklist only when UI/content files are changed)
+  - `ghaw-azd-service-tag-check` — Azure service-tag contract validation (workflow triggers on all PRs but exits early when \`azure.yaml\` / \`infra/**\` are unchanged)
+- **Required reviews:**
+  - 1 approving review from CODEOWNERS (enforced)
+  - Stale reviews dismissed on new commits
+- **Admin enforcement:** Enabled (rules apply to admins too)
+- **Force-push:** Blocked
+- **Branch deletion:** Blocked
+
+### Tag Protection
+
+Version tags matching `v*` are protected via repository ruleset (ID: **13516390**):
+
+- **Updates:** Blocked (tags are immutable once created)
+- **Deletion:** Blocked (preserves release history)
+- **Enforcement:** Active
+- **Bypass actors:** None (no exceptions)
+
+### Environment Protection
+
+#### `staging`
+
+- **Required reviewers:** `@AgentCraftworks/maintainers` team approval
+- **Deployment branch policy:** Protected branches only (`main`, `staging`)
+- **Purpose:** Validate changes in a production-like environment before promoting to `main`
+
+#### `production`
+
+- **Required reviewers:** `@AgentCraftworks/maintainers` team approval
+- **Wait timer:** 1 hour (cooldown period to catch urgent issues)
+- **Deployment branch policy:** Protected branches only (`main`, `staging`)
+- **Purpose:** Final gate before customer-visible deployment
+
+> **Note:** Environment protection ensures that only authorized maintainers can approve
+> deployments to staging and production environments. The `deploy-azd.yml` workflow
+> respects these rules automatically when targeting `environment: staging` or
+> `environment: production`.
+
+### CODEOWNERS
+
+The repository uses a `.github/CODEOWNERS` file to define required reviewers for all sensitive paths in the repository. This file directly enables the "1 approving review from CODEOWNERS (enforced)" requirement described in the [Branch Protection](#branch-protection) section above.
+
+| Path pattern | Required reviewer(s) |
+|---|---|
+| `*` (default) | `@AgentCraftworks/maintainers` |
+| `/typescript/` | `@AgentCraftworks/maintainers` |
+| `/typescript/src/mcp/` | `@AgentCraftworks/maintainers` |
+| `/.github/workflows/` | `@AgentCraftworks/maintainers` |
+| `/infra/`, `azure.yaml`, `docker-compose.yml` | `@AgentCraftworks/maintainers` |
+| `/docs/accessibility.md` | `@AgentCraftworks/accessibility-lead` |
+
+### CI Workflow Alignment
+
+Three GitHub Actions workflow job names were updated to **exactly match** the required status check names configured in branch protection. GitHub matches required status checks by job name — a mismatch means a check never satisfies the requirement and PRs are permanently blocked.
+
+| Workflow file | Old job name | New job name |
+|---|---|---|
+| `.github/workflows/cla.yml` | `cla_assistant` | `cla` |
+| `.github/workflows/ghaw-accessibility-review.yml` | `Post Accessibility Checklist` | `ghaw-accessibility-review` |
+| `.github/workflows/ghaw-azd-service-tag-check.yml` | `Validate azd service-tag contract` | `ghaw-azd-service-tag-check` |
+
+### Release Script Update
+
+`scripts/tag-release.sh` was updated to use the full product name "AgentCraftworks Community Edition" in annotated tag messages (previously "AgentCraftworks CE"). No behavioral change.
+
+### Governance Changes Verification
+
+Use these steps to verify the protection rules and associated changes are working correctly:
+
+**Branch protection and required status checks:**
+```bash
+# Confirm job names match required status check names (Settings → Branches → Edit)
+# After a PR is opened, the following checks must appear and pass:
+#   cla, ghaw-accessibility-review, ghaw-azd-service-tag-check, build-and-test
+gh api repos/AgentCraftworks/AgentCraftworks-CE/branches/main \
+  --jq '.protection.required_status_checks.contexts'
+# Replace 'main' with 'staging' to verify that branch's required checks
+```
+
+**CODEOWNERS in effect:**
+Open a PR touching `/.github/workflows/` or `/typescript/src/mcp/` and confirm that `@AgentCraftworks/maintainers` is auto-requested as a reviewer.
+
+**Tag protection ruleset:**
+```bash
+gh api repos/AgentCraftworks/AgentCraftworks-CE/rulesets/13516390 \
+  --jq '{name: .name, enforcement: .enforcement}'
+# Expected: enforcement: "active"
+```
+
+---
+
 ## azd Service-Tag Contract
 
 `azd deploy` maps each service in `azure.yaml` to its Azure resource using an
@@ -514,7 +623,49 @@ services:
 | **Workflow Health** | `.github/workflows/ghaw-workflow-health.yml` | Weekday schedule, manual |
 | **Test Improver** | `.github/workflows/ghaw-daily-test-improver.yml` | Weekday schedule, manual |
 | **CLI Consistency** | `.github/workflows/ghaw-cli-consistency.yml` | PR to `main`, manual |
-| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | PR / push touching `azure.yaml` or `infra/**` |
+| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | All PRs (exits early when `azure.yaml` / `infra/**` unchanged); push to `main` touching `azure.yaml` or `infra/**` |
+
+### GH-AW Workflow Index
+
+**GH-AW (GitHub Agent Workflows)** are autonomous agents built into AgentCraftworks Community Edition. They implement graduated Agent Engagement Levels (T1–T3) to provide guidance, validation, and automated maintenance without requiring manual intervention.
+
+#### Core Philosophy
+
+- **Graduated Autonomy**: Each workflow operates at a specific engagement level, from Observer (T1) to Peer Programmer (T3)
+- **Advisory by Default**: Most GH-AW workflows assist and suggest only; designated enforcement workflows such as `ghaw-branch-policy-guard` and `ghaw-azd-service-tag-check` may block PRs or fail checks in the default Community Edition configuration
+- **Production-Safe**: All workflows in AgentCraftworks Community Edition cap at T3 (Peer Programmer) — no autonomous merges or deployments in production
+
+#### Complete Workflow Reference
+
+| Workflow | File | Engagement Level | Purpose | Trigger |
+|----------|------|------------------|---------|---------|
+| **Accessibility Review** | `.github/workflows/ghaw-accessibility-review.yml` | T2 (Advisor) | Posts accessibility checklist on PRs touching UI files; tags `@accessibility-lead` for review | PR touching `.jsx`, `.tsx`, `.vue`, `.html`, `.css`, `.scss`, `.less`, `.svelte`, `.md` |
+| **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | T2 (Advisor) | Validates every service in `azure.yaml` has a matching `azd-service-name` tag in Bicep templates; prevents deploy failures | PR to `main` or `staging` touching `azure.yaml` or `infra/**`; push to `main` touching `azure.yaml` or `infra/**` |
+| **Branch Policy Guard** | `.github/workflows/ghaw-branch-policy-guard.yml` | T1 (Observer) | Enforces promotion flow (`feature/* → staging → main`); blocks PRs that violate branch policy | PR to `main` or `staging` |
+| **Changeset** | `.github/workflows/ghaw-changeset.yml` | T3 (Peer Programmer) | Automated version bumps and changelog generation; analyzes merged PRs, determines semver bump, updates `CHANGELOG.md` | Push to `main`, manual |
+| **CI Coach** | `.github/workflows/ghaw-ci-coach.yml` | T2 (Advisor) | Analyzes CI failures and posts suggested fixes as PR comments | CI workflow failure |
+| **CLI Consistency Checker** | `.github/workflows/ghaw-cli-consistency.yml` | T2 (Advisor) | Validates CLI, API, and MCP tool naming conventions; posts findings as PR comments | PR to `main` touching `typescript/src/handlers/**`, `typescript/src/mcp/**`, or `typescript/src/jobs/**` |
+| **Daily Test Improver** | `.github/workflows/ghaw-daily-test-improver.yml` | T2 (Advisor) | Identifies test coverage gaps and creates issues with specific test suggestions | Weekday 9 AM UTC schedule, manual |
+| **PR Fix** | `.github/workflows/ghaw-pr-fix.yml` | T2 (Advisor) | Auto-suggests fixes for failing PR checks by analyzing CI logs and posting review comments | Check run failure, manual |
+| **Workflow Health Manager** | `.github/workflows/ghaw-workflow-health.yml` | T2 (Advisor) | Monitors all GH-AW workflows for failures, stale runs, and performance regressions; posts health summary as GitHub issue | Weekday 7 AM UTC schedule (before standup), manual |
+
+#### Integration with Agent Engagement Levels
+
+GH-AW workflows demonstrate the **Agent Engagement Levels** model in production:
+
+- **T1 (Observer)**: `ghaw-branch-policy-guard` — validates topology, never modifies state
+- **T2 (Advisor)**: Most workflows — post comments, create issues, add labels, but never edit code
+- **T3 (Peer Programmer)**: `ghaw-changeset` — creates branches and edits files, but only on explicit trigger (push to `main`)
+
+Production environments cap at T3. The full T4 (Agent Team) and T5 (Full Agent Team) levels are reserved for development and staging environments.
+
+#### Customizing GH-AW Workflows
+
+To adjust workflow behavior for your organization:
+
+1. **Disable workflows**: Add `if: false` to the job level for any workflow you don't need
+2. **Adjust triggers**: Modify the `on:` block to change when workflows run (e.g., reduce daily schedules to weekly)
+3. **Engagement level overrides**: Configure per-repo and per-environment overrides according to your engagement-level governance documentation
 
 ### Build Process
 

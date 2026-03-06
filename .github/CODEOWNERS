@@ -26,7 +26,7 @@
 *.md @AgentCraftworks/maintainers
 
 # Accessibility documentation — requires accessibility agent team
-/docs/accessibility.md @accessibility-lead
+/docs/accessibility.md @AgentCraftworks/accessibility-lead
 
 # Root-level configuration
 /package.json @AgentCraftworks/maintainers

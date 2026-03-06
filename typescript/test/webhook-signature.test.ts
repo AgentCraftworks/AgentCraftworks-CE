@@ -56,16 +56,16 @@ describe("verifyWebhookSignature", () => {
   });
 
   it("should throw when secret is not provided and env var is missing", () => {
-    const originalSecret = process.env["GH_WEBHOOK_SECRET"];
-    delete process.env["GH_WEBHOOK_SECRET"];
+    const originalSecret = process.env["GH_CE_WEBHOOK_SECRET"];
+    delete process.env["GH_CE_WEBHOOK_SECRET"];
     try {
       assert.throws(
         () => verifyWebhookSignature("payload", "sha256=abc"),
-        /GH_WEBHOOK_SECRET is required/,
+        /GH_CE_WEBHOOK_SECRET is required/,
       );
     } finally {
       if (originalSecret !== undefined) {
-        process.env["GH_WEBHOOK_SECRET"] = originalSecret;
+        process.env["GH_CE_WEBHOOK_SECRET"] = originalSecret;
       }
     }
   });
@@ -116,9 +116,9 @@ describe("verifyWebhookSignature", () => {
     assert.equal(result, true);
   });
 
-  it("should use GH_WEBHOOK_SECRET env var when secret is not provided", () => {
-    const originalSecret = process.env["GH_WEBHOOK_SECRET"];
-    process.env["GH_WEBHOOK_SECRET"] = TEST_SECRET;
+  it("should use GH_CE_WEBHOOK_SECRET env var when secret is not provided", () => {
+    const originalSecret = process.env["GH_CE_WEBHOOK_SECRET"];
+    process.env["GH_CE_WEBHOOK_SECRET"] = TEST_SECRET;
     try {
       const payload = '{"test":"env"}';
       const signature = sign(payload);
@@ -126,9 +126,9 @@ describe("verifyWebhookSignature", () => {
       assert.equal(result, true);
     } finally {
       if (originalSecret !== undefined) {
-        process.env["GH_WEBHOOK_SECRET"] = originalSecret;
+        process.env["GH_CE_WEBHOOK_SECRET"] = originalSecret;
       } else {
-        delete process.env["GH_WEBHOOK_SECRET"];
+        delete process.env["GH_CE_WEBHOOK_SECRET"];
       }
     }
   });
