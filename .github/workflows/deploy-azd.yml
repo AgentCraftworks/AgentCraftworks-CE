@@ -81,11 +81,11 @@ jobs:
 
       - name: Configure environment secrets
         env:
-          GH_APP_PRIVATE_KEY_VALUE: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          GH_APP_PRIVATE_KEY_VALUE: ${{ secrets.GH_CE_APP_PRIVATE_KEY }}
           POSTGRES_PASSWORD_SECRET: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
-          azd env set ghAppId "${{ secrets.GH_APP_ID }}"
-          azd env set ghWebhookSecret "${{ secrets.GH_WEBHOOK_SECRET }}"
+          azd env set ghAppId "${{ secrets.GH_CE_APP_ID }}"
+          azd env set ghWebhookSecret "${{ secrets.GH_CE_WEBHOOK_SECRET }}"
 
           # Store PEM key as single line to avoid JSON parse errors in parameters.json substitution.
           # azd env set writes to .env; multiline values break JSON when ${ghAppPrivateKey} is resolved.

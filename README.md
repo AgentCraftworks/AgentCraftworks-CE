@@ -20,11 +20,11 @@
 
 AI coding agents are powerful — but completely ungoverned. They merge PRs without approval, push to production without validation, and operate at full autonomy with no safety net.
 
-**You need a governance layer that grows with your team's trust.**
+**Engineering teams need an agent team operating at the speed of their trust while ensuring critical security and compliance requirements are always met.**
 
 ## What AgentCraftworks Community Edition Does
 
-AgentCraftworks Community Edition is a GitHub App + MCP server that intercepts every agent action and routes it through **configurable Agent Engagement Levels** before it reaches your codebase.
+AgentCraftworks Community Edition is a GitHub App + MCP server that intercepts every agent action and routes it through **configurable Agent Engagement Levels** before it reaches your codebase. AgentCraftworks provides the governance layer that even when your team leverages the full agent team in their practices the human is always in the loop for Production. 
 
 ## SDLC Lifecycle Strategy
 

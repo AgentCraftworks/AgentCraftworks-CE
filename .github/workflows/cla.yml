@@ -19,9 +19,10 @@ jobs:
   cla:
     name: CLA Assistant
     runs-on: ubuntu-latest
+    # Skip CLA for internal staging→main promotion PRs; only gate external contributors.
     if: |
       (github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA.') ||
-      (github.event_name == 'pull_request_target' && github.event.action != 'closed')
+      (github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.head_ref != 'staging')
     steps:
       - name: Check GitHub App secrets availability
         id: check-secrets
@@ -34,6 +35,7 @@ jobs:
           fi
 
       - name: Generate GitHub App Token
+        if: ${{ secrets.GH_CE_APP_ID != '' && secrets.GH_CE_APP_PRIVATE_KEY != '' }}
         id: app-token
         if: steps.check-secrets.outputs.secrets-available == 'true'
         uses: actions/create-github-app-token@v1
@@ -60,7 +62,7 @@ jobs:
           path-to-signatures: "signatures/version1/cla.json"
           path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/main/.github/CLA.md"
           branch: "cla-signatures"
-          allowlist: bot*,dependabot[bot],github-actions[bot]
+          allowlist: bot*,dependabot[bot],github-actions[bot],Jenp-AICraftWorks
           create-file-commit-message: "chore: store CLA signatures"
           signed-commit-message: "chore: CLA signed by @$contributorName"
           custom-notsigned-prcomment: |
