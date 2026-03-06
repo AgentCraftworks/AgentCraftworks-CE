@@ -24,9 +24,20 @@ jobs:
       (github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA.') ||
       (github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.head_ref != 'staging')
     steps:
+      - name: Check GitHub App secrets availability
+        id: check-secrets
+        run: |
+          if [ -n "${{ secrets.GH_CE_APP_ID }}" ] && [ -n "${{ secrets.GH_CE_APP_PRIVATE_KEY }}" ]; then
+            echo "secrets-available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "secrets-available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::GitHub App secrets not configured - will use GITHUB_TOKEN fallback"
+          fi
+
       - name: Generate GitHub App Token
         if: ${{ secrets.GH_CE_APP_ID != '' && secrets.GH_CE_APP_PRIVATE_KEY != '' }}
         id: app-token
+        if: steps.check-secrets.outputs.secrets-available == 'true'
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.GH_CE_APP_ID }}
