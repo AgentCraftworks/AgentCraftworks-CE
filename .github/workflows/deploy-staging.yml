@@ -1,17 +1,13 @@
 name: Deploy to Staging
 
 # Deploys the TypeScript service to the staging Azure Container Apps environment.
-# Triggered on pushes to staging branch or merged PRs targeting staging.
+# Triggered only on pushes to staging branch (after PR merge).
 # Engagement Level: T4 (Agent Team) — deploys to staging Azure environment.
 
 on:
   push:
     branches:
       - staging
-  pull_request:
-    branches:
-      - staging
-    types: [closed]
   workflow_dispatch:
 
 env:
@@ -22,7 +18,6 @@ jobs:
   build-and-deploy-typescript:
     name: Build & Deploy TypeScript Service (Staging)
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     environment: staging
     permissions:
       contents: read

@@ -46,9 +46,9 @@ azd auth login
 azd init    # Environment name: agentcraftworks-dev, Location: eastus
 
 # 4. Configure secrets
-azd env set GH_WEBHOOK_SECRET "$(openssl rand -hex 32)"
-azd env set GH_APP_ID "your-app-id"
-azd env set GH_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
+azd env set GH_CE_WEBHOOK_SECRET "$(openssl rand -hex 32)"
+azd env set GH_CE_APP_ID "your-app-id"
+azd env set GH_CE_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
 
 # 5. Deploy (provisions infrastructure + deploys app)
 azd up
@@ -121,7 +121,7 @@ Several workflows use `actions/create-github-app-token@v1` to generate short-liv
 tokens at runtime, replacing long-lived PATs. These workflows **will fail** if
 the secrets below are not configured.
 
-#### Workflows that require `GH_APP_ID` + `GH_APP_PRIVATE_KEY`
+#### Workflows that require `GH_CE_APP_ID` + `GH_CE_APP_PRIVATE_KEY`
 
 | Workflow | File | Why It Needs App Token |
 |----------|------|-----------------------|
@@ -147,15 +147,15 @@ the secrets below are not configured.
 
    | Secret Name | Value |
    |-------------|-------|
-   | `GH_APP_ID` | The numeric App ID (e.g., `123456`) |
-   | `GH_APP_PRIVATE_KEY` | The **entire** contents of the `.pem` file, including `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----` headers |
+   | `GH_CE_APP_ID` | The numeric App ID (e.g., `123456`) |
+   | `GH_CE_APP_PRIVATE_KEY` | The **entire** contents of the `.pem` file, including `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----` headers |
 
    > **Tip:** To copy the full PEM contents on macOS/Linux: `cat your-app.pem | pbcopy`
    > On Windows PowerShell: `Get-Content your-app.pem -Raw | Set-Clipboard`
 
 4. **Verify the secrets are set:**
    - Go to **Settings → Secrets and variables → Actions**
-   - You should see both `GH_APP_ID` and `GH_APP_PRIVATE_KEY` listed (values are hidden)
+   - You should see both `GH_CE_APP_ID` and `GH_CE_APP_PRIVATE_KEY` listed (values are hidden)
 
 5. **Test by re-running a workflow:**
    - Go to **Actions** → select the failing workflow run → click **Re-run all jobs**
@@ -166,7 +166,7 @@ the secrets below are not configured.
 > They are the recommended approach for GitHub Actions. See [GitHub docs](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow).
 
 > **Organization-level alternative:** If you want all repos in the org to share one
-> App Token, set `GH_APP_ID` and `GH_APP_PRIVATE_KEY` as **organization secrets**
+> App Token, set `GH_CE_APP_ID` and `GH_CE_APP_PRIVATE_KEY` as **organization secrets**
 > at **https://github.com/organizations/AgentCraftworks/settings/secrets/actions**
 > instead of per-repository.
 
@@ -222,9 +222,9 @@ cd typescript
 npm install
 
 # Set environment variables
-export GH_APP_ID=123456
-export GH_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)"
-export GH_WEBHOOK_SECRET=your_webhook_secret
+export GH_CE_APP_ID=123456
+export GH_CE_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)"
+export GH_CE_WEBHOOK_SECRET=your_webhook_secret
 export PORT=3000
 
 # Development mode (watch)
@@ -241,9 +241,9 @@ npm start
 cd typescript
 docker build -t agentcraftworks-ts .
 docker run -p 3000:3000 \
-  -e GH_WEBHOOK_SECRET="test-secret" \
-  -e GH_APP_ID="test-id" \
-  -e GH_APP_PRIVATE_KEY="test-key" \
+  -e GH_CE_WEBHOOK_SECRET="test-secret" \
+  -e GH_CE_APP_ID="test-id" \
+  -e GH_CE_APP_PRIVATE_KEY="test-key" \
   agentcraftworks-ts
 ```
 
@@ -261,9 +261,9 @@ azd auth login
 azd init
 
 # 3. Set secrets
-azd env set GH_APP_ID "123456"
-azd env set GH_WEBHOOK_SECRET "your_webhook_secret"
-azd env set GH_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
+azd env set GH_CE_APP_ID "123456"
+azd env set GH_CE_WEBHOOK_SECRET "your_webhook_secret"
+azd env set GH_CE_APP_PRIVATE_KEY "$(cat path/to/private-key.pem)"
 
 # 4. Provision and deploy
 azd up
@@ -334,7 +334,7 @@ az containerapp create \
   --image agentcraftworks.azurecr.io/typescript-api:latest \
   --target-port 3000 \
   --ingress external \
-  --env-vars GH_APP_ID=123456 GH_WEBHOOK_SECRET=secretref:webhook-secret
+  --env-vars GH_CE_APP_ID=123456 GH_CE_WEBHOOK_SECRET=secretref:webhook-secret
 ```
 
 ---
@@ -365,9 +365,9 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 
 | Secret | Description | Required By |
 |--------|-------------|-------------|
-| `GH_APP_ID` | GitHub App ID (from app settings page) | `cla.yml`, `ghaw-changeset.yml`, `sync-org-standards.yml`, `deploy-azd.yml` |
-| `GH_APP_PRIVATE_KEY` | Full PEM file contents including headers | Same as above |
-| `GH_WEBHOOK_SECRET` | Webhook validation secret (generate: `openssl rand -hex 32`) | Runtime only (not CI/CD) |
+| `GH_CE_APP_ID` | GitHub App ID (from app settings page) | `cla.yml`, `ghaw-changeset.yml`, `sync-org-standards.yml`, `deploy-azd.yml` |
+| `GH_CE_APP_PRIVATE_KEY` | Full PEM file contents including headers | Same as above |
+| `GH_CE_WEBHOOK_SECRET` | Webhook validation secret (generate: `openssl rand -hex 32`) | Runtime only (not CI/CD) |
 | `POSTGRES_PASSWORD` | PostgreSQL admin password (generate: `openssl rand -base64 32`) | `deploy-azd.yml` |
 
 > **Managing the PostgreSQL password (`POSTGRES_PASSWORD`):**
