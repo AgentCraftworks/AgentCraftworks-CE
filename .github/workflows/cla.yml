@@ -50,7 +50,7 @@ jobs:
           path-to-signatures: "signatures/version1/cla.json"
           path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/main/.github/CLA.md"
           branch: "cla-signatures"
-          allowlist: bot*,dependabot[bot],github-actions[bot]
+          allowlist: bot*,dependabot[bot],github-actions[bot],Jenp-AICraftWorks
           create-file-commit-message: "chore: store CLA signatures"
           signed-commit-message: "chore: CLA signed by @$contributorName"
           custom-notsigned-prcomment: |
