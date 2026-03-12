@@ -28,7 +28,10 @@ export interface InstallationPayload {
     id: number;
     account: { login: string };
   };
-  /** Populated for `installation` events with action `created`. */
+  /**
+   * Populated for `installation` events when a specific set of repos was
+   * selected.  Absent for org-wide (`repository_selection: "all"`) installs.
+   */
   repositories?: Repository[];
   /** Populated for `installation_repositories` events with action `added`. */
   repositories_added?: Repository[];
@@ -52,6 +55,13 @@ export type ScaffoldFn = (
   installationId: number,
   octokit?: Octokit,
 ) => Promise<ScaffoldResult>;
+
+/**
+ * Injectable function that lists all repositories accessible to an
+ * installation.  Used as a fallback for org-wide installs where GitHub omits
+ * the `repositories` field from the webhook payload.
+ */
+export type ListReposFn = (installationId: number) => Promise<Repository[]>;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -280,6 +290,46 @@ export async function scaffoldCodeowners(
   };
 }
 
+/** Shape of one page of results from `GET /installation/repositories`. */
+interface InstallationReposPage {
+  total_count: number;
+  repositories: Repository[];
+}
+
+/** Maximum pages to fetch when listing installation repositories (~10 000 repos). */
+const MAX_LIST_PAGES = 100;
+
+/**
+ * Default implementation of {@link ListReposFn}.
+ *
+ * Pages through `GET /installation/repositories` until all repositories have
+ * been retrieved.  Uses the installation Octokit so it inherits the cached
+ * token flow from {@link getInstallationOctokit}.
+ */
+async function listInstallationRepos(
+  installationId: number,
+): Promise<Repository[]> {
+  const client = await getInstallationOctokit(installationId);
+  const repos: Repository[] = [];
+  let page = 1;
+
+  while (page <= MAX_LIST_PAGES) {
+    const response = await client.request("GET /installation/repositories", {
+      per_page: 100,
+      page,
+    });
+    const data = response.data as InstallationReposPage;
+    repos.push(...data.repositories);
+
+    if (data.repositories.length < 100) {
+      break;
+    }
+    page++;
+  }
+
+  return repos;
+}
+
 /**
  * Handle an `installation` or `installation_repositories` webhook event.
  *
@@ -288,13 +338,17 @@ export async function scaffoldCodeowners(
  * repositories are captured and surfaced in the result list rather than
  * propagated, so a failure for one repo does not block others.
  *
- * @param scaffoldFn - Optional override for the scaffolding implementation.
+ * @param scaffoldFn   - Optional override for the scaffolding implementation.
  *   Defaults to {@link scaffoldCodeowners}.  Pass a custom function in tests
  *   to avoid real GitHub API calls.
+ * @param listReposFn  - Optional override for listing installation repos.
+ *   Defaults to {@link listInstallationRepos}.  Used when GitHub omits the
+ *   `repositories` field on org-wide (`repository_selection: "all"`) installs.
  */
 export async function handleInstallationEvent(
   payload: InstallationPayload,
   scaffoldFn: ScaffoldFn = scaffoldCodeowners,
+  listReposFn: ListReposFn = listInstallationRepos,
 ): Promise<{
   handled: boolean;
   action: string;
@@ -305,8 +359,15 @@ export async function handleInstallationEvent(
 
   // Determine which repositories to process based on the action.
   let repos: Repository[] = [];
-  if (action === "created" && payload.repositories) {
-    repos = payload.repositories;
+  if (action === "created") {
+    if (payload.repositories) {
+      // Specific-repos installation: list is provided inline.
+      repos = payload.repositories;
+    } else {
+      // Org-wide installation (repository_selection: "all"): GitHub omits the
+      // repositories list — fall back to the Installation Repositories API.
+      repos = await listReposFn(installation.id);
+    }
   } else if (action === "added" && payload.repositories_added) {
     repos = payload.repositories_added;
   } else {

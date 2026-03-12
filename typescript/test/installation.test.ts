@@ -20,6 +20,7 @@ import {
   handleInstallationEvent,
   DEFAULT_CODEOWNERS_TEMPLATE,
   type ScaffoldFn,
+  type ListReposFn,
   type InstallationPayload,
 } from "../src/handlers/installation.js";
 
@@ -408,6 +409,47 @@ describe("handleInstallationEvent", () => {
     assert.equal(result.results.length, 1);
     assert.ok(result.results[0]?.message.includes("malformed"));
     assert.equal(result.results[0]?.skipped, false);
+  });
+
+  it("falls back to listReposFn when repositories field is absent (org-wide install)", async () => {
+    // Payload has no `repositories` field — simulates an org-wide installation.
+    const payload = makePayload("created");
+    assert.equal(payload.repositories, undefined);
+
+    const listReposFn: ListReposFn = async () => [
+      { name: "repo-a", full_name: "testorg/repo-a", private: false },
+      { name: "repo-b", full_name: "testorg/repo-b", private: false },
+    ];
+
+    const scaffoldFn = makeScaffoldFn(makeHappyPathOctokit());
+
+    const result = await handleInstallationEvent(payload, scaffoldFn, listReposFn);
+
+    assert.equal(result.handled, true);
+    assert.equal(result.results.length, 2);
+    assert.ok(result.message.includes("2 repositor"));
+  });
+
+  it("returns empty results when listReposFn returns no repos for org-wide install", async () => {
+    const payload = makePayload("created");
+    const listReposFn: ListReposFn = async () => [];
+    const result = await handleInstallationEvent(payload, scaffoldCodeowners, listReposFn);
+
+    assert.equal(result.handled, true);
+    assert.equal(result.results.length, 0);
+    assert.ok(result.message.includes("No repositories"));
+  });
+
+  it("propagates listReposFn errors as handled:false", async () => {
+    const payload = makePayload("created");
+    const listReposFn: ListReposFn = async () => {
+      throw new Error("API rate limit exceeded");
+    };
+
+    await assert.rejects(
+      () => handleInstallationEvent(payload, scaffoldCodeowners, listReposFn),
+      /API rate limit exceeded/,
+    );
   });
 });
 
