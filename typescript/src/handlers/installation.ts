@@ -227,17 +227,40 @@ export async function scaffoldCodeowners(
   });
 
   // Open a PR against the default branch.
-  const prData = await client.request("POST /repos/{owner}/{repo}/pulls", {
-    owner,
-    repo,
-    title: PR_TITLE,
-    body: PR_BODY,
-    head: SETUP_BRANCH,
-    base: defaultBranch,
-  });
-
-  const prUrl = (prData.data as { html_url: string }).html_url;
-
+  let prUrl: string;
+  try {
+    const prData = await client.request("POST /repos/{owner}/{repo}/pulls", {
+      owner,
+      repo,
+      title: PR_TITLE,
+      body: PR_BODY,
+      head: SETUP_BRANCH,
+      base: defaultBranch,
+    });
+    prUrl = (prData.data as { html_url: string }).html_url;
+  } catch (err: unknown) {
+    if (isUnprocessableEntityError(err)) {
+      // A PR from the setup branch to the default branch already exists.
+      // Look up the existing open PR so retries remain idempotent.
+      const existingPrs = await client.request(
+        "GET /repos/{owner}/{repo}/pulls",
+        {
+          owner,
+          repo,
+          head: `${owner}:${SETUP_BRANCH}`,
+          state: "open",
+        },
+      );
+      const firstPr = (existingPrs.data as { html_url: string }[])[0];
+      if (!firstPr) {
+        // No matching open PR found; rethrow so the caller can handle.
+        throw err;
+      }
+      prUrl = firstPr.html_url;
+    } else {
+      throw err;
+    }
+  }
   return {
     repository: `${owner}/${repo}`,
     skipped: false,
