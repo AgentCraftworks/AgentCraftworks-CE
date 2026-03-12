@@ -14,6 +14,10 @@ import {
   abandonHandoff,
 } from "../services/handoff-service.js";
 import { isTerminalState } from "../utils/handoff-state-machine.js";
+import {
+  handleInstallationEvent,
+  type InstallationPayload,
+} from "./installation.js";
 
 interface PullRequestPayload {
   action: string;
@@ -158,6 +162,14 @@ export async function webhookHandler(
 
     if (event === "ping") {
       res.status(200).json({ event: "ping", message: "pong" });
+      return;
+    }
+
+    if (event === "installation" || event === "installation_repositories") {
+      const result = await handleInstallationEvent(
+        req.body as InstallationPayload,
+      );
+      res.status(200).json(result);
       return;
     }
 
