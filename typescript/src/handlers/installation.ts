@@ -290,35 +290,70 @@ export async function handleInstallationEvent(
 
   const results: ScaffoldResult[] = [];
 
-  for (const repo of repos) {
+  // Helper to scaffold CODEOWNERS for a single repository and return a result.
+  async function scaffoldRepoForInstallation(
+    repo: Repository,
+    installationId: number,
+  ): Promise<ScaffoldResult> {
     const parts = repo.full_name.split("/");
     if (parts.length !== 2 || !parts[0] || !parts[1]) {
-      results.push({
+      return {
         repository: repo.full_name,
         skipped: false,
         message: `Error scaffolding CODEOWNERS: malformed repository name '${repo.full_name}'`,
-      });
-      continue;
+      };
     }
+
     const owner = parts[0];
     const repoName = parts[1];
+
     try {
       const result = await scaffoldCodeowners(
         owner,
         repoName,
-        installation.id,
+        installationId,
       );
-      results.push(result);
+      return result;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      results.push({
+      return {
         repository: repo.full_name,
         skipped: false,
         message: `Error scaffolding CODEOWNERS: ${message}`,
-      });
+      };
     }
   }
 
+  // Process repositories with a bounded concurrency limit to avoid webhook timeouts
+  // while still parallelising work across multiple repositories.
+  const CONCURRENCY_LIMIT = 5;
+  const queue: Repository[] = [...repos];
+  const workerCount = Math.min(CONCURRENCY_LIMIT, queue.length);
+  const workers: Promise<void>[] = [];
+
+  for (let i = 0; i < workerCount; i += 1) {
+    workers.push(
+      (async () => {
+        // Each worker pulls repositories from the shared queue until it is empty.
+        // Array.prototype.shift is safe here because JavaScript runs this code on a
+        // single event loop thread; concurrent access is serialized.
+        while (true) {
+          const nextRepo = queue.shift();
+          if (!nextRepo) {
+            return;
+          }
+
+          const result = await scaffoldRepoForInstallation(
+            nextRepo,
+            installation.id,
+          );
+          results.push(result);
+        }
+      })(),
+    );
+  }
+
+  await Promise.all(workers);
   return {
     handled: true,
     action,
