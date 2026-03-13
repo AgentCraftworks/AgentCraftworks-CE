@@ -1,0 +1,43 @@
+# Refreshes the staging branch after a staging→main promotion PR is merged.
+# Deletes the stale staging branch and recreates it from main so it's always
+# a clean copy of production. This prevents drift between staging and main.
+#
+# Engagement Level: T4 (Agent Team) — deletes and recreates branch.
+# Follows branching policy: feature/* → staging → main
+
+name: "Refresh staging branch after promotion"
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-staging:
+    name: Refresh staging from main
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'staging'
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Delete and recreate staging branch
+        run: |
+          echo "PR #${{ github.event.pull_request.number }} merged staging → main"
+          echo "Deleting stale staging branch..."
+          git push origin --delete staging || echo "staging branch already deleted by GitHub"
+
+          echo "Recreating staging from main ($(git rev-parse --short HEAD))..."
+          git checkout -b staging
+          git push origin staging
+
+          echo "✅ staging branch refreshed — now matches main at $(git rev-parse --short HEAD)"
