@@ -423,11 +423,12 @@ export function getHandoffStats(): HandoffStats {
     ).length;
   }
 
-  const byPriority: Record<string, number> = Object.create(null) as Record<string, number>;
+  const priorityCounts = new Map<string, number>();
   for (const handoff of allHandoffs) {
     const key = handoff.priority;
-    byPriority[key] = (byPriority[key] ?? 0) + 1;
+    priorityCounts.set(key, (priorityCounts.get(key) ?? 0) + 1);
   }
+  const byPriority: Partial<Record<string, number>> = Object.fromEntries(priorityCounts);
 
   const completed = allHandoffs.filter(
     (h) =>
