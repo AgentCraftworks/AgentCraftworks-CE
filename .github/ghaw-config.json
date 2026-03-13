@@ -1,0 +1,98 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AgentCraftworks/AgentCraftworks-PlatformOps/main/docs/schemas/ghaw-config.schema.json",
+  "org": "AgentCraftworks",
+  "repo": "AgentCraftworks-CE",
+  "workflows": [
+    {
+      "id": "ghaw-workflow-health",
+      "name": "GH-AW: Workflow Health Manager",
+      "trigger": "schedule",
+      "schedule": { "cron": "0 7 * * 1-5" },
+      "enabled": true,
+      "outputDestinations": ["github-issue"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-daily-test-improver",
+      "name": "GH-AW: Daily Test Improver",
+      "trigger": "schedule",
+      "schedule": { "cron": "0 9 * * 1-5" },
+      "enabled": true,
+      "outputDestinations": ["github-issue"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-secret-rotation-reminder",
+      "name": "GH-AW: Secret Rotation Reminder",
+      "trigger": "schedule",
+      "schedule": { "cron": "17 15 * * 1" },
+      "enabled": true,
+      "outputDestinations": ["github-issue"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-pr-fix",
+      "name": "GH-AW: PR Fix",
+      "trigger": "check_run",
+      "enabled": true,
+      "outputDestinations": ["github-pr-comment"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-ci-coach",
+      "name": "GH-AW: CI Coach",
+      "trigger": "workflow_run",
+      "enabled": true,
+      "outputDestinations": ["github-pr-comment"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-branch-policy-guard",
+      "name": "GH-AW: Branch Policy Guard",
+      "trigger": "pull_request",
+      "enabled": true,
+      "outputDestinations": ["github-pr-comment"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-accessibility-review",
+      "name": "GH-AW: Accessibility Review",
+      "trigger": "pull_request",
+      "enabled": true,
+      "outputDestinations": ["github-pr-comment"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-cli-consistency",
+      "name": "GH-AW: CLI Consistency Checker",
+      "trigger": "pull_request",
+      "enabled": true,
+      "outputDestinations": ["github-pr-comment"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-changeset",
+      "name": "GH-AW: Changeset",
+      "trigger": "push",
+      "enabled": true,
+      "outputDestinations": ["log-only"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-azd-service-tag-check",
+      "name": "GH-AW: azd Service-Tag Contract Check",
+      "trigger": "pull_request",
+      "enabled": true,
+      "outputDestinations": ["github-pr-comment"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ghaw-staging-refresh",
+      "name": "Refresh staging branch after promotion",
+      "trigger": "pull_request",
+      "enabled": true,
+      "outputDestinations": ["log-only"],
+      "notificationChannels": ["none"]
+    }
+  ]
+}
