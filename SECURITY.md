@@ -12,7 +12,7 @@ If you discover a security vulnerability in AgentCraftworks Core, please report 
 
 1. **Do NOT open a public issue** for security vulnerabilities
 2. **Preferred:** Use [GitHub's private vulnerability reporting](https://github.com/AgentCraftworks/AgentCraftworks-CE/security/advisories/new) for this repository
-3. **Alternative:** Email **security@agentcraftworks.com**
+3. **Alternative:** Email **contact@agentcraftworks.com**
 4. Include:
    - Description of the vulnerability
    - Steps to reproduce
