@@ -38,9 +38,9 @@ services:
       dockerfile: Dockerfile
     environment:
       PORT: 3000
-      GH_APP_ID: ${GH_APP_ID}
-      GH_APP_PRIVATE_KEY: ${GH_APP_PRIVATE_KEY}
-      GH_WEBHOOK_SECRET: ${GH_WEBHOOK_SECRET}
+      GH_CE_APP_ID: ${GH_CE_APP_ID}
+      GH_CE_APP_PRIVATE_KEY: ${GH_CE_APP_PRIVATE_KEY}
+      GH_CE_WEBHOOK_SECRET: ${GH_CE_WEBHOOK_SECRET}
       NODE_ENV: development
     ports:
       - "3000:3000"
