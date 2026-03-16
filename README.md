@@ -167,7 +167,7 @@ npm run lint
 
 ## License
 
-MIT License — Copyright (c) 2025 AICraftworks LLC
+MIT License — Copyright (c) 2025 AgentCraftworks
 
 See [LICENSE](LICENSE) for full text.
 

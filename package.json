@@ -12,6 +12,6 @@
     "test": "cd typescript && npm test"
   },
   "keywords": ["ai-agents", "governance", "mcp", "github-app"],
-  "author": "AICraftworks LLC",
+  "author": "AgentCraftworks",
   "license": "MIT"
 }
