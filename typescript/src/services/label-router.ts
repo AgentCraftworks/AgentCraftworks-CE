@@ -26,21 +26,21 @@ export function routeToAgentByLabel(
 
   const labelNames = labels.map((l) => l.name.toLowerCase());
 
-  // Accessibility review has highest priority
+  // Security review has highest priority
+  if (
+    labelNames.includes("security-review") ||
+    labelNames.includes("security")
+  ) {
+    return "@security-scanner";
+  }
+
+  // Accessibility review
   if (
     labelNames.includes("accessibility-review") ||
     labelNames.includes("accessibility") ||
     labelNames.includes("wcag")
   ) {
     return "@accessibility-lead";
-  }
-
-  // Security review
-  if (
-    labelNames.includes("security-review") ||
-    labelNames.includes("security")
-  ) {
-    return "@security-scanner";
   }
 
   // Documentation review
