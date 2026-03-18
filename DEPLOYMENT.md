@@ -81,13 +81,15 @@ After deployment, update your GitHub App webhook URL to `https://<your-url>/api/
 ## GitHub App Setup
 
 > Required for both local and Azure deployments.
+>
+> **Forking?** If you've forked this repo, you need your own GitHub App — see the [Fork & Rename Guide](FORKING.md) for the full checklist.
 
 ### Create the App
 
-1. Go to **https://github.com/settings/apps/new**
+1. Go to **https://github.com/settings/apps/new** (or your org's developer settings)
 2. Fill in:
-   - **Name:** `AgentCraftworks` (or `AgentCraftworks-Dev` for development)
-   - **Homepage URL:** `https://github.com/AgentCraftworks/AgentCraftworks-CE`
+   - **Name:** Any name you like — e.g., `AgentCraftworks`, `YourOrg-AgentGov`, or `MyTeam-CE`. The app name is cosmetic (it appears in PR check statuses and installation screens). The **App ID** and **private key** are what matter.
+   - **Homepage URL:** Your repo URL (e.g., `https://github.com/YOUR-ORG/YOUR-REPO`)
    - **Webhook URL:** Leave blank (update after deploy)
    - **Webhook Secret:** Generate one: `openssl rand -hex 32` — **save this value**
 3. **Permissions** (Repository):
