@@ -69,6 +69,7 @@ jobs:
     name: Run Smoke Tests (Staging)
     needs: build-and-deploy-typescript
     runs-on: ubuntu-latest
+    environment: staging
     permissions:
       contents: read
 
