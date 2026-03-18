@@ -91,7 +91,91 @@
       "name": "Refresh staging branch after promotion",
       "trigger": "pull_request",
       "enabled": true,
+      "tier": "existing",
       "outputDestinations": ["log-only"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "ci-doctor",
+      "name": "GH-AW: CI Doctor",
+      "trigger": "workflow_run",
+      "enabled": true,
+      "tier": "tier-1",
+      "source": "githubnext/agentics",
+      "outputDestinations": ["github-issue"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "link-checker",
+      "name": "GH-AW: Link Checker",
+      "trigger": "schedule",
+      "schedule": { "cron": "0 6 * * 1" },
+      "enabled": true,
+      "tier": "tier-1",
+      "source": "githubnext/agentics",
+      "outputDestinations": ["github-pr"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "issue-triage",
+      "name": "GH-AW: Issue Triage",
+      "trigger": "issues",
+      "enabled": true,
+      "tier": "tier-1",
+      "source": "githubnext/agentics",
+      "outputDestinations": ["github-issue-labels"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "plan-command",
+      "name": "GH-AW: Plan Command",
+      "trigger": "issue_comment",
+      "enabled": true,
+      "tier": "tier-1",
+      "source": "githubnext/agentics",
+      "outputDestinations": ["github-sub-issues"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "daily-doc-updater",
+      "name": "GH-AW: Daily Doc Updater",
+      "trigger": "schedule",
+      "schedule": { "cron": "0 8 * * 1-5" },
+      "enabled": false,
+      "tier": "tier-2",
+      "source": "githubnext/agentics",
+      "outputDestinations": ["github-pr"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "sub-issue-closer",
+      "name": "GH-AW: Sub-Issue Closer",
+      "trigger": "issues",
+      "enabled": true,
+      "tier": "tier-2",
+      "source": "githubnext/agentics",
+      "outputDestinations": ["github-issue"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "grumpy-reviewer",
+      "name": "GH-AW: Grumpy Reviewer",
+      "trigger": "issue_comment",
+      "enabled": true,
+      "tier": "tier-2",
+      "source": "githubnext/agentics",
+      "outputDestinations": ["github-pr-comment"],
+      "notificationChannels": ["none"]
+    },
+    {
+      "id": "code-simplifier",
+      "name": "GH-AW: Code Simplifier",
+      "trigger": "schedule",
+      "schedule": { "cron": "0 10 * * 3" },
+      "enabled": false,
+      "tier": "tier-2",
+      "source": "githubnext/agentics",
+      "outputDestinations": ["github-pr"],
       "notificationChannels": ["none"]
     }
   ]
