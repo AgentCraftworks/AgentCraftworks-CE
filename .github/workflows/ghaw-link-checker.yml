@@ -1,0 +1,62 @@
+name: "GH-AW: Link Checker"
+
+# Link Checker — Daily automated link checker that finds and fixes broken links.
+# Scans all markdown files, tests HTTP links, and creates PRs to fix broken ones.
+# Engagement Level: T3 (Peer Programmer) — creates PRs with documentation fixes.
+# Source: githubnext/agentics/workflows/link-checker.md
+
+on:
+  schedule:
+    - cron: "0 6 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-links:
+    name: Check Documentation Links
+    runs-on: ${{ vars.RUNNER_MODE == 'self-hosted' && 'self-hosted' || 'ubuntu-latest' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check GH-AW config
+        id: ghaw-config
+        run: |
+          CONFIG=".github/ghaw-config.json"
+          WORKFLOW_ID="ghaw-link-checker"
+          if [ -f "$CONFIG" ]; then
+            ENABLED=$(jq -r --arg id "$WORKFLOW_ID" '.workflows[] | select(.id == $id) | .enabled' "$CONFIG")
+            if [ "$ENABLED" = "false" ]; then
+              echo "::notice::Workflow $WORKFLOW_ID is disabled via ghaw-config.json — skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        if: steps.ghaw-config.outputs.skip != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: ${{ vars.RUNNER_MODE != 'self-hosted' && 'npm' || '' }}
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Install dependencies
+        if: steps.ghaw-config.outputs.skip != 'true'
+        working-directory: typescript
+        run: npm ci
+
+      - name: Check and fix broken links
+        if: steps.ghaw-config.outputs.skip != 'true'
+        working-directory: typescript
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: npx tsx src/jobs/link-checker.ts
