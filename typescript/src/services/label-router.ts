@@ -85,14 +85,35 @@ export function adjustPriorityByLabel(
   labels: Array<{ name: string }> = [],
   basePriority: "low" | "medium" | "high" | "critical" = "medium",
 ): "low" | "medium" | "high" | "critical" {
+  // Define an explicit ordering so we can ensure monotonic behavior.
+  const priorityOrder: Array<"low" | "medium" | "high" | "critical"> = [
+    "low",
+    "medium",
+    "high",
+    "critical",
+  ];
+
+  const maxPriority = (
+    a: "low" | "medium" | "high" | "critical",
+    b: "low" | "medium" | "high" | "critical",
+  ): "low" | "medium" | "high" | "critical" => {
+    return priorityOrder[
+      Math.max(priorityOrder.indexOf(a), priorityOrder.indexOf(b))
+    ];
+  };
+
+  let adjustedPriority = basePriority;
+
   if (hasAccessibilityReviewLabel(labels)) {
-    return "high"; // Accessibility is non-negotiable
+    // Accessibility is non-negotiable: boost to at least "high"
+    adjustedPriority = maxPriority(adjustedPriority, "high");
   }
 
   const labelNames = labels.map((l) => l.name.toLowerCase());
   if (labelNames.includes("security-review") || labelNames.includes("security")) {
-    return "high";
+    // Security reviews should also be at least "high"
+    adjustedPriority = maxPriority(adjustedPriority, "high");
   }
 
-  return basePriority;
+  return adjustedPriority;
 }
