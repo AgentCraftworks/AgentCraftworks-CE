@@ -51,12 +51,12 @@ describe("routeToAgentByLabel", () => {
     assert.equal(routeToAgentByLabel([{ name: "WCAG" }]), "@accessibility-lead");
   });
 
-  it("prioritizes accessibility over security (accessibility highest priority)", () => {
+  it("prioritizes security over accessibility (security highest priority)", () => {
     const labels = [
       { name: "security-review" },
       { name: "accessibility-review" },
     ];
-    assert.equal(routeToAgentByLabel(labels), "@accessibility-lead");
+    assert.equal(routeToAgentByLabel(labels), "@security-scanner");
   });
 
   // ─── Security routing ────────────────────────────────────────────────────
@@ -85,15 +85,20 @@ describe("routeToAgentByLabel", () => {
 
   // ─── Priority order ──────────────────────────────────────────────────────
 
-  it("follows priority: accessibility > security > docs > code", () => {
-    // accessibility beats security
+  it("follows priority: security > accessibility > docs > code", () => {
+    // security beats accessibility
     assert.equal(
       routeToAgentByLabel([{ name: "security" }, { name: "accessibility" }]),
+      "@security-scanner"
+    );
+    // accessibility beats docs
+    assert.equal(
+      routeToAgentByLabel([{ name: "documentation" }, { name: "accessibility" }]),
       "@accessibility-lead"
     );
-    // security beats docs
+    // security beats docs directly
     assert.equal(
-      routeToAgentByLabel([{ name: "documentation" }, { name: "security" }]),
+      routeToAgentByLabel([{ name: "security" }, { name: "documentation" }]),
       "@security-scanner"
     );
     // docs beats default

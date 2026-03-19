@@ -4,9 +4,9 @@
  * Routes AI agent work based on GitHub PR labels.
  * Used by the PR handler to determine which agent should receive a handoff.
  *
- * Routing logic:
- *   - "accessibility-review" → @accessibility-lead (WCAG 2.2 validation team)
+ * Routing logic (priority order):
  *   - "security-review" → @security-scanner (vulnerability scanning)
+ *   - "accessibility-review" → @accessibility-lead (WCAG 2.2 validation team)
  *   - "docs-review" → @docs-reviewer (documentation updates)
  *   - default → @code-reviewer (general code review)
  */
@@ -26,21 +26,21 @@ export function routeToAgentByLabel(
 
   const labelNames = labels.map((l) => l.name.toLowerCase());
 
-  // Accessibility review has highest priority
+  // Security review has highest priority
+  if (
+    labelNames.includes("security-review") ||
+    labelNames.includes("security")
+  ) {
+    return "@security-scanner";
+  }
+
+  // Accessibility review
   if (
     labelNames.includes("accessibility-review") ||
     labelNames.includes("accessibility") ||
     labelNames.includes("wcag")
   ) {
     return "@accessibility-lead";
-  }
-
-  // Security review
-  if (
-    labelNames.includes("security-review") ||
-    labelNames.includes("security")
-  ) {
-    return "@security-scanner";
   }
 
   // Documentation review

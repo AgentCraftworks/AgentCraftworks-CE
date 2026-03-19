@@ -295,7 +295,7 @@ describe("handlePullRequestEvent", () => {
     assert.equal(handoff.priority, "high");
   });
 
-  it("should prioritize accessibility over security routing", async () => {
+  it("should prioritize security over accessibility routing", async () => {
     const payload = makePrPayload({
       action: "opened",
       pull_request: {
@@ -313,8 +313,8 @@ describe("handlePullRequestEvent", () => {
     assert.ok(result.handoff_id);
     const handoff = getHandoff(result.handoff_id!);
     assert.ok(handoff);
-    // Accessibility has highest priority over security
-    assert.equal(handoff.to_agent, "@accessibility-lead");
+    // Security has highest priority over accessibility
+    assert.equal(handoff.to_agent, "@security-scanner");
   });
 
   it("should store accessibility labels in handoff metadata", async () => {
