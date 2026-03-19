@@ -11,8 +11,8 @@
     "test": "node --import tsx --test test/**/*.test.ts",
     "start": "node dist/index.js"
   },
-  "keywords": ["ai-agents", "governance", "mcp", "github-app", "devops", "hackathon"],
-  "author": "AICraftworks LLC",
+  "keywords": ["ai-agents", "governance", "mcp", "github-app", "devops"],
+  "author": "AgentCraftworks",
   "license": "MIT",
   "devDependencies": {
     "@types/express": "^5.0.6",

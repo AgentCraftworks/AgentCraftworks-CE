@@ -1,0 +1,86 @@
+name: "GH-AW: Plan Command"
+
+# Plan Command — Breaks down issues into actionable sub-tasks via /plan command.
+# Analyzes issues/discussions and creates sequenced, agent-friendly work items.
+# Triggered by /plan command in issue or discussion comments.
+# Engagement Level: T2 (Advisor) — creates sub-issues, no code modifications.
+# Source: githubnext/agentics/workflows/plan.md
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to plan"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+  discussions: read
+
+jobs:
+  create-plan:
+    name: Create Plan
+    runs-on: ${{ vars.RUNNER_MODE == 'self-hosted' && 'self-hosted' || 'ubuntu-latest' }}
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue && contains(github.event.comment.body, '/plan'))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check GH-AW config
+        id: ghaw-config
+        run: |
+          CONFIG=".github/ghaw-config.json"
+          WORKFLOW_ID="ghaw-plan"
+          if [ -f "$CONFIG" ]; then
+            ENABLED=$(jq -r --arg id "$WORKFLOW_ID" '.workflows[] | select(.id == $id) | .enabled' "$CONFIG")
+            if [ "$ENABLED" = "false" ]; then
+              echo "::notice::Workflow $WORKFLOW_ID is disabled via ghaw-config.json — skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Check permissions
+        if: steps.ghaw-config.outputs.skip != 'true'
+        id: check-perms
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login || github.actor }}/permission --jq '.permission' 2>/dev/null || echo "none")
+          if [[ "$PERMISSION" != "admin" && "$PERMISSION" != "maintain" && "$PERMISSION" != "write" ]]; then
+            echo "::notice::User does not have write permissions — skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        if: steps.ghaw-config.outputs.skip != 'true' && steps.check-perms.outputs.skip != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: ${{ vars.RUNNER_MODE != 'self-hosted' && 'npm' || '' }}
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Install dependencies
+        if: steps.ghaw-config.outputs.skip != 'true' && steps.check-perms.outputs.skip != 'true'
+        working-directory: typescript
+        run: npm ci
+
+      - name: Create plan and sub-issues
+        if: steps.ghaw-config.outputs.skip != 'true' && steps.check-perms.outputs.skip != 'true'
+        working-directory: typescript
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          REPOSITORY: ${{ github.repository }}
+          COMMENT_BODY: ${{ github.event.comment.body || '' }}
+        run: npx tsx src/jobs/plan-command.ts
