@@ -197,9 +197,9 @@ describe("adjustPriorityByLabel", () => {
     assert.equal(adjustPriorityByLabel(labels, "low"), "low");
   });
 
-  it("preserves critical priority (does not downgrade)", () => {
-    // Note: current implementation returns "high" for accessibility, not "critical"
-    // This test documents current behavior — accessibility doesn't preserve critical
+  it("downgrades critical to high for accessibility label", () => {
+    // Current behavior: accessibility-related labels boost to at most "high",
+    // even when the base priority is "critical".
     assert.equal(adjustPriorityByLabel([{ name: "accessibility" }], "critical"), "high");
   });
 
