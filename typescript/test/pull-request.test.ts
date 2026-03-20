@@ -222,4 +222,147 @@ describe("handlePullRequestEvent", () => {
       12345,
     );
   });
+
+  // ─── Accessibility Agent Routing Tests ─────────────────────────────────────
+
+  it("should route to @accessibility-lead for accessibility-review label", async () => {
+    const payload = makePrPayload({
+      action: "opened",
+      pull_request: {
+        number: 100,
+        title: "UI: Update button styles",
+        user: { login: "frontend-dev" },
+        head: { ref: "feature/ui-update", sha: "def456" },
+        base: { ref: "main" },
+        draft: false,
+        labels: [{ name: "accessibility-review" }],
+      },
+    });
+    const result = await handlePullRequestEvent(payload as never);
+
+    assert.equal(result.handled, true);
+    assert.ok(result.handoff_id);
+
+    const handoff = getHandoff(result.handoff_id!);
+    assert.ok(handoff);
+    assert.equal(handoff.to_agent, "@accessibility-lead");
+    assert.equal(handoff.priority, "high");
+    assert.equal(
+      (handoff.metadata as Record<string, unknown>)["isAccessibilityReview"],
+      true,
+    );
+  });
+
+  it("should route to @accessibility-lead for wcag label", async () => {
+    const payload = makePrPayload({
+      action: "opened",
+      pull_request: {
+        number: 101,
+        title: "Fix: WCAG 2.2 compliance for form inputs",
+        user: { login: "a11y-dev" },
+        head: { ref: "fix/wcag-compliance", sha: "ghi789" },
+        base: { ref: "main" },
+        draft: false,
+        labels: [{ name: "wcag" }],
+      },
+    });
+    const result = await handlePullRequestEvent(payload as never);
+
+    assert.ok(result.handoff_id);
+    const handoff = getHandoff(result.handoff_id!);
+    assert.ok(handoff);
+    assert.equal(handoff.to_agent, "@accessibility-lead");
+  });
+
+  it("should set high priority for accessibility PRs", async () => {
+    const payload = makePrPayload({
+      action: "opened",
+      pull_request: {
+        number: 102,
+        title: "Improve keyboard navigation",
+        user: { login: "dev-user" },
+        head: { ref: "feature/keyboard-nav", sha: "jkl012" },
+        base: { ref: "main" },
+        draft: false,
+        labels: [{ name: "accessibility" }, { name: "enhancement" }],
+      },
+    });
+    const result = await handlePullRequestEvent(payload as never);
+
+    assert.ok(result.handoff_id);
+    const handoff = getHandoff(result.handoff_id!);
+    assert.ok(handoff);
+    assert.equal(handoff.priority, "high");
+  });
+
+  it("should prioritize security over accessibility routing", async () => {
+    const payload = makePrPayload({
+      action: "opened",
+      pull_request: {
+        number: 103,
+        title: "Update auth form with ARIA attributes",
+        user: { login: "dev-user" },
+        head: { ref: "feature/auth-a11y", sha: "mno345" },
+        base: { ref: "main" },
+        draft: false,
+        labels: [{ name: "security-review" }, { name: "accessibility-review" }],
+      },
+    });
+    const result = await handlePullRequestEvent(payload as never);
+
+    assert.ok(result.handoff_id);
+    const handoff = getHandoff(result.handoff_id!);
+    assert.ok(handoff);
+    // Security has highest priority over accessibility
+    assert.equal(handoff.to_agent, "@security-scanner");
+  });
+
+  it("should store accessibility labels in handoff metadata", async () => {
+    const payload = makePrPayload({
+      action: "opened",
+      pull_request: {
+        number: 104,
+        title: "Modal focus trap implementation",
+        user: { login: "dev-user" },
+        head: { ref: "feature/focus-trap", sha: "pqr678" },
+        base: { ref: "main" },
+        draft: false,
+        labels: [{ name: "accessibility-review" }, { name: "enhancement" }],
+      },
+    });
+    const result = await handlePullRequestEvent(payload as never);
+
+    assert.ok(result.handoff_id);
+    const handoff = getHandoff(result.handoff_id!);
+    assert.ok(handoff);
+    const labels = (handoff.metadata as Record<string, unknown>)["labels"] as string[];
+    assert.ok(Array.isArray(labels));
+    assert.ok(labels.includes("accessibility-review"));
+    assert.ok(labels.includes("enhancement"));
+  });
+
+  it("should route to @security-scanner when no accessibility label", async () => {
+    const payload = makePrPayload({
+      action: "opened",
+      pull_request: {
+        number: 105,
+        title: "Fix XSS vulnerability",
+        user: { login: "dev-user" },
+        head: { ref: "fix/xss", sha: "stu901" },
+        base: { ref: "main" },
+        draft: false,
+        labels: [{ name: "security-review" }],
+      },
+    });
+    const result = await handlePullRequestEvent(payload as never);
+
+    assert.ok(result.handoff_id);
+    const handoff = getHandoff(result.handoff_id!);
+    assert.ok(handoff);
+    assert.equal(handoff.to_agent, "@security-scanner");
+    assert.equal(
+      (handoff.metadata as Record<string, unknown>)["isAccessibilityReview"],
+      false,
+    );
+  });
 });
