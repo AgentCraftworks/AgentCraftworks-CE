@@ -99,7 +99,7 @@ export function adjustPriorityByLabel(
   ): "low" | "medium" | "high" | "critical" => {
     return priorityOrder[
       Math.max(priorityOrder.indexOf(a), priorityOrder.indexOf(b))
-    ];
+    ]!;
   };
 
   let adjustedPriority = basePriority;
