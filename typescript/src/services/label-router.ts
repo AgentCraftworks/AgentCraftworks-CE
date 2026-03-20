@@ -105,8 +105,8 @@ export function adjustPriorityByLabel(
   let adjustedPriority = basePriority;
 
   if (hasAccessibilityReviewLabel(labels)) {
-    // Accessibility is non-negotiable: boost to at least "high"
-    adjustedPriority = maxPriority(adjustedPriority, "high");
+    // Accessibility reviews are pinned to "high" — not lower, not higher.
+    adjustedPriority = "high";
   }
 
   const labelNames = labels.map((l) => l.name.toLowerCase());
