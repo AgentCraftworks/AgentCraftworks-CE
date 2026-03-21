@@ -60,8 +60,6 @@ const FAILURE_PATTERNS: FailurePattern[] = [
  * Returns the most recent comment if one exists within 5 minutes.
  * Extracts the run ID from the comment footer to detect re-analysis of the same failure.
  */
-async function findRecentCoachComment(
-  octokit: InstanceType<typeof Octokit>,
 async function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
