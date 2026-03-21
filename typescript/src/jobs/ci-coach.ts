@@ -67,11 +67,13 @@ async function findRecentCoachComment(
   issueNumber: number,
 ): Promise<PreviousComment | null> {
   try {
+    const fiveMinutesAgoIso = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const { data: comments } = await octokit.issues.listComments({
       owner,
       repo,
       issue_number: issueNumber,
       per_page: 100,
+      since: fiveMinutesAgoIso,
     });
 
     const coachComments = comments
