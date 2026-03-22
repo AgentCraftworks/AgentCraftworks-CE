@@ -11,8 +11,15 @@
     "test": "node --import tsx --test test/**/*.test.ts",
     "start": "node dist/index.js"
   },
-  "keywords": ["ai-agents", "governance", "mcp", "github-app", "devops"],
-  "author": "AgentCraftworks",
+  "keywords": [
+    "ai-agents",
+    "governance",
+    "mcp",
+    "github-app",
+    "devops",
+    "hackathon"
+  ],
+  "author": "AICraftworks LLC",
   "license": "MIT",
   "devDependencies": {
     "@types/express": "^5.0.6",
@@ -23,13 +30,15 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.11",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@octokit/rest": "^22.0.1",
     "@octokit/webhooks": "^14.2.0",
     "ajv": "^8.17.1",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.2.2",
+    "express-rate-limit": "^8.3.1",
+    "hono": "^4.12.8",
     "jsonwebtoken": "^9.0.3"
   }
 }

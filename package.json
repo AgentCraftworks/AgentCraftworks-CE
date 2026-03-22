@@ -12,6 +12,11 @@
     "test": "cd typescript && npm test"
   },
   "keywords": ["ai-agents", "governance", "mcp", "github-app"],
-  "author": "AgentCraftworks",
-  "license": "MIT"
+  "author": "AICraftworks LLC",
+  "license": "MIT",
+  "overrides": {
+    "hono": "^4.12.8",
+    "@hono/node-server": "^1.19.11",
+    "express-rate-limit": "^8.3.1"
+  }
 }
