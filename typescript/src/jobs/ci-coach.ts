@@ -128,9 +128,12 @@ async function findRecentCoachComment(
   }
 
   console.error(
-    "CI Coach: Could not fetch recent comments after multiple attempts. Failing closed to avoid duplicate comments.",
+    "CI Coach: Could not fetch recent comments after multiple attempts. Skipping comment creation/update to avoid duplicates.",
   );
-  throw lastError instanceof Error ? lastError : new Error("Failed to list comments");
+  if (lastError) {
+    console.error("CI Coach: Last error while listing comments:", lastError);
+  }
+  return null;
 }
 
 async function main(): Promise<void> {
