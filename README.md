@@ -133,9 +133,19 @@ AgentCraftworks Community Edition ships a fully compliant Model Context Protocol
 
 AgentCraftworks also powers enterprise deployments with additional incident response automation, self-healing orchestration, and governance monitoring. Learn more at [AgentCraftworks.com](https://agentcraftworks.com).
 
+## Fork & Customize
+
+AgentCraftworks CE is MIT-licensed — you can fork it and run your own instance, with or without rebranding.
+
+- **Keep the name?** You still need your own GitHub App credentials, Azure subscription, and CODEOWNERS teams.
+- **Rename it?** The MIT license requires preserving the copyright notice, but you're free to rebrand everything else.
+
+See the **[Fork & Rename Guide](FORKING.md)** for a complete file-by-file checklist.
+
 ## Documentation
 
 - [Quick Start Guide](#quick-start)
+- [Fork & Rename Guide](FORKING.md)
 - [Agent Engagement Levels Reference](docs/architecture.md#agent-engagement-levels-reference)
 - [MCP Tool Reference](docs/architecture.md)
 - [Architecture Overview](docs/architecture.md)
@@ -157,7 +167,7 @@ npm run lint
 
 ## License
 
-MIT License — Copyright (c) 2025 AICraftworks LLC
+MIT License — Copyright (c) 2025 AgentCraftworks
 
 See [LICENSE](LICENSE) for full text.
 

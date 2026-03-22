@@ -1,0 +1,64 @@
+name: "GH-AW: Daily Doc Updater"
+
+# Daily Doc Updater — Automatically updates documentation based on recent code changes.
+# Scans merged PRs and commits from last 24 hours, identifies new features that need
+# documentation, and creates PRs with updates.
+# Engagement Level: T3 (Peer Programmer) — creates PRs with documentation changes.
+# Source: githubnext/agentics/workflows/daily-doc-updater.md
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: read
+  pull-requests: write
+
+jobs:
+  update-docs:
+    name: Update Documentation
+    runs-on: ${{ vars.RUNNER_MODE == 'self-hosted' && 'self-hosted' || 'ubuntu-latest' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check GH-AW config
+        id: ghaw-config
+        run: |
+          CONFIG=".github/ghaw-config.json"
+          WORKFLOW_ID="ghaw-daily-doc-updater"
+          if [ -f "$CONFIG" ]; then
+            ENABLED=$(jq -r --arg id "$WORKFLOW_ID" '.workflows[] | select(.id == $id) | .enabled' "$CONFIG")
+            if [ "$ENABLED" = "false" ]; then
+              echo "::notice::Workflow $WORKFLOW_ID is disabled via ghaw-config.json — skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        if: steps.ghaw-config.outputs.skip != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: ${{ vars.RUNNER_MODE != 'self-hosted' && 'npm' || '' }}
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Install dependencies
+        if: steps.ghaw-config.outputs.skip != 'true'
+        working-directory: typescript
+        run: npm ci
+
+      - name: Update documentation
+        if: steps.ghaw-config.outputs.skip != 'true'
+        working-directory: typescript
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: npx tsx src/jobs/daily-doc-updater.ts
