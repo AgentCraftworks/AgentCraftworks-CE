@@ -66,7 +66,7 @@ Pull Request / Push Event
 | **CODEOWNERS Routing** | Events routed to the right agent based on ownership rules |
 | **Webhook Handling** | Handles GitHub PR, push, issue, and workflow events |
 | **GitHub App Scaffold** | Drop-in GitHub App: one install, works across all repos in your org |
-| **Enterprise Upgrade Path** | Seamless upgrade to Rate Governor, Squad Coordinator, Aspire observability, and Governance Gates — same FSM, same MCP tools, more power |
+| **Enterprise Upgrade Path** | Seamless upgrade to Rate Governor, Squad Coordinator, Aspire Integration, and Governance Gates — same finite state machine, same MCP tools, more power |
 
 ## Architecture
 
