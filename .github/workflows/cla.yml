@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   cla:
-    name: CLA Assistant
+    name: cla
     runs-on: ubuntu-latest
     # Skip CLA for internal staging→main promotion PRs; only gate external contributors.
     if: |
@@ -35,7 +35,6 @@ jobs:
           fi
 
       - name: Generate GitHub App Token
-        if: ${{ secrets.GH_CE_APP_ID != '' && secrets.GH_CE_APP_PRIVATE_KEY != '' }}
         id: app-token
         if: steps.check-secrets.outputs.secrets-available == 'true'
         uses: actions/create-github-app-token@v1

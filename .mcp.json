@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "agentcraftworks-ts": {
+      "command": "node",
+      "args": ["--import", "tsx", "src/mcp/server.ts"],
+      "cwd": "typescript",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    "azure-mcp": {
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@1.0.0"],
+      "env": {}
+    }
+  }
+}

@@ -102,7 +102,7 @@ export async function getInstallationToken(
         Authorization: `Bearer ${appJwt}`,
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
-        "User-Agent": "AgentCraftworks-Hackathon/1.0",
+        "User-Agent": "AgentCraftworks-CE/1.0",
         "X-GitHub-Api-Version": "2022-11-28",
       },
     },
@@ -196,7 +196,7 @@ export async function getInstallationOctokit(
   
   return new Octokit({
     auth: token,
-    userAgent: "AgentCraftworks-Hackathon/1.0",
+    userAgent: "AgentCraftworks-CE/1.0",
   });
 }
 
@@ -250,7 +250,7 @@ export async function getOctokit(
   if (!appId || !privateKey) {
     // Unauthenticated Octokit for public repos
     return new Octokit({
-      userAgent: "AgentCraftworks-Hackathon/1.0",
+      userAgent: "AgentCraftworks-CE/1.0",
     });
   }
 
@@ -260,6 +260,6 @@ export async function getOctokit(
   
   return new Octokit({
     auth: appJwt,
-    userAgent: "AgentCraftworks-Hackathon/1.0",
+    userAgent: "AgentCraftworks-CE/1.0",
   });
 }
