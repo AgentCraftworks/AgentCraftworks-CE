@@ -98,14 +98,23 @@ function suggestReplacement(url: string): { newUrl: string; reason: string } | n
 }
 
 function applyReplacements(content: string): { newContent: string; changes: number } {
+  const urls = extractUrls(content);
   let newContent = content;
   let changes = 0;
 
-  for (const rule of URL_REPLACEMENTS) {
-    const matches = newContent.match(rule.pattern);
-    if (matches) {
-      newContent = newContent.replace(rule.pattern, rule.replacement);
-      changes += matches.length;
+  const processedUrls = new Set<string>();
+
+  for (const { url } of urls) {
+    if (processedUrls.has(url)) continue;
+    processedUrls.add(url);
+
+    const suggestion = suggestReplacement(url);
+    if (suggestion && suggestion.newUrl !== url) {
+      // Count all occurrences and replace them as literal strings
+      const parts = newContent.split(url);
+      const occurrences = parts.length - 1;
+      newContent = parts.join(suggestion.newUrl);
+      changes += occurrences;
     }
   }
 
