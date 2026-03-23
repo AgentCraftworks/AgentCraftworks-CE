@@ -50,24 +50,20 @@ async function main(): Promise<void> {
 
   const octokit = new Octokit({ auth: token });
 
-  // Find potential parent issues (those with "has-plan" label or that have sub-issues)
-  const { data: openIssues } = await octokit.issues.listForRepo({
+  // Fetch ALL open issues using pagination to avoid missing sub-issues beyond the first page
+  const openIssues = await octokit.paginate(octokit.issues.listForRepo, {
     owner,
     repo,
     state: "open",
     per_page: 100,
-    sort: "updated",
-    direction: "desc",
   });
 
-  // Also fetch closed issues for sub-issue matching
-  const { data: closedIssues } = await octokit.issues.listForRepo({
+  // Fetch ALL closed issues using pagination so sub-issue matching is exhaustive
+  const closedIssues = await octokit.paginate(octokit.issues.listForRepo, {
     owner,
     repo,
     state: "closed",
     per_page: 100,
-    sort: "updated",
-    direction: "desc",
   });
 
   const allIssues = [...openIssues, ...closedIssues];
