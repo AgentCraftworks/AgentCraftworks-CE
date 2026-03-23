@@ -150,7 +150,8 @@
     {
       "id": "sub-issue-closer",
       "name": "GH-AW: Sub-Issue Closer",
-      "trigger": "issues",
+      "trigger": "schedule",
+      "schedule": { "cron": "0 10 * * *" },
       "enabled": true,
       "tier": "tier-2",
       "source": "githubnext/agentics",
