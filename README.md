@@ -144,7 +144,7 @@ The paid [AgentCraftworks Enterprise](https://agentcraftworks.com) extends CE wi
 | **Audit Trail** | Full rate-limiting audit log — 429 events, circuit breaker transitions, zone changes, and lease reclaims |
 | **Quarantine Bridge** | Abuse detection and automatic quarantine for agents exceeding rate thresholds |
 
-All Enterprise features build on the same Handoff FSM, CODEOWNERS routing, and MCP tool interface that CE provides — they add the orchestration and governance layers needed for production-scale multi-agent workflows.
+All Enterprise features build on the same finite state machine (FSM), CODEOWNERS routing, and MCP tool interface that CE provides — they add the orchestration and governance layers needed for production-scale multi-agent workflows.
 
 Learn more at [AgentCraftworks.com](https://agentcraftworks.com).
 
