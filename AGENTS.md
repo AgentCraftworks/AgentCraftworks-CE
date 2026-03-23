@@ -8,23 +8,6 @@
 
 ---
 
-> [!CAUTION]
-> **HACKATHON FREEZE — DO NOT MERGE TO `main`**
->
-> This repo is a submission for the **Microsoft AI Dev Days Global Hackathon**.
-> Judging has been extended through **April 3, 2026**.
->
-> **Rules:**
-> - Do **NOT** merge any branch into `main` until the hackathon team gives an explicit all-clear.
-> - Do **NOT** create PRs targeting `main`. All PRs must target `staging`.
-> - The `main` branch must remain at its submission-period state (commit `325c288`).
-> - Development may continue on `staging` and feature branches only.
->
-> Violating this freeze could disqualify the hackathon submission.
-> This notice will be removed after the all-clear is received.
-
----
-
 ## Project Overview
 
 AgentCraftworks Core is an open-source **GitHub App** (webhook-driven Express server) that orchestrates multi-agent software development workflows. It uses a 4-state handoff finite state machine, CODEOWNERS-based routing, and the Model Context Protocol (MCP).

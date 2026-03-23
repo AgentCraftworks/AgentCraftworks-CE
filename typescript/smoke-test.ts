@@ -29,15 +29,8 @@ async function test(name: string, fn: () => Promise<void>): Promise<void> {
     console.log(`✓ ${name} (${Date.now() - start}ms)`);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    const cause = error instanceof Error ? (error as { cause?: unknown }).cause : undefined;
-    const causeMsg =
-      cause instanceof Error
-        ? ` (cause: ${cause.message})`
-        : cause != null
-          ? ` (cause: ${String(cause)})`
-          : "";
-    results.push({ name, passed: false, error: `${errorMsg}${causeMsg}`, duration: Date.now() - start });
-    console.log(`✗ ${name} (${Date.now() - start}ms)\n  Error: ${errorMsg}${causeMsg}`);
+    results.push({ name, passed: false, error: errorMsg, duration: Date.now() - start });
+    console.log(`✗ ${name} (${Date.now() - start}ms)\n  Error: ${errorMsg}`);
   }
 }
 

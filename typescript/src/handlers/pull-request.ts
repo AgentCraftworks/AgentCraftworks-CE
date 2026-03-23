@@ -13,11 +13,6 @@ import {
   getHandoffByPR,
   abandonHandoff,
 } from "../services/handoff-service.js";
-import {
-  adjustPriorityByLabel,
-  hasAccessibilityReviewLabel,
-  routeToAgentByLabel,
-} from "../services/label-router.js";
 import { isTerminalState } from "../utils/handoff-state-machine.js";
 import {
   handleInstallationEvent,
@@ -33,7 +28,6 @@ interface PullRequestPayload {
     head: { ref: string; sha: string };
     base: { ref: string };
     draft: boolean;
-    labels?: Array<{ name: string }>;
   };
   repository: {
     full_name: string;
@@ -114,19 +108,13 @@ export async function handlePullRequestEvent(
   }
 
   const installationId = payload.installation?.id;
-  const labels = pr.labels ?? [];
-
-  // Route to agent based on PR labels (accessibility, security, docs, etc.)
-  const targetAgent = routeToAgentByLabel(labels);
-  const priority = adjustPriorityByLabel(labels, "medium");
-  const isAccessibilityReview = hasAccessibilityReviewLabel(labels);
 
   const handoff = createHandoff(
     {
       task: `Review PR #${pr.number}: ${pr.title}`,
-      to_agent: targetAgent,
+      to_agent: "@code-reviewer",
       context: `PR by ${pr.user.login} targeting ${pr.base.ref} from ${pr.head.ref}`,
-      priority,
+      priority: "medium",
     },
     {
       issue_number: pr.number,
@@ -137,8 +125,6 @@ export async function handlePullRequestEvent(
         author: pr.user.login,
         headSha: pr.head.sha,
         baseRef: pr.base.ref,
-        labels: labels.map((l) => l.name),
-        isAccessibilityReview,
       },
     },
   );
