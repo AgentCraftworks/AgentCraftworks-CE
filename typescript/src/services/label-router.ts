@@ -74,12 +74,13 @@ export function hasAccessibilityReviewLabel(
 }
 
 /**
- * Boost handoff priority if accessibility-review is present.
- * Accessibility reviews are critical for compliance.
+ * Adjust handoff priority based on PR labels.
+ * Priority adjustments are monotonic — labels can only raise the priority,
+ * never lower it below basePriority.
  *
  * @param labels Array of label objects from the GitHub PR event
  * @param basePriority The initial priority level
- * @returns "high" if accessibility-review is present, otherwise basePriority
+ * @returns The adjusted priority (always >= basePriority)
  */
 export function adjustPriorityByLabel(
   labels: Array<{ name: string }> = [],
@@ -105,8 +106,8 @@ export function adjustPriorityByLabel(
   let adjustedPriority = basePriority;
 
   if (hasAccessibilityReviewLabel(labels)) {
-    // Accessibility reviews are pinned to "high" — not lower, not higher.
-    adjustedPriority = "high";
+    // Accessibility reviews must be at least "high" — never downgrade.
+    adjustedPriority = maxPriority(basePriority, "high");
   }
 
   const labelNames = labels.map((l) => l.name.toLowerCase());
