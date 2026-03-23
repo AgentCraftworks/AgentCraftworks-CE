@@ -207,18 +207,25 @@ async function main(): Promise<void> {
 
   const failedJobs = jobsData.jobs.filter((j) => j.conclusion === "failure");
 
-  // Fetch logs
-  let logContent = "";
-  try {
-    const { data } = await octokit.actions.downloadWorkflowRunLogs({
-      owner,
-      repo,
-      run_id: runIdNum,
-    });
-    logContent = typeof data === "string" ? data : String(data);
-  } catch {
-    console.log("CI Doctor: Could not download logs. Using job info only.");
+  // Fetch per-job logs (plain text) for all failed jobs.
+  // downloadWorkflowRunLogs returns a ZIP archive, so we use
+  // downloadJobLogsForWorkflowRun per job which returns plain text.
+  const logParts: string[] = [];
+  for (const job of failedJobs) {
+    try {
+      const { data } = await octokit.actions.downloadJobLogsForWorkflowRun({
+        owner,
+        repo,
+        job_id: job.id,
+      });
+      if (typeof data === "string" && data.length > 0) {
+        logParts.push(data);
+      }
+    } catch {
+      console.log(`CI Doctor: Could not download logs for job ${job.id} (${job.name}). Skipping.`);
+    }
   }
+  const logContent = logParts.join("\n");
 
   // Diagnose failures
   const diagnostics = diagnoseFailures(logContent);

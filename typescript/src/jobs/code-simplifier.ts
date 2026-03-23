@@ -157,7 +157,7 @@ function applySimplifications(content: string, filePath: string): { newContent: 
     const matches = content.matchAll(new RegExp(rule.pattern.source, rule.pattern.flags));
 
     for (const match of matches) {
-      if (!match.index) continue;
+      if (match.index == null) continue;
 
       // Find line number
       const beforeMatch = content.slice(0, match.index);
