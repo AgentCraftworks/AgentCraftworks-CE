@@ -444,15 +444,47 @@ After every correction, update agent instruction files so agents don't repeat mi
 - **Error Handling**: Graceful try/catch; structured error logging with context
 - **Comments**: Explain "why", not "what"; use JSDoc for public functions
 
+## Definition of Done — Customer Experience (MANDATORY)
+
+> **⚠️ API tests passing alone does NOT constitute "done."**
+> A feature is only complete when a real customer can experience it and that experience has been validated with real product screenshots.
+
+### Blocking requirements for every feature
+
+A feature is **not done** until ALL of the following are satisfied:
+
+#### Code checks (necessary but not sufficient)
+- [ ] Unit tests pass
+- [ ] TypeScript compiles clean
+- [ ] ESLint passes
+- [ ] PR reviewed and approved
+
+#### Customer Experience validation (REQUIRED — blocks merge)
+- [ ] **CX capture spec exists** — `RecordingStudio/capture-specs/<feature-slug>.yaml` with `source_app`, `pass_criteria`, and real product selectors
+- [ ] **CX synthetic test passes** — Playwright automation runs against the real running product; all `pass_criteria` assertions succeed
+- [ ] **CX demo capture exists** — at least one screenshot or screen recording showing the feature from a customer perspective (Playwright, Snagit, or Camtasia — real product only, no mocks)
+- [ ] **Demo slug added to `cx-capture.yml`** — so the feature stays validated on every weekly CX synthetic run going forward
+
+### Why this matters
+
+API and unit tests can pass while the actual customer-facing experience is broken, missing, or confusing. Real product screenshots force verification of what the customer actually sees:
+
+- A feature that works in code but shows a blank screen to users is **not done**
+- A feature that passes unit tests but has no reachable UI path is **not done**
+- A feature that works in Postman but has no corresponding customer journey is **not done**
+
+Full tooling instructions: `AgentCraftworks/RecordingStudio/AGENTS.md`
+
 ## Contributing Standards
 
 1. Create feature branch: `feat/*` or `feature/*`
 2. Use git worktrees for parallel development (see best practices)
 3. Open PR with agent labels for review routing
 4. Address feedback from assigned agents
-5. Update agent instruction files if you discover new lessons
-6. Merge after approval and CI passes
-7. Delete feature branch and worktree
+5. Ensure CX capture spec and synthetic test exist before marking PR ready (see Definition of Done above)
+6. Update agent instruction files if you discover new lessons
+7. Merge after approval and CI passes
+8. Delete feature branch and worktree
 
 ## Branching and Promotion Policy (MANDATORY)
 
