@@ -1,0 +1,67 @@
+name: "GH-AW: Issue Triage"
+
+# Issue Triage — Intelligent issue triage assistant for new and reopened issues.
+# Analyzes issue content, selects appropriate labels, detects spam, gathers context
+# from similar issues, and provides analysis notes with debugging strategies.
+# Engagement Level: T2 (Advisor) — adds labels and comments, no code modifications.
+# Source: githubnext/agentics/workflows/issue-triage.md
+
+on:
+  issues:
+    types: [opened, reopened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to triage"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  triage-issue:
+    name: Triage Issue
+    runs-on: ${{ vars.RUNNER_MODE == 'self-hosted' && 'self-hosted' || 'ubuntu-latest' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check GH-AW config
+        id: ghaw-config
+        run: |
+          CONFIG=".github/ghaw-config.json"
+          WORKFLOW_ID="ghaw-issue-triage"
+          if [ -f "$CONFIG" ]; then
+            ENABLED=$(jq -r --arg id "$WORKFLOW_ID" '.workflows[] | select(.id == $id) | .enabled' "$CONFIG")
+            if [ "$ENABLED" = "false" ]; then
+              echo "::notice::Workflow $WORKFLOW_ID is disabled via ghaw-config.json — skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        if: steps.ghaw-config.outputs.skip != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: ${{ vars.RUNNER_MODE != 'self-hosted' && 'npm' || '' }}
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Install dependencies
+        if: steps.ghaw-config.outputs.skip != 'true'
+        working-directory: typescript
+        run: npm ci
+
+      - name: Triage issue
+        if: steps.ghaw-config.outputs.skip != 'true'
+        working-directory: typescript
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          REPOSITORY: ${{ github.repository }}
+        run: npx tsx src/jobs/issue-triage.ts

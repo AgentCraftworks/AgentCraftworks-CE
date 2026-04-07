@@ -66,6 +66,7 @@ Pull Request / Push Event
 | **CODEOWNERS Routing** | Events routed to the right agent based on ownership rules |
 | **Webhook Handling** | Handles GitHub PR, push, issue, and workflow events |
 | **GitHub App Scaffold** | Drop-in GitHub App: one install, works across all repos in your org |
+| **Enterprise Upgrade Path** | Seamless upgrade to Rate Governor, Squad Coordinator, Aspire Integration, and Governance Gates — same finite state machine, same MCP tools, more power |
 
 ## Architecture
 
@@ -131,11 +132,35 @@ AgentCraftworks Community Edition ships a fully compliant Model Context Protocol
 
 ## Enterprise Edition
 
-AgentCraftworks also powers enterprise deployments with additional incident response automation, self-healing orchestration, and governance monitoring. Learn more at [AgentCraftworks.com](https://agentcraftworks.com).
+The paid [AgentCraftworks Enterprise](https://agentcraftworks.com) extends CE with advanced orchestration and governance capabilities:
+
+| Enterprise Feature | What It Adds Over CE |
+|---|---|
+| **Rate Governor** | 6-pattern adaptive rate limiting — traffic light throttling, shared token pool, predictive circuit breaker, cascade detection, lease cleanup, and priority retry windows |
+| **Squad Coordinator** | Multi-agent orchestration — MCP capability detection, CLI fallback chains (`MCP → CLI → filesystem`), team configuration, and response mode selection |
+| **Aspire Integration** | .NET Aspire CLI bridge for distributed tracing, health checks, and observability dashboards across agent squads |
+| **Governance Gates** | Pre/post-execution policy enforcement middleware — validates trust scores, action tiers, and environment caps before every agent action |
+| **Promotion Engine** | Graduated rollout (staging → canary → production) with automatic rollback on gate failures |
+| **Audit Trail** | Full rate-limiting audit log — 429 events, circuit breaker transitions, zone changes, and lease reclaims |
+| **Quarantine Bridge** | Abuse detection and automatic quarantine for agents exceeding rate thresholds |
+
+All Enterprise features build on the same finite state machine (FSM), CODEOWNERS routing, and MCP tool interface that CE provides — they add the orchestration and governance layers needed for production-scale multi-agent workflows.
+
+Learn more at [AgentCraftworks.com](https://agentcraftworks.com).
+
+## Fork & Customize
+
+AgentCraftworks CE is MIT-licensed — you can fork it and run your own instance, with or without rebranding.
+
+- **Keep the name?** You still need your own GitHub App credentials, Azure subscription, and CODEOWNERS teams.
+- **Rename it?** The MIT license requires preserving the copyright notice, but you're free to rebrand everything else.
+
+See the **[Fork & Rename Guide](FORKING.md)** for a complete file-by-file checklist.
 
 ## Documentation
 
 - [Quick Start Guide](#quick-start)
+- [Fork & Rename Guide](FORKING.md)
 - [Agent Engagement Levels Reference](docs/architecture.md#agent-engagement-levels-reference)
 - [MCP Tool Reference](docs/architecture.md)
 - [Architecture Overview](docs/architecture.md)
@@ -157,7 +182,7 @@ npm run lint
 
 ## License
 
-MIT License — Copyright (c) 2025 AICraftworks LLC
+MIT License — Copyright (c) 2025 AgentCraftworks
 
 See [LICENSE](LICENSE) for full text.
 
