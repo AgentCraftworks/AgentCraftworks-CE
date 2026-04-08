@@ -449,17 +449,27 @@ After every correction, update agent instruction files so agents don't repeat mi
 > **⚠️ API tests passing alone does NOT constitute "done."**
 > A feature is only complete when a real customer can experience it and that experience has been validated with real product screenshots.
 
-### Blocking requirements for every feature
+### How CX validation is triggered — the `cx:required` label
 
-A feature is **not done** until ALL of the following are satisfied:
+Not every PR produces a tangible customer-facing outcome. To keep the standard meaningful without blocking unrelated work:
+
+- **Label issues and PRs with `cx:required`** when the work directly produces or modifies a customer-visible experience.
+- Work **without** `cx:required` must carry `cx:exempt` **and** a one-line justification in the PR description (e.g., "backend-only refactor", "partial implementation — CX tracked in #456").
+- Author or maintainer can apply `cx:exempt`. **When in doubt, apply `cx:required`.**
+
+### Blocking requirements for all PRs
 
 #### Code checks (necessary but not sufficient)
 - [ ] Unit tests pass
 - [ ] TypeScript compiles clean
 - [ ] ESLint passes
 - [ ] PR reviewed and approved
+- [ ] PR is labelled **either** `cx:required` **or** `cx:exempt` (with justification)
 
-#### Customer Experience validation (REQUIRED — blocks merge)
+### Additional blocking requirements for `cx:required` work
+
+> These only apply when the PR or linked issue carries the `cx:required` label.
+
 - [ ] **CX capture spec exists** — `RecordingStudio/capture-specs/<feature-slug>.yaml` with `source_app`, `pass_criteria`, and real product selectors
 - [ ] **CX synthetic test passes** — Playwright automation runs against the real running product; all `pass_criteria` assertions succeed
 - [ ] **CX demo capture exists** — at least one screenshot or screen recording showing the feature from a customer perspective (Playwright, Snagit, or Camtasia — real product only, no mocks)
@@ -481,10 +491,11 @@ Full tooling instructions: `AgentCraftworks/RecordingStudio/AGENTS.md`
 2. Use git worktrees for parallel development (see best practices)
 3. Open PR with agent labels for review routing
 4. Address feedback from assigned agents
-5. Ensure CX capture spec and synthetic test exist before marking PR ready (see Definition of Done above)
-6. Update agent instruction files if you discover new lessons
-7. Merge after approval and CI passes
-8. Delete feature branch and worktree
+5. Apply `cx:required` or `cx:exempt` label to every PR (see Definition of Done above)
+6. For `cx:required` PRs: ensure capture spec and synthetic test exist before marking ready
+7. Update agent instruction files if you discover new lessons
+8. Merge after approval and CI passes
+9. Delete feature branch and worktree
 
 ## Branching and Promotion Policy (MANDATORY)
 
