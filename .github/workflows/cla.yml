@@ -6,9 +6,9 @@ name: CLA Assistant
 
 on:
   issue_comment:
-    types: [created]
+    types: [ created ]
   pull_request_target:
-    types: [opened, closed, synchronize]
+    types: [ opened, closed, synchronize ]
 
 permissions:
   contents: write
@@ -37,6 +37,7 @@ jobs:
       - name: Generate GitHub App Token
         id: app-token
         if: steps.check-secrets.outputs.secrets-available == 'true'
+        continue-on-error: true
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.GH_CE_APP_ID }}
@@ -59,7 +60,8 @@ jobs:
           PERSONAL_ACCESS_TOKEN: ${{ steps.cla-token.outputs.token }}
         with:
           path-to-signatures: "signatures/version1/cla.json"
-          path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/main/.github/CLA.md"
+          path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/m\
+            ain/.github/CLA.md"
           branch: "cla-signatures"
           allowlist: bot*,dependabot[bot],github-actions[bot],Jenp-AICraftWorks,Copilot,copilot-swe-agent[bot]
           create-file-commit-message: "chore: store CLA signatures"
