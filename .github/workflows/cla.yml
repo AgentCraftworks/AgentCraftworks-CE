@@ -37,6 +37,7 @@ jobs:
       - name: Generate GitHub App Token
         id: app-token
         if: steps.check-secrets.outputs.secrets-available == 'true'
+        continue-on-error: true
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.GH_CE_APP_ID }}
