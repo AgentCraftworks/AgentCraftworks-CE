@@ -501,12 +501,12 @@ Full tooling instructions: `AgentCraftworks/RecordingStudio/AGENTS.md`
 
 Standard promotion flow for this repository:
 
-`feature/*` -> `staging` -> `main`
+any branch -> `staging` -> `main`
 
 Rules:
 
 1. Never push directly to `main` or `staging`.
-2. Create work branches from `main` using `feature/*`, `feat/*`, `fix/*`, `hotfix/*`, `chore/*`, or `docs/*`.
+2. Create a branch from `main` with any name.
 3. Merge to `staging` first for full integration testing.
 4. Promote to `main` only by PR from `staging`.
 5. PRs into `main` from non-`staging` branches are disallowed.
