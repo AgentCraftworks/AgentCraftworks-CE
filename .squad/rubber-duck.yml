@@ -1,0 +1,15 @@
+# Rubber Duck Squad Configuration — AgentCraftworks CE
+# Squad-level opt-out and tuning for GitHub Copilot Rubber Duck cross-model review.
+#
+# Reference: docs/RUBBER_DUCK_INTEGRATION.md (CE edition)
+
+# Master switch. Set to false to disable automatic Rubber Duck reviews.
+# On-demand reviews always remain available.
+enabled: true
+
+triggerCheckpoints:
+  afterPlan: true
+  afterComplexImpl: true
+  afterTestWrite: true
+
+maxCallsPerHour: 10
