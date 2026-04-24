@@ -3,8 +3,9 @@
 #
 # Reference: docs/RUBBER_DUCK_INTEGRATION.md (CE edition)
 
-# Master switch. Set to false to disable automatic Rubber Duck reviews.
-# On-demand reviews always remain available.
+# Squad-level preference. Coordinators/agents should consult this before requesting
+# Rubber Duck reviews; setting it to false means they should skip routine review prompts.
+# Manual/on-demand reviews can still be requested when appropriate.
 enabled: true
 
 triggerCheckpoints:
