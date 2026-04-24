@@ -9,7 +9,9 @@
 
 ## What Is Rubber Duck?
 
-**GitHub Copilot Rubber Duck** (released April 6, 2026) adds a cross-model-family second opinion to your agent workflow. When your primary agent uses Claude, Rubber Duck runs on GPT-5.4 — catching what the primary agent misses at three key checkpoints:
+**GitHub Copilot Rubber Duck** adds a cross-model-family second opinion to your agent workflow. When your primary agent uses one model family (e.g., Claude), Rubber Duck runs on a different model family (e.g., GPT) — catching what the primary agent misses at three key checkpoints:
+
+> **As of April 2026**: The default cross-model pairing is Claude → GPT-5.4. Model versions and pairings may change as GitHub Copilot evolves.
 
 1. **After drafting a plan** — before execution begins
 2. **After a complex implementation** — when 3+ files are changed
@@ -43,7 +45,7 @@ In CE, Rubber Duck is available as a **manual on-demand** capability — you or 
 1. Install [GitHub Copilot CLI](https://github.com/features/copilot/cli)
 2. Enable experimental mode: run `/experimental` in a Copilot CLI session
 3. Select a Claude model in the model picker
-4. Ensure GPT-5.4 access is enabled on your account
+4. Ensure access to a secondary model family (e.g., GPT) is enabled on your account
 
 ### Declare Your Rubber Duck Preferences
 
