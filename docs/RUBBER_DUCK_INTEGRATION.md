@@ -45,9 +45,11 @@ In CE, Rubber Duck is available as a **manual on-demand** capability — you or 
 3. Select a Claude model in the model picker
 4. Ensure GPT-5.4 access is enabled on your account
 
-### Opt Into Rubber Duck in Your Repo
+### Declare Your Rubber Duck Preferences
 
-Add a `rubberDuck` block to `.agentcraftworks.yml`:
+You can document your Rubber Duck preferences in `.agentcraftworks.yml` using a `rubberDuck` block:
+
+> ⚠️ **CE Convention — not automatically enforced.** In Community Edition, no workflow or runtime reads this file automatically. It is a coordinator/agent convention: coordinators and agents operating in your repo should consult this block before deciding whether to request a Rubber Duck review. Pro/Enterprise enforces these keys at FSM checkpoints automatically.
 
 ```yaml
 rubberDuck:
@@ -57,7 +59,7 @@ rubberDuck:
     afterPlan: true
     afterComplexImpl: true
     afterTestWrite: true
-  maxCallsPerHour: 10
+  maxCallsPerHour: 10      # Coordinators/agents should respect this as a rate guideline
 ```
 
 ### Opt Out
