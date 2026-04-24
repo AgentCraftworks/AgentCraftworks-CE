@@ -113,7 +113,7 @@ Agent: Revising plan to use per-service TTL jitter (300–600s random offset)
 
 ## Squad Coordinator Integration (CE)
 
-If you use the Squad pattern (`.squad/squad.agent.md`), add this Rubber Duck protocol to your coordinator:
+If you use the Squad pattern, create `.squad/squad.agent.md` for your coordinator instructions (if it does not already exist), then add this Rubber Duck protocol:
 
 ```markdown
 ## Rubber Duck Review Protocol
