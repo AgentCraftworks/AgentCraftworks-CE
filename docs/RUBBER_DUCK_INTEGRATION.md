@@ -3,7 +3,7 @@
 > **Date**: April 2026  
 > **Status**: CURRENT  
 > **Edition**: Community Edition (CE) — open-source (MIT)  
-> **Related**: [ENGAGEMENT_LEVELS.md (CE)](./architecture.md) · [GitHub Copilot Rubber Duck](https://github.blog/ai-and-ml/github-copilot/github-copilot-cli-combines-model-families-for-a-second-opinion/)
+> **Related**: [architecture.md (CE)](./architecture.md) · [GitHub Copilot Rubber Duck](https://github.blog/ai-and-ml/github-copilot/github-copilot-cli-combines-model-families-for-a-second-opinion/)
 
 ---
 
