@@ -38,5 +38,8 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
     "jsonwebtoken": "^9.0.3"
+  },
+  "overrides": {
+    "path-to-regexp": "^8.4.0"
   }
 }
