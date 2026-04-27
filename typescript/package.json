@@ -40,6 +40,6 @@
     "jsonwebtoken": "^9.0.3"
   },
   "overrides": {
-    "path-to-regexp": "^8.4.0"
+    "path-to-regexp": "^8.4.2"
   }
 }
