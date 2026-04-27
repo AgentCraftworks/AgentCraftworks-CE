@@ -29,6 +29,9 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
+  "overrides": {
+    "path-to-regexp": "^8.4.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@octokit/rest": "^22.0.1",
