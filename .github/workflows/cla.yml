@@ -60,8 +60,7 @@ jobs:
           PERSONAL_ACCESS_TOKEN: ${{ steps.cla-token.outputs.token }}
         with:
           path-to-signatures: "signatures/version1/cla.json"
-          path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/m\
-            ain/.github/CLA.md"
+          path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/main/.github/CLA.md"
           branch: "cla-signatures"
           allowlist: bot*,dependabot[bot],github-actions[bot],Jenp-AICraftWorks,Copilot,copilot-swe-agent[bot]
           create-file-commit-message: "chore: store CLA signatures"
