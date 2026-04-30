@@ -12,7 +12,7 @@
 > **HACKATHON FREEZE — DO NOT MERGE TO `main`**
 >
 > This repo is a submission for the **Microsoft AI Dev Days Global Hackathon**.
-> Judging has been extended through **April 3, 2026**.
+> Freeze status is controlled by the hackathon team's explicit all-clear; until then, treat the freeze as active.
 >
 > **Rules:**
 > - Do **NOT** merge any branch into `main` until the hackathon team gives an explicit all-clear.
