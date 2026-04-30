@@ -483,7 +483,7 @@ API and unit tests can pass while the actual customer-facing experience is broke
 - A feature that passes unit tests but has no reachable UI path is **not done**
 - A feature that works in Postman but has no corresponding customer journey is **not done**
 
-Full tooling instructions: `AgentCraftworks/RecordingStudio/AGENTS.md`
+Full tooling instructions: [`RecordingStudio/AGENTS.md`](RecordingStudio/AGENTS.md)
 
 ## Contributing Standards
 
