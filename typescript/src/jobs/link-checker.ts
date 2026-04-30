@@ -41,13 +41,13 @@ const URL_REPLACEMENTS: UrlReplacement[] = [
     reason: "Upgrade to HTTPS for security",
   },
   {
-    pattern: /(https?:\/\/(?:www\.)?)docs\.microsoft\.com(?=\/|$)/,
-    replacement: "$1learn.microsoft.com",
+    pattern: /(?<=https?:\/\/(?:www\.)?)docs\.microsoft\.com(?=\/|$)/g,
+    replacement: "learn.microsoft.com",
     reason: "Microsoft Docs migrated to Microsoft Learn",
   },
   {
-    pattern: /(https?:\/\/)aka\.ms\/deprecated(?=[?#/\s]|$)/,
-    replacement: "$1learn.microsoft.com",
+    pattern: /(?<=https?:\/\/)aka\.ms\/deprecated(?=[?#/\s]|$)/g,
+    replacement: "learn.microsoft.com",
     reason: "Deprecated aka.ms link",
   },
   {
@@ -56,8 +56,8 @@ const URL_REPLACEMENTS: UrlReplacement[] = [
     reason: "Many repos renamed master to main",
   },
   {
-    pattern: /(https?:\/\/(?:www\.)?)travis-ci\.org(?=\/|$)/,
-    replacement: "$1travis-ci.com",
+    pattern: /(?<=https?:\/\/(?:www\.)?)travis-ci\.org(?=\/|$)/g,
+    replacement: "travis-ci.com",
     reason: "Travis CI migrated to .com",
   },
   {
