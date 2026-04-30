@@ -30,45 +30,16 @@ jobs:
         (github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.head_ref != 'staging')
       )
     steps:
-      - name: Check GitHub App secrets availability
-        id: check-secrets
-        run: |
-          if [ -n "${{ secrets.GH_CE_APP_ID }}" ] && [ -n "${{ secrets.GH_CE_APP_PRIVATE_KEY }}" ]; then
-            echo "secrets-available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "secrets-available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::GitHub App secrets not configured - will use GITHUB_TOKEN fallback"
-          fi
-
-      - name: Generate GitHub App Token
-        id: app-token
-        if: steps.check-secrets.outputs.secrets-available == 'true'
-        continue-on-error: true
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.GH_CE_APP_ID }}
-          private-key: ${{ secrets.GH_CE_APP_PRIVATE_KEY }}
-
-      - name: Resolve CLA auth token
-        id: cla-token
-        shell: bash
-        run: |
-          if [[ -n "${{ steps.app-token.outputs.token }}" ]]; then
-            echo "token=${{ steps.app-token.outputs.token }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "token=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: CLA Assistant
         uses: contributor-assistant/github-action@v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PERSONAL_ACCESS_TOKEN: ${{ steps.cla-token.outputs.token }}
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: "signatures/version1/cla.json"
           path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/main/.github/CLA.md"
           branch: "cla-signatures"
-          allowlist: bot*,dependabot[bot],github-actions[bot],Jenp-AICraftWorks,Copilot,copilot-swe-agent[bot]
+          allowlist: bot*,dependabot[bot],github-actions[bot],Jenp-AICraftWorks,Copilot,copilot-swe-agent[bot],jenperret
           create-file-commit-message: "chore: store CLA signatures"
           signed-commit-message: "chore: CLA signed by @$contributorName"
           custom-notsigned-prcomment: |
