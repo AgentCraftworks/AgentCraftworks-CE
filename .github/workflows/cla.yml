@@ -19,10 +19,16 @@ jobs:
   cla:
     name: cla
     runs-on: ubuntu-latest
-    # Skip CLA for internal staging→main promotion PRs; only gate external contributors.
+    # Skip CLA for internal staging→main promotion PRs and allowlisted internal contributors
     if: |
-      (github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA.') ||
-      (github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.head_ref != 'staging')
+      github.actor != 'Jenp-AICraftWorks' &&
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'github-actions[bot]' &&
+      github.actor != 'copilot-swe-agent[bot]' &&
+      (
+        (github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA.') ||
+        (github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.head_ref != 'staging')
+      )
     steps:
       - name: Check GitHub App secrets availability
         id: check-secrets
