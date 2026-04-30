@@ -19,44 +19,35 @@ jobs:
   cla:
     name: cla
     runs-on: ubuntu-latest
-    # Skip CLA for internal staging→main promotion PRs; only gate external contributors.
+    # Skip CLA for internal staging→main promotion PRs and allowlisted internal contributors
     if: |
-      (github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA.') ||
-      (github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.head_ref != 'staging')
+      github.actor != 'Jenp-AICraftWorks' &&
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'github-actions[bot]' &&
+      github.actor != 'copilot-swe-agent[bot]' &&
+      (
+        (github.event_name == 'issue_comment' &&
+         github.event.issue.pull_request &&
+         github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA.') ||
+        (github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.head_ref != 'staging')
+      )
     steps:
-      - name: Check GitHub App secrets availability
-        id: check-secrets
-        run: |
-          if [ -n "${{ secrets.GH_CE_APP_ID }}" ] && [ -n "${{ secrets.GH_CE_APP_PRIVATE_KEY }}" ]; then
-            echo "secrets-available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "secrets-available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::GitHub App secrets not configured - will use GITHUB_TOKEN fallback"
-          fi
-
+      # T3 workflow: prefer GitHub App token for writes (commits to cla-signatures branch
+      # will trigger downstream workflows). Falls back to GITHUB_TOKEN for forks where
+      # App secrets are unavailable.
       - name: Generate GitHub App Token
         id: app-token
-        if: steps.check-secrets.outputs.secrets-available == 'true'
+        if: ${{ secrets.GH_APP_ID != '' && secrets.GH_APP_PRIVATE_KEY != '' }}
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ secrets.GH_CE_APP_ID }}
-          private-key: ${{ secrets.GH_CE_APP_PRIVATE_KEY }}
-
-      - name: Resolve CLA auth token
-        id: cla-token
-        shell: bash
-        run: |
-          if [[ -n "${{ steps.app-token.outputs.token }}" ]]; then
-            echo "token=${{ steps.app-token.outputs.token }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "token=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_OUTPUT"
-          fi
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
       - name: CLA Assistant
         uses: contributor-assistant/github-action@v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PERSONAL_ACCESS_TOKEN: ${{ steps.cla-token.outputs.token }}
+          PERSONAL_ACCESS_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: "signatures/version1/cla.json"
           path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/main/.github/CLA.md"

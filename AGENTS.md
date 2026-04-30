@@ -12,7 +12,7 @@
 > **HACKATHON FREEZE — DO NOT MERGE TO `main`**
 >
 > This repo is a submission for the **Microsoft AI Dev Days Global Hackathon**.
-> Judging has been extended through **April 3, 2026**.
+> Freeze status is controlled by the hackathon team's explicit all-clear; until then, treat the freeze as active.
 >
 > **Rules:**
 > - Do **NOT** merge any branch into `main` until the hackathon team gives an explicit all-clear.
@@ -444,26 +444,69 @@ After every correction, update agent instruction files so agents don't repeat mi
 - **Error Handling**: Graceful try/catch; structured error logging with context
 - **Comments**: Explain "why", not "what"; use JSDoc for public functions
 
+## Definition of Done — Customer Experience (MANDATORY)
+
+> **⚠️ API tests passing alone does NOT constitute "done."**
+> A feature is only complete when a real customer can experience it and that experience has been validated with real product screenshots.
+
+### How CX validation is triggered — the `cx:required` label
+
+Not every PR produces a tangible customer-facing outcome. To keep the standard meaningful without blocking unrelated work:
+
+- **Label issues and PRs with `cx:required`** when the work directly produces or modifies a customer-visible experience.
+- Work **without** `cx:required` must carry `cx:exempt` **and** a one-line justification in the PR description (e.g., "backend-only refactor", "partial implementation — CX tracked in #456").
+- Author or maintainer can apply `cx:exempt`. **When in doubt, apply `cx:required`.**
+
+### Blocking requirements for all PRs
+
+#### Code checks (necessary but not sufficient)
+- [ ] Unit tests pass
+- [ ] TypeScript compiles clean
+- [ ] ESLint passes
+- [ ] PR reviewed and approved
+- [ ] PR is labelled **either** `cx:required` **or** `cx:exempt` (with justification)
+
+### Additional blocking requirements for `cx:required` work
+
+> These only apply when the PR or linked issue carries the `cx:required` label.
+
+- [ ] **CX capture spec exists** — `RecordingStudio/capture-specs/<feature-slug>.yaml` with `source_app`, `pass_criteria`, and real product selectors
+- [ ] **CX synthetic test passes** — Playwright automation runs against the real running product; all `pass_criteria` assertions succeed
+- [ ] **CX demo capture exists** — at least one screenshot or screen recording showing the feature from a customer perspective (Playwright, Snagit, or Camtasia — real product only, no mocks)
+- [ ] **Demo slug added to `cx-capture.yml`** — so the feature stays validated on every weekly CX synthetic run going forward
+
+### Why this matters
+
+API and unit tests can pass while the actual customer-facing experience is broken, missing, or confusing. Real product screenshots force verification of what the customer actually sees:
+
+- A feature that works in code but shows a blank screen to users is **not done**
+- A feature that passes unit tests but has no reachable UI path is **not done**
+- A feature that works in Postman but has no corresponding customer journey is **not done**
+
+Full tooling instructions: [`RecordingStudio/AGENTS.md`](RecordingStudio/AGENTS.md)
+
 ## Contributing Standards
 
 1. Create feature branch: `feat/*` or `feature/*`
 2. Use git worktrees for parallel development (see best practices)
 3. Open PR with agent labels for review routing
 4. Address feedback from assigned agents
-5. Update agent instruction files if you discover new lessons
-6. Merge after approval and CI passes
-7. Delete feature branch and worktree
+5. Apply `cx:required` or `cx:exempt` label to every PR (see Definition of Done above)
+6. For `cx:required` PRs: ensure capture spec and synthetic test exist before marking ready
+7. Update agent instruction files if you discover new lessons
+8. Merge after approval and CI passes
+9. Delete feature branch and worktree
 
 ## Branching and Promotion Policy (MANDATORY)
 
 Standard promotion flow for this repository:
 
-`feature/*` -> `staging` -> `main`
+any branch -> `staging` -> `main`
 
 Rules:
 
 1. Never push directly to `main` or `staging`.
-2. Create work branches from `main` using `feature/*`, `feat/*`, `fix/*`, `hotfix/*`, `chore/*`, or `docs/*`.
+2. Create a branch from `main` with any name.
 3. Merge to `staging` first for full integration testing.
 4. Promote to `main` only by PR from `staging`.
 5. PRs into `main` from non-`staging` branches are disallowed.

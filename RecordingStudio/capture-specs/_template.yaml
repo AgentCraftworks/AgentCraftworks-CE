@@ -1,0 +1,38 @@
+# CX Capture Spec Template
+# Copy this file to `capture-specs/<feature-slug>.yaml` and fill in all fields.
+# This file is required for any PR labelled `cx:required`.
+#
+# <feature-slug> should be a short, kebab-case identifier matching the feature
+# or user story (e.g., `handoff-create`, `cla-sign`, `webhook-routing`).
+
+# The application or service being tested (used to locate the running instance).
+source_app: agentcraftworks-ce   # e.g. agentcraftworks-ce, mcp-server
+
+# Human-readable description of the customer journey being validated.
+description: "TODO: describe the customer-facing feature or flow"
+
+# The base URL of the running product instance to record against.
+# Use environment variables for local vs. staging URLs.
+base_url: "${CX_BASE_URL:-http://localhost:3000}"
+
+# Pass criteria — all assertions must succeed for the synthetic test to pass.
+# Each entry is evaluated by the Playwright CX runner.
+pass_criteria:
+  - selector: "TODO: CSS or ARIA selector"     # e.g. '[data-testid="handoff-status"]'
+    expected_text: "TODO: expected visible text"  # e.g. "active"
+    # Optional additional assertion types:
+    # expected_attribute:
+    #   name: "aria-label"
+    #   value: "Create handoff"
+    # expected_url: "/handoffs/new"
+    # screenshot_label: "handoff-created"   # saves a labelled screenshot for the demo capture
+
+# Product selectors used during the Playwright recording.
+# Document the key interactive elements so agents can write accurate automation.
+selectors:
+  # Example:
+  # create_button: '[data-testid="create-handoff-btn"]'
+  # status_badge: '[data-testid="handoff-status"]'
+
+# Optional: link to the issue or PR this spec was created for.
+# linked_issue: "https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/NNN"
