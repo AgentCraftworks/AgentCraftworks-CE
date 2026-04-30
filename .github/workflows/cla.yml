@@ -32,11 +32,22 @@ jobs:
         (github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.head_ref != 'staging')
       )
     steps:
+      # T3 workflow: prefer GitHub App token for writes (commits to cla-signatures branch
+      # will trigger downstream workflows). Falls back to GITHUB_TOKEN for forks where
+      # App secrets are unavailable.
+      - name: Generate GitHub App Token
+        id: app-token
+        if: ${{ secrets.GH_APP_ID != '' && secrets.GH_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
       - name: CLA Assistant
         uses: contributor-assistant/github-action@v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PERSONAL_ACCESS_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: "signatures/version1/cla.json"
           path-to-document: "https://github.com/AgentCraftworks/AgentCraftworks-CE/blob/main/.github/CLA.md"
