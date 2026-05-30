@@ -264,6 +264,54 @@ AgentCraftworks_WebSite           ← Consumes standards via ORG-STANDARD sync
 
 ---
 
+## Agent Session Git Hygiene (MANDATORY)
+
+> **❌ `git add .` IS PROHIBITED.** Never use it. It can sweep up thousands of untracked generated or scratch files into your commit, producing PRs with thousands of unintended files. Always stage with explicit paths: `git add <file1> <file2> ...`
+>
+> **Required before any `git add`:** Run `git status --short` and read every line. Files marked `??` are untracked — they must be verified as intentional before staging. If you see paths you did not create as part of this task, do NOT stage them.
+
+### Pre-staging scope check (MANDATORY — do this before every `git add`)
+
+```bash
+# 1. See exactly what you're about to stage
+git status --short
+
+# 2. Verify scope — if > ~15 files or any unexpected ?? lines, stop and investigate
+#    Do NOT stage scratch files, generated dirs, or files you didn't create
+
+# 3. Stage ONLY the files that are part of this task — by explicit path
+git add path/to/file1 path/to/file2
+
+# 4. Confirm what is actually staged before committing
+git diff --cached --stat
+#    If this shows more files than intended: git restore --staged <unwanted-file>
+```
+
+### ⚠️ Never commit to main or staging directly
+
+Verify your branch before any git operation:
+
+```bash
+git branch --show-current   # Must NOT be 'main' or 'staging'
+```
+
+If it is: **STOP** immediately. Create a feature branch first — `git checkout -b feat/<description>`.
+
+### Commit checklist
+
+```
+- [ ] git branch --show-current → NOT main or staging
+- [ ] Build/type-check passes
+- [ ] git status --short → reviewed all lines, no unexpected ?? files
+- [ ] git add <file1> <file2> → EXPLICIT PATHS ONLY — NEVER git add .
+- [ ] git diff --cached --stat → staged count matches expectation
+- [ ] git commit -m "conventional commit message"
+- [ ] git push origin <branch>
+- [ ] gh pr create --base staging
+```
+
+---
+
 <!-- ORG-STANDARD:BEGIN — Synced from https://github.com/AgentCraftworks/.github/blob/main/AGENTS.md -->
 <!-- Do not edit this section manually. It is updated by the sync-org-standards workflow. -->
 
