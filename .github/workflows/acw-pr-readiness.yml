@@ -1,0 +1,26 @@
+name: ACW PR Readiness
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited, ready_for_review, review_requested]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  pull_request_review_thread:
+    types: [resolved, unresolved]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  security-events: read
+
+jobs:
+  pr-readiness:
+    uses: AgentCraftworks/.github/.github/workflows/acw-pr-readiness-reusable.yml@main
+    with:
+      required_human_reviewer: jenperret
+      enforced_base_branches: staging,main
+      request_copilot_review: true
+      copilot_reviewer_candidates: copilot,github-copilot[bot]
+      escalation_label: needs-human-decision
+    secrets: inherit
