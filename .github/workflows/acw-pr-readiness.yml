@@ -23,4 +23,6 @@ jobs:
       request_copilot_review: true
       copilot_reviewer_candidates: copilot,github-copilot[bot]
       escalation_label: needs-human-decision
-    secrets: inherit
+      secrets:
+      GH_APP_ID: ${{ secrets.AGENTCRAFTWORKS_APP_ID }}
+      GH_APP_PRIVATE_KEY: ${{ secrets.AGENTCRAFTWORKS_APP_PRIVATE_KEY }}
