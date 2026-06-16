@@ -16,6 +16,8 @@ jobs:
   pr-readiness:
     uses: AgentCraftworks/.github/.github/workflows/acw-pr-readiness-reusable.yml@main
     with:
+      pull_number: ${{ github.event.pull_request.number }}
+      trigger_action: ${{ github.event.action }}
       required_human_reviewer: jenperret
       enforced_base_branches: staging,main
       request_copilot_review: true
