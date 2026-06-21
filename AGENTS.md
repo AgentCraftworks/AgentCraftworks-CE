@@ -6,24 +6,6 @@
 > This file is **self-contained** — it includes organization-wide standards so that clones
 > and forks of this repo receive the full agent instructions without needing org-level inheritance.
 
----
-
-> [!CAUTION]
-> **HACKATHON FREEZE — DO NOT MERGE TO `main`**
->
-> This repo is a submission for the **Microsoft AI Dev Days Global Hackathon**.
-> Judging has been extended through **April 3, 2026**.
->
-> **Rules:**
-> - Do **NOT** merge any branch into `main` until the hackathon team gives an explicit all-clear.
-> - Do **NOT** create PRs targeting `main`. All PRs must target `staging`.
-> - The `main` branch must remain at its submission-period state (commit `325c288`).
-> - Development may continue on `staging` and feature branches only.
->
-> Violating this freeze could disqualify the hackathon submission.
-> This notice will be removed after the all-clear is received.
-
----
 
 ## Project Overview
 
