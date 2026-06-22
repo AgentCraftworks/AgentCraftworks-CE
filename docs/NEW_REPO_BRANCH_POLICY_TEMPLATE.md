@@ -2,11 +2,13 @@
 
 Use this template when initializing a new AgentCraftworks repository.
 
+> Keep this template aligned with the current standards in `AGENTS.md`. If org standards change, update this file in the same change.
+
 ## Standard Flow
 
 All repositories should follow:
 
-- any branch -> `staging`
+- feature/work branch -> `staging`
 - `staging` -> `main`
 
 Direct pushes to `staging` and `main` are not allowed.
@@ -42,7 +44,7 @@ gh api repos/<owner>/<repo>/environments --jq '.environments[].name'
 ## Required Guardrails
 
 - PRs into `main` must come from `staging`.
-- PRs into `staging` can come from **any branch** (no naming restriction).
+- PRs into `staging` should come from feature/work branches (for example: `feat/*`, `feature/*`, `fix/*`).
 - At least 1 PR approval required for both `staging` and `main`.
 - Conversation resolution required.
 - Force-push and deletion disabled on protected branches.
@@ -55,7 +57,7 @@ Add this to `AGENTS.md` when creating a new repo:
 ## Branching and Promotion Policy (MANDATORY)
 
 1. Never push directly to `main` or `staging`.
-2. Create a work branch from `main` with any name.
+2. Create a feature/work branch from `main` (for example: `feat/*`, `feature/*`, or `fix/*`).
 3. Merge your branch into `staging` first.
 4. Promote to production only by PR from `staging` into `main`.
 5. PRs into `main` from non-`staging` branches are not allowed.

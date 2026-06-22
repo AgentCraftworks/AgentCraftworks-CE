@@ -544,26 +544,6 @@ Full tooling instructions: [`RecordingStudio/AGENTS.md`](RecordingStudio/AGENTS.
 8. Merge after approval and CI passes
 9. Delete feature branch and worktree
 
-## Branching and Promotion Policy (MANDATORY)
-
-Standard promotion flow for this repository:
-
-any branch -> `staging` -> `main`
-
-Rules:
-
-1. Never push directly to `main` or `staging`.
-2. Create a branch from `main` with any name.
-3. Merge to `staging` first for full integration testing.
-4. Promote to `main` only by PR from `staging`.
-5. PRs into `main` from non-`staging` branches are disallowed.
-
-Bootstrap assets for this policy:
-
-- A script to initialize and enforce the branch policy for new repositories
-- A PR guard workflow that blocks merges violating the branch policy
-- A new-repo template or checklist documenting how to apply this policy to fresh projects
-
 ## Documentation Standards — Futures vs Implemented
 
 **All strategy evaluations, forward-looking plans, roadmaps, and proposals MUST be:**
