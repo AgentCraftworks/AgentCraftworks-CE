@@ -6,7 +6,6 @@
 > This file is **self-contained** — it includes organization-wide standards so that clones
 > and forks of this repo receive the full agent instructions without needing org-level inheritance.
 
----
 
 > [!CAUTION]
 > **HACKATHON FREEZE — DO NOT MERGE TO `main`**
