@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     # Skip CLA for internal staging→main promotion PRs; only gate external contributors.
     if: |
-      (github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA.') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA.') ||
       (github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.head_ref != 'staging')
     steps:
       - name: Check GitHub App secrets availability
