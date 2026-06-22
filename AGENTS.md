@@ -444,7 +444,7 @@ See `RecordingStudio/AGENTS.md` for the CX capture requirements and labeling rul
 
 Standard promotion flow for this repository:
 
-`feature/*` -> `staging` -> `main`
+`feature/*`, `feat/*`, `fix/*`, `hotfix/*`, `chore/*`, or `docs/*` -> `staging` -> `main`
 
 Rules:
 
