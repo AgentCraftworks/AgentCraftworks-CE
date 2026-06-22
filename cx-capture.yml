@@ -1,0 +1,22 @@
+# cx-capture.yml
+# Registry of CX capture specs for the weekly synthetic validation run.
+#
+# Add an entry here for every `cx:required` feature so it stays validated
+# on every weekly `ghaw-cx-synthetic` workflow run.
+#
+# Format:
+#   - slug: <feature-slug>          # matches RecordingStudio/capture-specs/<feature-slug>.yaml
+#     description: <human label>    # short description shown in workflow summary
+#     enabled: true                 # set to false to temporarily skip without deleting
+
+# Example (uncomment and adapt when adding a real feature):
+# features:
+#   - slug: handoff-create
+#     description: "Agent creates a new handoff and it reaches 'active' state"
+#     enabled: true
+#
+#   - slug: cla-sign
+#     description: "Contributor signs the CLA via PR comment"
+#     enabled: true
+
+features: []
