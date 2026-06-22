@@ -7,23 +7,6 @@
 > and forks of this repo receive the full agent instructions without needing org-level inheritance.
 
 
-> [!CAUTION]
-> **HACKATHON FREEZE — DO NOT MERGE TO `main`**
->
-> This repo is a submission for the **Microsoft AI Dev Days Global Hackathon**.
-> Freeze status is controlled by the hackathon team's explicit all-clear; until then, treat the freeze as active.
->
-> **Rules:**
-> - Do **NOT** merge any branch into `main` until the hackathon team gives an explicit all-clear.
-> - Do **NOT** create PRs targeting `main`. All PRs must target `staging`.
-> - The `main` branch must remain at its submission-period state (commit `325c288`).
-> - Development may continue on `staging` and feature branches only.
->
-> Violating this freeze could disqualify the hackathon submission.
-> This notice will be removed after the all-clear is received.
-
----
-
 ## Project Overview
 
 AgentCraftworks Core is an open-source **GitHub App** (webhook-driven Express server) that orchestrates multi-agent software development workflows. It uses a 4-state handoff finite state machine, CODEOWNERS-based routing, and the Model Context Protocol (MCP).
@@ -263,54 +246,6 @@ AgentCraftworks_WebSite           ← Consumes standards via ORG-STANDARD sync
 
 ---
 
-## Agent Session Git Hygiene (MANDATORY)
-
-> **❌ `git add .` IS PROHIBITED.** Never use it. It can sweep up thousands of untracked generated or scratch files into your commit, producing PRs with thousands of unintended files. Always stage with explicit paths: `git add <file1> <file2> ...`
->
-> **Required before any `git add`:** Run `git status --short` and read every line. Files marked `??` are untracked — they must be verified as intentional before staging. If you see paths you did not create as part of this task, do NOT stage them.
-
-### Pre-staging scope check (MANDATORY — do this before every `git add`)
-
-```bash
-# 1. See exactly what you're about to stage
-git status --short
-
-# 2. Verify scope — if > ~15 files or any unexpected ?? lines, stop and investigate
-#    Do NOT stage scratch files, generated dirs, or files you didn't create
-
-# 3. Stage ONLY the files that are part of this task — by explicit path
-git add path/to/file1 path/to/file2
-
-# 4. Confirm what is actually staged before committing
-git diff --cached --stat
-#    If this shows more files than intended: git restore --staged <unwanted-file>
-```
-
-### ⚠️ Never commit to main or staging directly
-
-Verify your branch before any git operation:
-
-```bash
-git branch --show-current   # Must NOT be 'main' or 'staging'
-```
-
-If it is: **STOP** immediately. Create a feature branch first — `git checkout -b feat/<description>`.
-
-### Commit checklist
-
-```
-- [ ] git branch --show-current → NOT main or staging
-- [ ] Build/type-check passes
-- [ ] git status --short → reviewed all lines, no unexpected ?? files
-- [ ] git add <file1> <file2> → EXPLICIT PATHS ONLY — NEVER git add .
-- [ ] git diff --cached --stat → staged count matches expectation
-- [ ] git commit -m "conventional commit message"
-- [ ] git push origin <branch>
-- [ ] gh pr create --base staging
-```
-
----
-
 <!-- ORG-STANDARD:BEGIN — Synced from https://github.com/AgentCraftworks/.github/blob/main/AGENTS.md -->
 <!-- Do not edit this section manually. It is updated by the sync-org-standards workflow. -->
 
@@ -491,69 +426,26 @@ After every correction, update agent instruction files so agents don't repeat mi
 - **Error Handling**: Graceful try/catch; structured error logging with context
 - **Comments**: Explain "why", not "what"; use JSDoc for public functions
 
-## Definition of Done — Customer Experience (MANDATORY)
-
-> **⚠️ API tests passing alone does NOT constitute "done."**
-> A feature is only complete when a real customer can experience it and that experience has been validated with real product screenshots.
-
-### How CX validation is triggered — the `cx:required` label
-
-Not every PR produces a tangible customer-facing outcome. To keep the standard meaningful without blocking unrelated work:
-
-- **Label issues and PRs with `cx:required`** when the work directly produces or modifies a customer-visible experience.
-- Work **without** `cx:required` must carry `cx:exempt` **and** a one-line justification in the PR description (e.g., "backend-only refactor", "partial implementation — CX tracked in #456").
-- Author or maintainer can apply `cx:exempt`. **When in doubt, apply `cx:required`.**
-
-### Blocking requirements for all PRs
-
-#### Code checks (necessary but not sufficient)
-- [ ] Unit tests pass
-- [ ] TypeScript compiles clean
-- [ ] ESLint passes
-- [ ] PR reviewed and approved
-- [ ] PR is labelled **either** `cx:required` **or** `cx:exempt` (with justification)
-
-### Additional blocking requirements for `cx:required` work
-
-> These only apply when the PR or linked issue carries the `cx:required` label.
-
-- [ ] **CX capture spec exists** — `RecordingStudio/capture-specs/<feature-slug>.yaml` with `source_app`, `pass_criteria`, and real product selectors
-- [ ] **CX synthetic test passes** — Playwright automation runs against the real running product; all `pass_criteria` assertions succeed
-- [ ] **CX demo capture exists** — at least one screenshot or screen recording showing the feature from a customer perspective (Playwright, Snagit, or Camtasia — real product only, no mocks)
-- [ ] **Demo slug added to `cx-capture.yml`** — so the feature stays validated on every weekly CX synthetic run going forward
-
-### Why this matters
-
-API and unit tests can pass while the actual customer-facing experience is broken, missing, or confusing. Real product screenshots force verification of what the customer actually sees:
-
-- A feature that works in code but shows a blank screen to users is **not done**
-- A feature that passes unit tests but has no reachable UI path is **not done**
-- A feature that works in Postman but has no corresponding customer journey is **not done**
-
-Full tooling instructions: [`RecordingStudio/AGENTS.md`](RecordingStudio/AGENTS.md)
-
 ## Contributing Standards
 
 1. Create feature branch: `feat/*` or `feature/*`
 2. Use git worktrees for parallel development (see best practices)
 3. Open PR with agent labels for review routing
 4. Address feedback from assigned agents
-5. Apply `cx:required` or `cx:exempt` label to every PR (see Definition of Done above)
-6. For `cx:required` PRs: ensure capture spec and synthetic test exist before marking ready
-7. Update agent instruction files if you discover new lessons
-8. Merge after approval and CI passes
-9. Delete feature branch and worktree
+5. Update agent instruction files if you discover new lessons
+6. Merge after approval and CI passes
+7. Delete feature branch and worktree
 
 ## Branching and Promotion Policy (MANDATORY)
 
 Standard promotion flow for this repository:
 
-any branch -> `staging` -> `main`
+`feature/*` -> `staging` -> `main`
 
 Rules:
 
 1. Never push directly to `main` or `staging`.
-2. Create a branch from `main` with any name.
+2. Create work branches from `main` using `feature/*`, `feat/*`, `fix/*`, `hotfix/*`, `chore/*`, or `docs/*`.
 3. Merge to `staging` first for full integration testing.
 4. Promote to `main` only by PR from `staging`.
 5. PRs into `main` from non-`staging` branches are disallowed.
