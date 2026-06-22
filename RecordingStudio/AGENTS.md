@@ -22,7 +22,7 @@ RecordingStudio/
       RecordingStudio/capture-specs/<feature-slug>.yaml
    ```
 2. Fill in all required fields: `source_app`, `description`, `base_url`, `pass_criteria`, `selectors`.
-3. Run the synthetic test locally:
+3. Run the synthetic test locally **after** `RecordingStudio/playwright.config.ts` is added:
    ```bash
    npx playwright test --config RecordingStudio/playwright.config.ts
    ```
