@@ -1,0 +1,22 @@
+name: ghaw-changed-files-guard
+
+# Validates PR changed-file count/declaration using the centralized PlatformOps reusable workflow.
+# Engagement Level: T2 (Copilot Coding Agent) — repository-level policy guardrail with no code mutation.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review, review_requested]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changed-files-guard:
+    uses: AgentCraftworks/AgentCraftworks-PlatformOps/.github/workflows/ghaw-changed-files-guard-reusable.yml@8c5e864151f157bea1b9d66c5569dc246080e40e
+    with:
+      max_changed_files: 30
+      require_declared_files: false
+      declared_files_start_marker: "<!-- changed-files:start -->"
+      declared_files_end_marker: "<!-- changed-files:end -->"
+      allowed_prefixes: ""
