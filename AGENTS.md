@@ -426,6 +426,10 @@ After every correction, update agent instruction files so agents don't repeat mi
 - **Error Handling**: Graceful try/catch; structured error logging with context
 - **Comments**: Explain "why", not "what"; use JSDoc for public functions
 
+## Definition of Done — Customer Experience (MANDATORY)
+
+See `RecordingStudio/AGENTS.md` for the CX capture requirements and labeling rules (`cx:required` / `cx:exempt`).
+
 ## Contributing Standards
 
 1. Create feature branch: `feat/*` or `feature/*`
