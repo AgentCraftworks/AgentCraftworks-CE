@@ -23,16 +23,6 @@ export type EngagementLevelName =
   | "delegated"
   | "autonomous";
 
-/**
- * Superseded engagement level names, retained so existing API callers and
- * stored configuration keep working after the rename to the canonical
- * Observer / Advisor / Collaborator / Delegated / Autonomous scheme.
- */
-export type LegacyEngagementLevelName =
-  | "peer-programmer"
-  | "agent-team"
-  | "full-agent-team";
-
 /** Environment tiers with increasing restriction */
 export type EnvironmentTier = "local" | "dev" | "staging" | "production";
 
@@ -46,16 +36,6 @@ export const ENGAGEMENT_LEVEL_NAMES: Record<DialLevel, EngagementLevelName> = {
   3: "collaborator",
   4: "delegated",
   5: "autonomous",
-} as const;
-
-/** Superseded name → canonical name, for callers still using the old scheme */
-export const LEGACY_ENGAGEMENT_LEVEL_ALIASES: Record<
-  LegacyEngagementLevelName,
-  EngagementLevelName
-> = {
-  "peer-programmer": "collaborator",
-  "agent-team": "delegated",
-  "full-agent-team": "autonomous",
 } as const;
 
 /** Per-repository autonomy dial configuration */
@@ -120,9 +100,6 @@ export function mapLegacyDialLevel(oldLevel: number): DialLevel {
 
 /**
  * Resolve a level from either a number or an engagement level name.
- *
- * Accepts both the canonical names and the superseded
- * peer-programmer / agent-team / full-agent-team aliases.
  */
 export function resolveEngagementLevel(
   input: number | string,
@@ -139,10 +116,6 @@ export function resolveEngagementLevel(
     collaborator: 3,
     delegated: 4,
     autonomous: 5,
-    // Superseded aliases
-    "peer-programmer": 3,
-    "agent-team": 4,
-    "full-agent-team": 5,
   };
   const level = nameMap[input.toLowerCase()];
   if (level) return level;
