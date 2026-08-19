@@ -24,7 +24,7 @@ AI coding agents are powerful — but completely ungoverned. They merge PRs with
 
 ## What AgentCraftworks Community Edition Does
 
-AgentCraftworks Community Edition is a GitHub App + MCP server that intercepts every agent action and routes it through **configurable Agent Engagement Levels** before it reaches your codebase. AgentCraftworks provides the governance layer that even when your team leverages the full agent team in their practices the human is always in the loop for Production. 
+AgentCraftworks Community Edition is a GitHub App + MCP server that intercepts every agent action and routes it through **configurable Agent Engagement Levels** before it reaches your codebase. Even when your team runs agents at full autonomy in development, CE keeps a human in the loop for production.
 
 ## SDLC Lifecycle Strategy
 
@@ -43,11 +43,11 @@ Pull Request / Push Event
   AgentCraftworks Community Edition
          ↓
    Agent Engagement Levels (1–5)
-    ├── Observer (T1):        Read, view, list
-    ├── Advisor (T2):         Comment, suggest
-    ├── Peer Programmer (T3): Label, assign, approve, edit file
-    ├── Agent Team (T4):      Merge, close, create branch, push commit
-    └── Full Agent Team (T5): Deploy, modify CI, orchestrate agents
+    ├── Observer (T1):     Read, view, list
+    ├── Advisor (T2):      Comment, suggest
+    ├── Collaborator (T3): Label, assign, approve, edit file
+    ├── Delegated (T4):    Merge, close, create branch, push commit
+    └── Autonomous (T5):   Deploy, modify CI, orchestrate agents
          ↓
   CODEOWNERS Routing → Assigned Agent
          ↓
@@ -60,13 +60,14 @@ Pull Request / Push Event
 
 | Feature | Description |
 |---|---|
-| **Agent Engagement Levels** | 5-level governance control (Observer → Full Agent Team) — set per-repo, per-team, per-event type |
-| **MCP 6-Tool Interface** | Standard MCP server: analyze, fix, review, comment, rollback, escalate |
-| **Finite State Machine** | Every agent action is a state transition — auditable, reproducible |
+| **Agent Engagement Levels** | 5-level governance control (Observer → Autonomous) — set per-repo, per-team, per-event type |
+| **MCP 6-Tool Interface** | Standard MCP server for agent handoffs: `create_handoff`, `accept_handoff`, `complete_handoff`, `query_workflow_state`, `attach_context`, `get_context` |
+| **Finite State Machine** | Every handoff is a state transition — auditable, reproducible |
 | **CODEOWNERS Routing** | Events routed to the right agent based on ownership rules |
 | **Webhook Handling** | Handles GitHub PR, push, issue, and workflow events |
 | **GitHub App Scaffold** | Drop-in GitHub App: one install, works across all repos in your org |
-| **Enterprise Upgrade Path** | Seamless upgrade to Rate Governor, Squad Coordinator, Aspire Integration, and Governance Gates — same finite state machine, same MCP tools, more power |
+| **Setup PR on Install** | Installing the App opens a reviewable CODEOWNERS pull request — no silent repository changes |
+| **Enterprise Upgrade Path** | Same finite state machine and same MCP tools, plus the orchestration and governance layers listed under [Enterprise Edition](#enterprise-edition) |
 
 ## Architecture
 
@@ -75,8 +76,8 @@ graph TD
     GH[GitHub Events] --> WH[Webhook Handler]
     WH --> AD[Engagement Level Router]
     AD -->|Observer / Advisor| OBS[Read & Comment]
-    AD -->|Peer Programmer| PR[Label, Assign, Edit]
-    AD -->|Agent Team / Full| AUTO[Merge, Deploy, Orchestrate]
+    AD -->|Collaborator| PR[Label, Assign, Edit]
+    AD -->|Delegated / Autonomous| AUTO[Merge, Deploy, Orchestrate]
     OBS --> MCP[MCP Server]
     PR --> MCP
     AUTO --> MCP
@@ -87,6 +88,19 @@ graph TD
 
 ## Quick Start
 
+There are two ways to get started, depending on whether you want to **use** AgentCraftworks CE or **run your own instance**.
+
+### Track 1 — Install the GitHub App (fastest)
+
+1. Install the AgentCraftworks CE GitHub App on your organisation or repository.
+2. CE opens a **setup pull request** adding a default `.github/CODEOWNERS` — this is the routing layer that decides which agents and humans review which paths.
+3. Review and customise the routing patterns, replacing the placeholder team handles with your real GitHub teams.
+4. Merge the PR to activate agent routing.
+
+Nothing is changed in your repository without a human merging that PR.
+
+### Track 2 — Run your own instance
+
 ```bash
 # Requirements: Node.js 22+, GitHub App credentials
 git clone https://github.com/AgentCraftworks/AgentCraftworks-CE.git
@@ -94,13 +108,15 @@ cd AgentCraftworks-CE/typescript
 npm install
 
 # Configure environment
-cp .env.example .env
-# Add your GitHub App credentials (see Quick Start section above)
+cp ../.env.example ../.env
+# Add your GitHub App credentials — see DEPLOYMENT.md for how to create the App
 
 # Build and start
 npm run build
 npm start
 ```
+
+Full instructions, including Docker Compose and Azure deployment, are in **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 **Webhook endpoint:** `POST /api/webhook`  
 **Health check:** `GET /health`  
@@ -115,24 +131,42 @@ Every repo gets an engagement level (1–5). The level determines what the agent
 |-------|------|-------------|-------------------|
 | 1 | Observer | T1 | Read, view, list |
 | 2 | Advisor | T2 | Comment, suggest |
-| 3 | Peer Programmer | T3 | Label, assign, approve, edit file |
-| 4 | Agent Team | T4 | Merge, close, create branch, push commit |
-| 5 | Full Agent Team | T5 | Deploy, modify CI, orchestrate agents |
+| 3 | Collaborator | T3 | Label, assign, approve, edit file |
+| 4 | Delegated | T4 | Merge, close, create branch, push commit |
+| 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents |
 
 Environment caps: local=5, dev=5, staging=4, production=3
 
-### 2. Finite State Machine
-Every incoming event follows a deterministic state machine:
-`RECEIVED → CLASSIFIED → GOVERNANCE_CHECK → ROUTED → EXECUTING → COMPLETE`
+### 2. Handoff Finite State Machine
+Every agent handoff follows a deterministic state machine:
+
+```
+pending ──→ active ──→ completed
+   │           │
+   └─────→ failed ←────┘
+```
+
+Four states, two terminal (`completed`, `failed`). A `failed` handoff always carries a
+reason prefix — `rejected:`, `abandoned:`, `error:` or `timeout:` — so the cause is
+machine-readable. `overdue` is a **computed property**, not a stored state.
 
 This makes every agent action **auditable and reproducible** — essential for enterprise compliance.
 
 ### 3. MCP-Compatible
-AgentCraftworks Community Edition ships a fully compliant Model Context Protocol (MCP) server. Any MCP-capable AI client (GitHub Copilot, Claude, GPT-4) can connect and use the 6 core tools directly.
+AgentCraftworks Community Edition ships a fully compliant Model Context Protocol (MCP) server. Any MCP-capable AI client (GitHub Copilot, Claude, GPT-4) can connect and use the 6 core tools:
+
+| Tool | Description |
+|---|---|
+| `create_handoff` | Create a new agent handoff |
+| `accept_handoff` | Accept a pending handoff |
+| `complete_handoff` | Mark a handoff as completed |
+| `query_workflow_state` | Query handoff state and history |
+| `attach_context` | Attach structured context to a handoff |
+| `get_context` | Retrieve context for a handoff |
 
 ## Enterprise Edition
 
-The paid [AgentCraftworks Enterprise](https://agentcraftworks.com) extends CE with advanced orchestration and governance capabilities:
+The paid [AgentCraftworks Enterprise](https://agentcraftworks.com) extends CE with advanced orchestration and governance capabilities. **None of the following are included in Community Edition:**
 
 | Enterprise Feature | What It Adds Over CE |
 |---|---|
@@ -155,14 +189,15 @@ AgentCraftworks CE is MIT-licensed — you can fork it and run your own instance
 - **Keep the name?** You still need your own GitHub App credentials, Azure subscription, and CODEOWNERS teams.
 - **Rename it?** The MIT license requires preserving the copyright notice, but you're free to rebrand everything else.
 
-See the **[Fork & Rename Guide](FORKING.md)** for a complete file-by-file checklist.
+See the **[Fork & Rename Guide](FORKING.md)** for the workflows to disable on a fork.
 
 ## Documentation
 
-- [Quick Start Guide](#quick-start)
+- [Quick Start](#quick-start)
+- [Deployment Guide](DEPLOYMENT.md)
 - [Fork & Rename Guide](FORKING.md)
 - [Agent Engagement Levels Reference](docs/architecture.md#agent-engagement-levels-reference)
-- [MCP Tool Reference](docs/architecture.md)
+- [MCP Tool Reference](#3-mcp-compatible)
 - [Architecture Overview](docs/architecture.md)
 - [SDLC Lifecycle Strategy](docs/SDLC_LIFECYCLE_STRATEGY.md)
 - [Accessibility Capability](docs/accessibility.md)

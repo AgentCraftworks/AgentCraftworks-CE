@@ -15,6 +15,7 @@ import type { Request, Response } from "express";
 import type { EnvironmentTier } from "../types/autonomy.js";
 import {
   ENGAGEMENT_LEVEL_NAMES,
+  VALID_ENGAGEMENT_LEVEL_NAMES,
   resolveEngagementLevel,
 } from "../types/autonomy.js";
 import {
@@ -180,7 +181,7 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
       } catch {
         res.status(400).json({
           error: "Bad Request",
-          message: `Invalid engagement level: "${engagement}". Valid names: observer, advisor, peer-programmer, agent-team, full-agent-team`,
+          message: `Invalid engagement level: "${engagement}". Valid names: ${VALID_ENGAGEMENT_LEVEL_NAMES.join(", ")}`,
         });
         return;
       }

@@ -2,7 +2,7 @@ name: Deploy to Staging
 
 # Deploys the TypeScript service to the staging Azure Container Apps environment.
 # Triggered only on pushes to staging branch (after PR merge).
-# Engagement Level: T4 (Agent Team) — deploys to staging Azure environment.
+# Engagement Level: T4 (Delegated) — deploys to staging Azure environment.
 
 on:
   push:

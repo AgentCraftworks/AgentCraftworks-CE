@@ -2,11 +2,11 @@
  * Autonomy / Engagement Level domain types
  *
  * 5-level Agent Engagement model:
- *   1 = Observer       (T1 — read-only)
- *   2 = Advisor        (T2 — informational)
- *   3 = Peer Programmer (T3 — modify)
- *   4 = Agent Team     (T4 — commit)
- *   5 = Full Agent Team (T5 — merge/deploy)
+ *   1 = Observer     (T1 — read-only)
+ *   2 = Advisor      (T2 — informational)
+ *   3 = Collaborator (T3 — modify)
+ *   4 = Delegated    (T4 — commit)
+ *   5 = Autonomous   (T5 — merge/deploy)
  */
 
 /** Action classification tiers (T1 = lowest risk, T5 = highest) */
@@ -19,6 +19,16 @@ export type DialLevel = 1 | 2 | 3 | 4 | 5;
 export type EngagementLevelName =
   | "observer"
   | "advisor"
+  | "collaborator"
+  | "delegated"
+  | "autonomous";
+
+/**
+ * Superseded engagement level names, retained so existing API callers and
+ * stored configuration keep working after the rename to the canonical
+ * Observer / Advisor / Collaborator / Delegated / Autonomous scheme.
+ */
+export type LegacyEngagementLevelName =
   | "peer-programmer"
   | "agent-team"
   | "full-agent-team";
@@ -33,9 +43,19 @@ export type PermissionDecision = "allow" | "deny" | "queue_approval";
 export const ENGAGEMENT_LEVEL_NAMES: Record<DialLevel, EngagementLevelName> = {
   1: "observer",
   2: "advisor",
-  3: "peer-programmer",
-  4: "agent-team",
-  5: "full-agent-team",
+  3: "collaborator",
+  4: "delegated",
+  5: "autonomous",
+} as const;
+
+/** Superseded name → canonical name, for callers still using the old scheme */
+export const LEGACY_ENGAGEMENT_LEVEL_ALIASES: Record<
+  LegacyEngagementLevelName,
+  EngagementLevelName
+> = {
+  "peer-programmer": "collaborator",
+  "agent-team": "delegated",
+  "full-agent-team": "autonomous",
 } as const;
 
 /** Per-repository autonomy dial configuration */
@@ -100,6 +120,9 @@ export function mapLegacyDialLevel(oldLevel: number): DialLevel {
 
 /**
  * Resolve a level from either a number or an engagement level name.
+ *
+ * Accepts both the canonical names and the superseded
+ * peer-programmer / agent-team / full-agent-team aliases.
  */
 export function resolveEngagementLevel(
   input: number | string,
@@ -113,6 +136,10 @@ export function resolveEngagementLevel(
   const nameMap: Record<string, DialLevel> = {
     observer: 1,
     advisor: 2,
+    collaborator: 3,
+    delegated: 4,
+    autonomous: 5,
+    // Superseded aliases
     "peer-programmer": 3,
     "agent-team": 4,
     "full-agent-team": 5,
@@ -120,6 +147,15 @@ export function resolveEngagementLevel(
   const level = nameMap[input.toLowerCase()];
   if (level) return level;
   throw new Error(
-    `Unknown engagement level: "${input}". Valid names: ${Object.keys(nameMap).join(", ")}`,
+    `Unknown engagement level: "${input}". Valid names: ${VALID_ENGAGEMENT_LEVEL_NAMES.join(", ")}`,
   );
 }
+
+/** Canonical engagement level names, in level order, for error messages. */
+export const VALID_ENGAGEMENT_LEVEL_NAMES: readonly EngagementLevelName[] = [
+  "observer",
+  "advisor",
+  "collaborator",
+  "delegated",
+  "autonomous",
+] as const;

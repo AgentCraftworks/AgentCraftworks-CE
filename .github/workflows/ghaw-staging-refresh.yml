@@ -2,7 +2,7 @@
 # Deletes the stale staging branch and recreates it from main so it's always
 # a clean copy of production. This prevents drift between staging and main.
 #
-# Engagement Level: T4 (Agent Team) — deletes and recreates branch.
+# Engagement Level: T4 (Delegated) — deletes and recreates branch.
 # Follows branching policy: feature/* → staging → main
 
 name: "Refresh staging branch after promotion"

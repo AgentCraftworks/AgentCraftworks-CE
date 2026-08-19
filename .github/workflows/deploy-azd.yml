@@ -3,7 +3,7 @@ name: Deploy Infrastructure (azd)
 # Infrastructure provisioning for new environments.
 # Run manually to provision Azure resources via Azure Developer CLI.
 # Uses OIDC federated credentials — no stored Azure secrets.
-# Engagement Level: T5 (Full Agent Team) — provisions and deploys Azure infrastructure.
+# Engagement Level: T5 (Autonomous) — provisions and deploys Azure infrastructure.
 
 on:
   workflow_dispatch:

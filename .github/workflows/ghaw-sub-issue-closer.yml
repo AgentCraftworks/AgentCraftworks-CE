@@ -2,7 +2,7 @@ name: "GH-AW: Sub-Issue Closer"
 
 # Sub-Issue Closer — Automatically closes parent issues when all sub-issues complete.
 # Recursively processes GitHub issues and closes parents at 100% completion.
-# Engagement Level: T3 (Peer Programmer) — closes issues and adds comments.
+# Engagement Level: T3 (Collaborator) — closes issues and adds comments.
 # Source: githubnext/agentics/workflows/sub-issue-closer.md
 
 on:

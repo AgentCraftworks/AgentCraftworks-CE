@@ -27,8 +27,8 @@ graph TD
     subgraph CE["AgentCraftworks Community Edition (Open Source)"]
         webhookHandler["Webhook Handler<br/>POST /api/webhook"]
         signatureVerify["HMAC Signature Verification"]
-        eventFsm["Event FSM<br/>RECEIVED → CLASSIFIED → ROUTED → GOVERNANCE_CHECK → EXECUTING → COMPLETE"]
-        engagementLevels["Agent Engagement Levels<br/>Observer → Full Agent Team"]
+        eventFsm["Handoff FSM<br/>pending → active → completed | failed"]
+        engagementLevels["Agent Engagement Levels<br/>Observer → Autonomous"]
         codeownersRouter["CODEOWNERS Router"]
         mcpServer["MCP Server<br/>6 Core Tools"]
     end
@@ -36,9 +36,9 @@ graph TD
     subgraph Actions["Agent Actions"]
         level1["Observer (T1): Read, view, list"]
         level2["Advisor (T2): Comment, suggest"]
-        level3["Peer Programmer (T3): Label, assign, approve, edit file"]
-        level4["Agent Team (T4): Merge, close, create branch, push commit"]
-        level5["Full Agent Team (T5): Deploy, modify CI, orchestrate agents"]
+        level3["Collaborator (T3): Label, assign, approve, edit file"]
+        level4["Delegated (T4): Merge, close, create branch, push commit"]
+        level5["Autonomous (T5): Deploy, modify CI, orchestrate agents"]
     end
 
     prEvent --> webhookHandler
@@ -59,14 +59,43 @@ graph TD
     level3 --> mcpServer
     level4 --> mcpServer
     level5 --> mcpServer
-    mcpServer -->|analyze| ghApi["GitHub API"]
-    mcpServer -->|fix| ghApi
-    mcpServer -->|review| ghApi
-    mcpServer -->|comment| ghApi
-    mcpServer -->|rollback| ghApi
-    mcpServer -->|escalate| ghApi
+    mcpServer -->|create_handoff| ghApi["GitHub API"]
+    mcpServer -->|accept_handoff| ghApi
+    mcpServer -->|complete_handoff| ghApi
+    mcpServer -->|query_workflow_state| ghApi
+    mcpServer -->|attach_context| ghApi
+    mcpServer -->|get_context| ghApi
 ```
 
+## Handoff State Machine
+
+Every agent handoff is a transition in a 4-state machine with two terminal states:
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending
+    pending --> active: accept_handoff
+    pending --> failed: rejected / abandoned / timeout
+    active --> completed: complete_handoff
+    active --> failed: error / abandoned / timeout
+    completed --> [*]
+    failed --> [*]
+```
+
+- Handoff IDs are UUIDs.
+- `failed` always carries a reason prefix: `rejected:`, `abandoned:`, `error:` or `timeout:`.
+- `overdue` is a **computed property**, not a stored state.
+
+## MCP Tool Reference
+
+| Tool | Description |
+|---|---|
+| `create_handoff` | Create a new agent handoff |
+| `accept_handoff` | Accept a pending handoff |
+| `complete_handoff` | Mark a handoff as completed |
+| `query_workflow_state` | Query handoff state and history |
+| `attach_context` | Attach structured context to a handoff |
+| `get_context` | Retrieve context for a handoff |
 
 ## Agent Engagement Levels Reference
 
@@ -74,8 +103,8 @@ graph TD
 |---|---|---|---|---|
 | 1 | Observer | T1 | Read, view, list | Always |
 | 2 | Advisor | T2 | Comment, suggest | Always |
-| 3 | Peer Programmer | T3 | Label, assign, approve, edit file | For merge |
-| 4 | Agent Team | T4 | Merge, close, create branch, push commit | Escalation only |
-| 5 | Full Agent Team | T5 | Deploy, modify CI, orchestrate agents | Never |
+| 3 | Collaborator | T3 | Label, assign, approve, edit file | For merge |
+| 4 | Delegated | T4 | Merge, close, create branch, push commit | Escalation only |
+| 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents | Never |
 
 Environment caps: local=5, dev=5, staging=4, production=3

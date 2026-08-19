@@ -633,9 +633,9 @@ services:
 
 #### Core Philosophy
 
-- **Graduated Autonomy**: Each workflow operates at a specific engagement level, from Observer (T1) to Peer Programmer (T3)
+- **Graduated Autonomy**: Each workflow operates at a specific engagement level, from Observer (T1) to Collaborator (T3)
 - **Advisory by Default**: Most GH-AW workflows assist and suggest only; designated enforcement workflows such as `ghaw-branch-policy-guard` and `ghaw-azd-service-tag-check` may block PRs or fail checks in the default Community Edition configuration
-- **Production-Safe**: All workflows in AgentCraftworks Community Edition cap at T3 (Peer Programmer) — no autonomous merges or deployments in production
+- **Production-Safe**: All workflows in AgentCraftworks Community Edition cap at T3 (Collaborator) — no autonomous merges or deployments in production
 
 #### Complete Workflow Reference
 
@@ -644,7 +644,7 @@ services:
 | **Accessibility Review** | `.github/workflows/ghaw-accessibility-review.yml` | T2 (Advisor) | Posts accessibility checklist on PRs touching UI files; tags `@accessibility-lead` for review | PR touching `.jsx`, `.tsx`, `.vue`, `.html`, `.css`, `.scss`, `.less`, `.svelte`, `.md` |
 | **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | T2 (Advisor) | Validates every service in `azure.yaml` has a matching `azd-service-name` tag in Bicep templates; prevents deploy failures | PR to `main` or `staging` touching `azure.yaml` or `infra/**`; push to `main` touching `azure.yaml` or `infra/**` |
 | **Branch Policy Guard** | `.github/workflows/ghaw-branch-policy-guard.yml` | T1 (Observer) | Enforces promotion flow (`feature/* → staging → main`); blocks PRs that violate branch policy | PR to `main` or `staging` |
-| **Changeset** | `.github/workflows/ghaw-changeset.yml` | T3 (Peer Programmer) | Automated version bumps and changelog generation; analyzes merged PRs, determines semver bump, updates `CHANGELOG.md` | Push to `main`, manual |
+| **Changeset** | `.github/workflows/ghaw-changeset.yml` | T3 (Collaborator) | Automated version bumps and changelog generation; analyzes merged PRs, determines semver bump, updates `CHANGELOG.md` | Push to `main`, manual |
 | **CI Coach** | `.github/workflows/ghaw-ci-coach.yml` | T2 (Advisor) | Analyzes CI failures and posts suggested fixes as PR comments | CI workflow failure |
 | **CLI Consistency Checker** | `.github/workflows/ghaw-cli-consistency.yml` | T2 (Advisor) | Validates CLI, API, and MCP tool naming conventions; posts findings as PR comments | PR to `main` touching `typescript/src/handlers/**`, `typescript/src/mcp/**`, or `typescript/src/jobs/**` |
 | **Daily Test Improver** | `.github/workflows/ghaw-daily-test-improver.yml` | T2 (Advisor) | Identifies test coverage gaps and creates issues with specific test suggestions | Weekday 9 AM UTC schedule, manual |
@@ -657,9 +657,9 @@ GH-AW workflows demonstrate the **Agent Engagement Levels** model in production:
 
 - **T1 (Observer)**: `ghaw-branch-policy-guard` — validates topology, never modifies state
 - **T2 (Advisor)**: Most workflows — post comments, create issues, add labels, but never edit code
-- **T3 (Peer Programmer)**: `ghaw-changeset` — creates branches and edits files, but only on explicit trigger (push to `main`)
+- **T3 (Collaborator)**: `ghaw-changeset` — creates branches and edits files, but only on explicit trigger (push to `main`)
 
-Production environments cap at T3. The full T4 (Agent Team) and T5 (Full Agent Team) levels are reserved for development and staging environments.
+Production environments cap at T3. The full T4 (Delegated) and T5 (Autonomous) levels are reserved for development and staging environments.
 
 #### Customizing GH-AW Workflows
 

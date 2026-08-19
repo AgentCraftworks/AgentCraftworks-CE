@@ -2,7 +2,7 @@ name: "GH-AW: Changeset"
 
 # Changeset — Automated version bumps and changelog generation.
 # Analyzes merged PRs since last release, determines semver bump, updates CHANGELOG.md.
-# Engagement Level: T3 (Peer Programmer) — creates branches and edits files.
+# Engagement Level: T3 (Collaborator) — creates branches and edits files.
 
 on:
   push:

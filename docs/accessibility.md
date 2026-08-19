@@ -161,9 +161,9 @@ Accessibility review is required at all agent engagement levels:
 |-------|--------------------------|
 | T1 (Observer) | Read and flag accessibility issues in existing code |
 | T2 (Advisor) | Post accessibility feedback on PRs; suggest fixes |
-| T3 (Peer Programmer) | Apply accessibility fixes; get `@accessibility-lead` sign-off |
-| T4 (Agent Team) | Enforce accessibility before merge; block non-conforming UI PRs |
-| T5 (Full Agent Team) | Run full accessibility audit in CI; generate VPAT reports |
+| T3 (Collaborator) | Apply accessibility fixes; get `@accessibility-lead` sign-off |
+| T4 (Delegated) | Enforce accessibility before merge; block non-conforming UI PRs |
+| T5 (Autonomous) | Run full accessibility audit in CI; generate VPAT reports |
 
 ---
 
