@@ -392,10 +392,10 @@ describe("resolveEngagementLevel", () => {
     assert.equal(resolveEngagementLevel("autonomous"), 5);
   });
 
-  it("should reject superseded engagement level names", () => {
-    assert.throws(() => resolveEngagementLevel("peer-programmer"));
-    assert.throws(() => resolveEngagementLevel("agent-team"));
-    assert.throws(() => resolveEngagementLevel("full-agent-team"));
+  it("should accept superseded engagement level names as aliases (decision D-1)", () => {
+    assert.equal(resolveEngagementLevel("peer-programmer"), 3);
+    assert.equal(resolveEngagementLevel("agent-team"), 4);
+    assert.equal(resolveEngagementLevel("full-agent-team"), 5);
   });
 
   it("should be case-insensitive for names", () => {
