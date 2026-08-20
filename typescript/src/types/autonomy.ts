@@ -116,6 +116,10 @@ export function resolveEngagementLevel(
     collaborator: 3,
     delegated: 4,
     autonomous: 5,
+    // Superseded names kept as API aliases (decision D-1)
+    "peer-programmer": 3,
+    "agent-team": 4,
+    "full-agent-team": 5,
   };
   const level = nameMap[input.toLowerCase()];
   if (level) return level;
