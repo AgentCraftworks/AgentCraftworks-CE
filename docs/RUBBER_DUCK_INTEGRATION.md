@@ -143,16 +143,14 @@ Repeat at post_impl (3+ file changes) and post_test (before test run).
 
 ### Persistent Review Trail
 
-Store all Rubber Duck reviews in `.squad/rd-reviews/` for audit and retrospective:
+Store all Rubber Duck reviews in `docs/rd-reviews/` for audit and retrospective:
 
 ```
-.squad/
+docs/
   rd-reviews/
     2026-04-17T14-30-00-post-plan.md
     2026-04-17T15-45-00-post-impl.md
     2026-04-17T16-20-00-post-test.md
-  decisions.md
-  history.md
 ```
 
 Each review file records:

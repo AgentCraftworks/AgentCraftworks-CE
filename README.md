@@ -111,6 +111,9 @@ npm install
 cp ../.env.example ../.env
 # Add your GitHub App credentials — see DEPLOYMENT.md for how to create the App
 
+# Load environment variables (the service reads from the process environment, not .env automatically)
+set -a && source ../.env && set +a
+
 # Build and start
 npm run build
 npm start

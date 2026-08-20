@@ -84,7 +84,7 @@ These are **shipping inaccuracies** and must be fixed before we add more docs on
 | DEF-3 | `README.md` line 98 | "see Quick Start section above" is a self-referential dangling pointer | Point at `docs/getting-started.md` (B1) |
 | DEF-4 | `README.md` Quick Start | Only documents the *self-host / build from source* path; there is no *install the App and get a PR* path — which is the actual product experience | Add a two-track Quick Start (§4.10) |
 | DEF-5 | `.env.example` vs `DEPLOYMENT.md` | `.env.example` uses `GH_CE_APP_ID` / `GH_CE_APP_PRIVATE_KEY` / `GH_CE_WEBHOOK_SECRET`; confirm every doc and workflow uses the same names | Single canonical env var table in `docs/CONFIGURATION.md` (B9) |
-| DEF-6 | Engagement level naming | CE used Observer / Advisor / **Peer Programmer** / **Agent Team** / **Full Agent Team**; the paid product had since moved to Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous** without pushing the change back to CE | **RESOLVED** — CE now uses the paid names, with the old names retained as API aliases. See D-1 and §7.1. |
+| DEF-6 | Engagement level naming | CE used Observer / Advisor / **Peer Programmer** / **Agent Team** / **Full Agent Team**; the paid product had since moved to Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous** without pushing the change back to CE | **RESOLVED** — CE now uses the paid names. The old names are **removed outright** (no alias layer, no deprecation window); `resolveEngagementLevel` rejects them with an error naming the valid set. See D-1 and §7.1. |
 | DEF-7 | `FORKING.md` (23 lines) | README links it as a "complete file-by-file checklist"; it is a short workflow-disable note | Either expand to match the promise or soften the README claim |
 
 ---
