@@ -2,7 +2,7 @@ name: Deploy to Production
 
 # Deploys the TypeScript service to the production Azure Container Apps environment.
 # Triggered on version tags or manual dispatch.
-# Engagement Level: T4 (Agent Team) — deploys to production Azure environment.
+# Engagement Level: T4 (Delegated) — deploys to production Azure environment.
 # Prerequisite: run deploy-azd.yml first and sync its job-summary outputs to the
 # 'production' environment secrets (AZURE_ACR_NAME, AZURE_ACR_LOGIN_SERVER,
 # AZURE_RESOURCE_GROUP, AZURE_CONTAINER_APP_NAME, TYPESCRIPT_PROD_URL).

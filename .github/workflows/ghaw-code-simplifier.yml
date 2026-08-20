@@ -3,7 +3,7 @@ name: "GH-AW: Code Simplifier"
 # Code Simplifier — Analyzes recently modified code and creates PRs with simplifications.
 # Improves clarity, consistency, and maintainability while preserving functionality.
 # Runs daily, analyzes last 24 hours of changes.
-# Engagement Level: T3 (Peer Programmer) — creates PRs with code improvements.
+# Engagement Level: T3 (Collaborator) — creates PRs with code improvements.
 # Source: githubnext/agentics/workflows/code-simplifier.md
 
 on:

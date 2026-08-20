@@ -2,11 +2,11 @@
  * Autonomy / Engagement Level domain types
  *
  * 5-level Agent Engagement model:
- *   1 = Observer       (T1 — read-only)
- *   2 = Advisor        (T2 — informational)
- *   3 = Peer Programmer (T3 — modify)
- *   4 = Agent Team     (T4 — commit)
- *   5 = Full Agent Team (T5 — merge/deploy)
+ *   1 = Observer     (T1 — read-only)
+ *   2 = Advisor      (T2 — informational)
+ *   3 = Collaborator (T3 — modify)
+ *   4 = Delegated    (T4 — commit)
+ *   5 = Autonomous   (T5 — merge/deploy)
  */
 
 /** Action classification tiers (T1 = lowest risk, T5 = highest) */
@@ -19,9 +19,9 @@ export type DialLevel = 1 | 2 | 3 | 4 | 5;
 export type EngagementLevelName =
   | "observer"
   | "advisor"
-  | "peer-programmer"
-  | "agent-team"
-  | "full-agent-team";
+  | "collaborator"
+  | "delegated"
+  | "autonomous";
 
 /** Environment tiers with increasing restriction */
 export type EnvironmentTier = "local" | "dev" | "staging" | "production";
@@ -33,9 +33,9 @@ export type PermissionDecision = "allow" | "deny" | "queue_approval";
 export const ENGAGEMENT_LEVEL_NAMES: Record<DialLevel, EngagementLevelName> = {
   1: "observer",
   2: "advisor",
-  3: "peer-programmer",
-  4: "agent-team",
-  5: "full-agent-team",
+  3: "collaborator",
+  4: "delegated",
+  5: "autonomous",
 } as const;
 
 /** Per-repository autonomy dial configuration */
@@ -113,6 +113,10 @@ export function resolveEngagementLevel(
   const nameMap: Record<string, DialLevel> = {
     observer: 1,
     advisor: 2,
+    collaborator: 3,
+    delegated: 4,
+    autonomous: 5,
+    // Superseded names kept as API aliases (decision D-1)
     "peer-programmer": 3,
     "agent-team": 4,
     "full-agent-team": 5,
@@ -120,6 +124,15 @@ export function resolveEngagementLevel(
   const level = nameMap[input.toLowerCase()];
   if (level) return level;
   throw new Error(
-    `Unknown engagement level: "${input}". Valid names: ${Object.keys(nameMap).join(", ")}`,
+    `Unknown engagement level: "${input}". Valid names: ${VALID_ENGAGEMENT_LEVEL_NAMES.join(", ")}`,
   );
 }
+
+/** Canonical engagement level names, in level order, for error messages. */
+export const VALID_ENGAGEMENT_LEVEL_NAMES: readonly EngagementLevelName[] = [
+  "observer",
+  "advisor",
+  "collaborator",
+  "delegated",
+  "autonomous",
+] as const;

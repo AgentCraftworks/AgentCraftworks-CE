@@ -68,7 +68,7 @@ npm test
 | Community Edition (this repo) | Enterprise |
 |---|---|
 | Webhook routing + FSM | SRE incident response |
-| Agent Engagement Levels (Observer → Full Agent Team) | Self-healing orchestration |
+| Agent Engagement Levels (Observer → Autonomous) | Self-healing orchestration |
 | MCP 6-tool interface | Chronicle AI ledger |
 | CODEOWNERS routing | Governance Monitor |
 | GitHub App scaffolding | CI autofix engine |

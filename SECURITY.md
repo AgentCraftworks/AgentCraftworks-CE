@@ -35,9 +35,9 @@ All incoming GitHub webhooks are verified using HMAC-SHA256 signatures (`X-Hub-S
 
 The 5-tier engagement level system enforces least-privilege access for AI agents:
 
-- **Production** environments are capped at Level 3 (Peer Programmer)
-- **Staging** environments are capped at Level 4 (Agent Team)
-- Only **local/dev** environments allow Level 5 (Full Agent Team)
+- **Production** environments are capped at Level 3 (Collaborator)
+- **Staging** environments are capped at Level 4 (Delegated)
+- Only **local/dev** environments allow Level 5 (Autonomous)
 
 ### Action Classification
 

@@ -3,7 +3,7 @@ name: "GH-AW: Daily Doc Updater"
 # Daily Doc Updater — Automatically updates documentation based on recent code changes.
 # Scans merged PRs and commits from last 24 hours, identifies new features that need
 # documentation, and creates PRs with updates.
-# Engagement Level: T3 (Peer Programmer) — creates PRs with documentation changes.
+# Engagement Level: T3 (Collaborator) — creates PRs with documentation changes.
 # Source: githubnext/agentics/workflows/daily-doc-updater.md
 
 on:

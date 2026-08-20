@@ -356,17 +356,17 @@ describe("mapLegacyDialLevel", () => {
     assert.equal(mapLegacyDialLevel(4), 2);
   });
 
-  it("should map old levels 5-6 to level 3 (Peer Programmer)", () => {
+  it("should map old levels 5-6 to level 3 (Collaborator)", () => {
     assert.equal(mapLegacyDialLevel(5), 3);
     assert.equal(mapLegacyDialLevel(6), 3);
   });
 
-  it("should map old levels 7-8 to level 4 (Agent Team)", () => {
+  it("should map old levels 7-8 to level 4 (Delegated)", () => {
     assert.equal(mapLegacyDialLevel(7), 4);
     assert.equal(mapLegacyDialLevel(8), 4);
   });
 
-  it("should map old levels 9-11 to level 5 (Full Agent Team)", () => {
+  it("should map old levels 9-11 to level 5 (Autonomous)", () => {
     assert.equal(mapLegacyDialLevel(9), 5);
     assert.equal(mapLegacyDialLevel(10), 5);
     assert.equal(mapLegacyDialLevel(11), 5);
@@ -387,6 +387,12 @@ describe("resolveEngagementLevel", () => {
   it("should resolve engagement level names", () => {
     assert.equal(resolveEngagementLevel("observer"), 1);
     assert.equal(resolveEngagementLevel("advisor"), 2);
+    assert.equal(resolveEngagementLevel("collaborator"), 3);
+    assert.equal(resolveEngagementLevel("delegated"), 4);
+    assert.equal(resolveEngagementLevel("autonomous"), 5);
+  });
+
+  it("should accept superseded engagement level names as aliases (decision D-1)", () => {
     assert.equal(resolveEngagementLevel("peer-programmer"), 3);
     assert.equal(resolveEngagementLevel("agent-team"), 4);
     assert.equal(resolveEngagementLevel("full-agent-team"), 5);
@@ -409,8 +415,8 @@ describe("ENGAGEMENT_LEVEL_NAMES", () => {
   it("should map all 5 levels to names", () => {
     assert.equal(ENGAGEMENT_LEVEL_NAMES[1], "observer");
     assert.equal(ENGAGEMENT_LEVEL_NAMES[2], "advisor");
-    assert.equal(ENGAGEMENT_LEVEL_NAMES[3], "peer-programmer");
-    assert.equal(ENGAGEMENT_LEVEL_NAMES[4], "agent-team");
-    assert.equal(ENGAGEMENT_LEVEL_NAMES[5], "full-agent-team");
+    assert.equal(ENGAGEMENT_LEVEL_NAMES[3], "collaborator");
+    assert.equal(ENGAGEMENT_LEVEL_NAMES[4], "delegated");
+    assert.equal(ENGAGEMENT_LEVEL_NAMES[5], "autonomous");
   });
 });

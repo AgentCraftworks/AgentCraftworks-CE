@@ -30,11 +30,11 @@ Rubber Duck is available via `gh copilot` with `/experimental` mode enabled in G
 | `.agentcraftworks.yml` config schema | ✅ | ✅ |
 | Automatic FSM `RD_REVIEW` gate | ❌ | ✅ |
 | Rate Governor integration | ❌ | ✅ |
-| `.squad/rd-reviews/` audit trail | ✅ (manual) | ✅ (automatic) |
-| Squad coordinator checkpoint hooks | ✅ | ✅ |
+| Squad Coordinator checkpoint hooks | ❌ | ✅ |
+| Local review trail (files in your repo) | ✅ (manual) | ✅ (automatic) |
 | Environment-aware checkpoint activation | ❌ | ✅ |
 
-In CE, Rubber Duck is available as a **manual on-demand** capability — you or your agents invoke it explicitly. Pro/Enterprise adds automatic activation at FSM checkpoints, Rate Governor integration, and environment-specific policies.
+In CE, Rubber Duck is available as a **manual on-demand** capability — you or your agents invoke it explicitly, and you record the review yourself. Pro/Enterprise adds automatic activation at FSM checkpoints, Squad Coordinator hooks, Rate Governor integration, and environment-specific policies.
 
 ---
 
@@ -56,7 +56,7 @@ You can document your Rubber Duck preferences in `.agentcraftworks.yml` using a 
 ```yaml
 rubberDuck:
   enabled: true
-  minEngagementLevel: 3   # Level 3 = Peer Programmer and above
+  minEngagementLevel: 3   # Level 3 = Collaborator and above
   triggerCheckpoints:
     afterPlan: true
     afterComplexImpl: true
@@ -115,9 +115,11 @@ Agent: Revising plan to use per-service TTL jitter (300–600s random offset)
 
 ---
 
-## Squad Coordinator Integration (CE)
+## Manual Review Protocol (CE)
 
-If you use the Squad pattern, create `.squad/squad.agent.md` for your coordinator instructions (if it does not already exist), then add this Rubber Duck protocol:
+CE has no automatic checkpoint hooks — you invoke Rubber Duck yourself. Add this
+protocol to your agent instructions (`AGENTS.md`, `.github/copilot-instructions.md`, or
+equivalent) so agents ask for a review at the right moments:
 
 ```markdown
 ## Rubber Duck Review Protocol
@@ -130,24 +132,25 @@ If both: invoke Rubber Duck with:
   checkpoint: "post_plan"
   context: [full plan summary]
 
-Record the review in: .squad/rd-reviews/{timestamp}-post-plan.md
+Record the review in: docs/rd-reviews/{timestamp}-post-plan.md
 Document what changed and why (or explicitly why not).
 
 Repeat at post_impl (3+ file changes) and post_test (before test run).
 ```
 
+> **Enterprise:** Squad Coordinator checkpoint hooks automate this protocol at FSM
+> transitions. Squad Coordinator is not part of Community Edition.
+
 ### Persistent Review Trail
 
-Store all Rubber Duck reviews in `.squad/rd-reviews/` for audit and retrospective:
+Store all Rubber Duck reviews in `docs/rd-reviews/` for audit and retrospective:
 
 ```
-.squad/
+docs/
   rd-reviews/
     2026-04-17T14-30-00-post-plan.md
     2026-04-17T15-45-00-post-impl.md
     2026-04-17T16-20-00-post-test.md
-  decisions.md
-  history.md
 ```
 
 Each review file records:
