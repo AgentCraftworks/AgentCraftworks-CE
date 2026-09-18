@@ -42,12 +42,12 @@ Pull Request / Push Event
          ↓
   AgentCraftworks Community Edition
          ↓
-   Agent Engagement Levels (1–5)
+   Agent Engagement Levels (CE: 1–3 · Enterprise: 4–5)
     ├── Observer (T1):     Read, view, list
     ├── Advisor (T2):      Comment, suggest
     ├── Collaborator (T3): Label, assign, approve, edit file
-    ├── Delegated (T4):    Merge, close, create branch, push commit
-    └── Autonomous (T5):   Deploy, modify CI, orchestrate agents
+    ├── Delegated (T4):    Merge, close, create branch, push commit   [Enterprise]
+    └── Autonomous (T5):   Deploy, modify CI, orchestrate agents      [Enterprise]
          ↓
   CODEOWNERS Routing → Assigned Agent
          ↓
@@ -128,17 +128,17 @@ Full instructions, including Docker Compose and Azure deployment, are in **[DEPL
 ## How It Works
 
 ### 1. Agent Engagement Levels
-Every repo gets an engagement level (1–5). The level determines what the agent is permitted to do:
+Every repo gets an engagement level. The level determines what the agent is permitted to do. Community Edition supports levels 1–3; levels 4–5 require [AgentCraftworks Enterprise](https://agentcraftworks.com) (see [ADR-CE-001](docs/adr/ADR-CE-001-engagement-level-cap.md)).
 
-| Level | Name | Action Tier | Permitted Actions |
-|-------|------|-------------|-------------------|
-| 1 | Observer | T1 | Read, view, list |
-| 2 | Advisor | T2 | Comment, suggest |
-| 3 | Collaborator | T3 | Label, assign, approve, edit file |
-| 4 | Delegated | T4 | Merge, close, create branch, push commit |
-| 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents |
+| Level | Name | Action Tier | Permitted Actions | Edition |
+|-------|------|-------------|-------------------|---------|
+| 1 | Observer | T1 | Read, view, list | CE |
+| 2 | Advisor | T2 | Comment, suggest | CE |
+| 3 | Collaborator | T3 | Label, assign, approve, edit file | CE |
+| 4 | Delegated | T4 | Merge, close, create branch, push commit | **Enterprise** |
+| 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents | **Enterprise** |
 
-Environment caps: local=5, dev=5, staging=4, production=3
+Environment caps — CE: maximum level 3 in every environment; Enterprise raises the cap (staging 4 / production 3 by default). Requesting level 4 or 5 in CE returns HTTP 422 `ENTERPRISE_REQUIRED`.
 
 ### 2. Handoff Finite State Machine
 Every agent handoff follows a deterministic state machine:

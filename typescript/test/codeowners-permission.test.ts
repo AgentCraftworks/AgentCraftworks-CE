@@ -154,7 +154,7 @@ describe("checkActionPermission", () => {
     assert.equal(result.tier, "T1");
   });
 
-  it("should deny T5 action with low dial level", () => {
+  it("should deny T5 action even at the CE maximum level (Enterprise-only tier)", () => {
     setDialLevel("owner", "repo", 3, "admin");
     const result = checkActionPermission({
       repoOwner: "owner",
@@ -165,17 +165,19 @@ describe("checkActionPermission", () => {
     assert.equal(result.permitted, false);
     assert.equal(result.tier, "T5");
     assert.equal(result.requiredLevel, 5);
+    assert.equal(result.dialLevel, 3);
   });
 
-  it("should permit T5 action with high dial level", () => {
-    setDialLevel("owner", "repo", 5, "admin");
+  it("should permit T3 action at the CE maximum level", () => {
+    setDialLevel("owner", "repo", 3, "admin");
     const result = checkActionPermission({
       repoOwner: "owner",
       repoName: "repo",
       agentSlug: "@bot",
-      actionType: "merge_pr",
+      actionType: "edit_file",
     });
     assert.equal(result.permitted, true);
+    assert.equal(result.tier, "T3");
   });
 
   it("should throw on missing required fields", () => {
@@ -192,7 +194,7 @@ describe("checkActionPermission", () => {
   });
 
   it("should apply env tier cap when provided", () => {
-    setDialLevel("owner", "repo", 5, "admin");
+    setDialLevel("owner", "repo", 3, "admin");
     // Production caps at 3, merge_pr requires 5 -> denied
     const result = checkActionPermission({
       repoOwner: "owner",
@@ -205,7 +207,7 @@ describe("checkActionPermission", () => {
   });
 
   it("should include reason in result", () => {
-    setDialLevel("owner", "repo", 5, "admin");
+    setDialLevel("owner", "repo", 3, "admin");
     const result = checkActionPermission({
       repoOwner: "owner",
       repoName: "repo",

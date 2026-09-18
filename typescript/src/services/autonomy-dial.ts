@@ -13,7 +13,7 @@ import type {
   EnvironmentTier,
   ActionTier,
 } from "../types/autonomy.js";
-import { ENV_MAX_LEVELS } from "../types/autonomy.js";
+import { ENV_MAX_LEVELS, EnterpriseLevelError, isEnterpriseOnlyLevel } from "../types/autonomy.js";
 import { classifyAction } from "./action-classifier.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────────
@@ -92,7 +92,8 @@ export function getDialLevel(
 
 /**
  * Set autonomy dial level for a repository.
- * Validates range 1-5.
+ * Validates range 1-5, then rejects levels above CE_MAX_LEVEL with an
+ * EnterpriseLevelError (ADR-CE-001).
  */
 export function setDialLevel(
   repoOwner: string,
@@ -106,6 +107,10 @@ export function setDialLevel(
 
   if (!Number.isInteger(dialLevel) || dialLevel < 1 || dialLevel > 5) {
     throw new Error("Dial level must be an integer between 1 and 5");
+  }
+
+  if (isEnterpriseOnlyLevel(dialLevel)) {
+    throw new EnterpriseLevelError(dialLevel);
   }
 
   if (!updatedBy) {

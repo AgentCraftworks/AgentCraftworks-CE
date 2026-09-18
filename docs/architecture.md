@@ -37,8 +37,8 @@ graph TD
         level1["Observer (T1): Read, view, list"]
         level2["Advisor (T2): Comment, suggest"]
         level3["Collaborator (T3): Label, assign, approve, edit file"]
-        level4["Delegated (T4): Merge, close, create branch, push commit"]
-        level5["Autonomous (T5): Deploy, modify CI, orchestrate agents"]
+        level4["Delegated (T4): Merge, close, create branch, push commit — Enterprise"]
+        level5["Autonomous (T5): Deploy, modify CI, orchestrate agents — Enterprise"]
     end
 
     prEvent --> webhookHandler
@@ -99,12 +99,14 @@ stateDiagram-v2
 
 ## Agent Engagement Levels Reference
 
-| Level | Name | Action Tier | Permitted Actions | Human Required |
-|---|---|---|---|---|
-| 1 | Observer | T1 | Read, view, list | Always |
-| 2 | Advisor | T2 | Comment, suggest | Always |
-| 3 | Collaborator | T3 | Label, assign, approve, edit file | For merge |
-| 4 | Delegated | T4 | Merge, close, create branch, push commit | Escalation only |
-| 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents | Never |
+Community Edition supports levels 1–3 in every environment. Levels 4–5 require [AgentCraftworks Enterprise](https://agentcraftworks.com); see [ADR-CE-001](adr/ADR-CE-001-engagement-level-cap.md), which mirrors paid-product ADR-077.
 
-Environment caps: local=5, dev=5, staging=4, production=3
+| Level | Name | Action Tier | Permitted Actions | Human Required | Edition |
+|---|---|---|---|---|---|
+| 1 | Observer | T1 | Read, view, list | Always | CE |
+| 2 | Advisor | T2 | Comment, suggest | Always | CE |
+| 3 | Collaborator | T3 | Label, assign, approve, edit file | For merge | CE |
+| 4 | Delegated | T4 | Merge, close, create branch, push commit | Escalation only | **Enterprise** |
+| 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents | Never | **Enterprise** |
+
+Environment caps — CE: maximum level 3 in every environment (`CE_MAX_LEVEL`); Enterprise raises the cap (staging 4 / production 3 by default). In CE, `setDialLevel` throws `EnterpriseLevelError` and `POST /api/dial/:owner/:repo` returns HTTP 422 with `code: "ENTERPRISE_REQUIRED"` for levels 4–5, whether requested numerically or by name (`delegated`, `autonomous`).

@@ -106,6 +106,8 @@ Docker Compose local run · Azure deploy via `azd` + Bicep · Accessibility agen
 CodeQL · SDLC lifecycle stages · Branch promotion policy `feature/* → staging → main` ·
 MIT licence, forking, CLA.
 
+> **Note (D-8, 2026-09-18):** Agent Engagement Levels **1–3 in CE; 4–5 Enterprise** — per [ADR-CE-001](../adr/ADR-CE-001-engagement-level-cap.md) (mirrors paid ADR-077). The "1–5 with environment caps (local 5 / dev 5 / staging 4 / production 3)" wording above is superseded; CE caps every environment at 3.
+
 ### 3.2 ❌ NOT documentable in CE (Enterprise-only)
 
 Rate Governor (6-pattern adaptive rate limiting) · Squad Coordinator / squads / S2S
@@ -475,6 +477,7 @@ tool names exported by `mcp/server.ts`. Prevents DEF-1 recurring.
 | **D-5** | Does CE need `mode: workflow \| agent \| both`? | **Ship the field** for forward-compatibility, defaulting to `workflow`. |
 | **D-6** | Publish docs to a site? | **Not in this scope.** |
 | **D-7** | Where do product standards get authored? | Upstream in `AgentCraftworks`, consumed here via ORG-STANDARD sync. |
+| **D-8** | Does CE support engagement levels 4–5 (Delegated / Autonomous)? | **RESOLVED 2026-09-18 — No; follow paid ADR-077 (Option A of #270).** CE permits levels 1–3 in every environment (`CE_MAX_LEVEL = 3`); 4–5 require Enterprise and are rejected with HTTP 422 `ENTERPRISE_REQUIRED`. Recorded in [ADR-CE-001](../adr/ADR-CE-001-engagement-level-cap.md). |
 
 ### 7.1 ⚠️ Upstream dependency created by D-1
 

@@ -18,6 +18,11 @@ import {
   clearAllDials,
   setDialLevel,
 } from "../src/services/autonomy-dial.js";
+import {
+  CE_MAX_LEVEL,
+  ENTERPRISE_REQUIRED_CODE,
+  ENTERPRISE_REQUIRED_MESSAGE,
+} from "../src/types/autonomy.js";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
@@ -96,12 +101,18 @@ describe("GET /api/dial/:owner/:repo", () => {
   });
 
   it("should return configured dial level", async () => {
-    setDialLevel("myorg", "myrepo", 4, "admin");
+    setDialLevel("myorg", "myrepo", 3, "admin");
     const res = await request("GET", "/api/dial/myorg/myrepo");
     assert.equal(res.status, 200);
-    assert.equal(res.body["dialLevel"], 4);
+    assert.equal(res.body["dialLevel"], 3);
     assert.equal(res.body["isDefault"], false);
     assert.equal(res.body["updatedBy"], "admin");
+  });
+
+  it("should advertise the CE maximum level", async () => {
+    const res = await request("GET", "/api/dial/myorg/myrepo");
+    assert.equal(res.status, 200);
+    assert.equal(res.body["maxLevel"], CE_MAX_LEVEL);
   });
 });
 
@@ -110,23 +121,23 @@ describe("GET /api/dial/:owner/:repo", () => {
 describe("POST /api/dial/:owner/:repo", () => {
   it("should set dial level for a repo", async () => {
     const res = await request("POST", "/api/dial/testorg/testrepo", {
-      dialLevel: 5,
+      dialLevel: 3,
       updatedBy: "admin-user",
     });
     assert.equal(res.status, 200);
-    assert.equal(res.body["dialLevel"], 5);
+    assert.equal(res.body["dialLevel"], 3);
     assert.equal(res.body["updatedBy"], "admin-user");
     assert.equal(res.body["isDefault"], false);
   });
 
   it("should update existing dial level", async () => {
-    setDialLevel("org", "repo", 3, "user1");
+    setDialLevel("org", "repo", 2, "user1");
     const res = await request("POST", "/api/dial/org/repo", {
-      dialLevel: 5,
+      dialLevel: 3,
       updatedBy: "user2",
     });
     assert.equal(res.status, 200);
-    assert.equal(res.body["dialLevel"], 5);
+    assert.equal(res.body["dialLevel"], 3);
     assert.equal(res.body["updatedBy"], "user2");
   });
 
@@ -139,13 +150,23 @@ describe("POST /api/dial/:owner/:repo", () => {
     assert.equal(res.body["dialLevel"], 1);
   });
 
-  it("should accept level 5 (maximum)", async () => {
+  it("should accept level 3 (CE maximum)", async () => {
     const res = await request("POST", "/api/dial/org/repo", {
-      dialLevel: 5,
+      dialLevel: 3,
       updatedBy: "admin",
     });
     assert.equal(res.status, 200);
-    assert.equal(res.body["dialLevel"], 5);
+    assert.equal(res.body["dialLevel"], 3);
+    assert.equal(res.body["engagementLevel"], "collaborator");
+  });
+
+  it("should accept `level` as an alias for dialLevel", async () => {
+    const res = await request("POST", "/api/dial/org/repo", {
+      level: 2,
+      updatedBy: "admin",
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body["dialLevel"], 2);
   });
 
   it("should return 400 for dialLevel below 1", async () => {
@@ -184,10 +205,90 @@ describe("POST /api/dial/:owner/:repo", () => {
 
   it("should return 400 when updatedBy is missing", async () => {
     const res = await request("POST", "/api/dial/org/repo", {
-      dialLevel: 5,
+      dialLevel: 3,
     });
     assert.equal(res.status, 400);
     assert.ok((res.body["message"] as string).includes("updatedBy is required"));
+  });
+});
+
+// ─── Enterprise-only levels (ADR-CE-001) ────────────────────────────────────
+
+describe("POST /api/dial/:owner/:repo — Enterprise-only levels", () => {
+  function assertEnterpriseRejection(
+    res: FetchResult,
+    requestedLevel: number,
+    requestedLevelName: string,
+  ): void {
+    assert.equal(res.status, 422);
+    assert.equal(res.body["error"], "Unprocessable Entity");
+    assert.equal(res.body["code"], ENTERPRISE_REQUIRED_CODE);
+    assert.equal(res.body["message"], ENTERPRISE_REQUIRED_MESSAGE);
+    assert.equal(res.body["requestedLevel"], requestedLevel);
+    assert.equal(res.body["requestedLevelName"], requestedLevelName);
+    assert.equal(res.body["maxLevel"], CE_MAX_LEVEL);
+    assert.equal(res.body["upgradeUrl"], "https://agentcraftworks.com");
+  }
+
+  it("should return 422 for numeric level 4 via `level` (no updatedBy required)", async () => {
+    const res = await request("POST", "/api/dial/o/r", { level: 4 });
+    assertEnterpriseRejection(res, 4, "delegated");
+  });
+
+  it("should return 422 for numeric dialLevel 5", async () => {
+    const res = await request("POST", "/api/dial/org/repo", {
+      dialLevel: 5,
+      updatedBy: "admin",
+    });
+    assertEnterpriseRejection(res, 5, "autonomous");
+  });
+
+  it("should return 422 for engagement name `delegated`", async () => {
+    const res = await request("POST", "/api/dial/org/repo", {
+      engagement: "delegated",
+      updatedBy: "admin",
+    });
+    assertEnterpriseRejection(res, 4, "delegated");
+  });
+
+  it("should return 422 for engagement name `autonomous`", async () => {
+    const res = await request("POST", "/api/dial/org/repo", {
+      engagement: "autonomous",
+      updatedBy: "admin",
+    });
+    assertEnterpriseRejection(res, 5, "autonomous");
+  });
+
+  it("should return 422 for superseded alias names mapping to 4–5", async () => {
+    const agentTeam = await request("POST", "/api/dial/org/repo", {
+      engagement: "agent-team",
+      updatedBy: "admin",
+    });
+    assertEnterpriseRejection(agentTeam, 4, "delegated");
+
+    const full = await request("POST", "/api/dial/org/repo", {
+      level: "full-agent-team",
+      updatedBy: "admin",
+    });
+    assertEnterpriseRejection(full, 5, "autonomous");
+  });
+
+  it("should not persist a rejected Enterprise-only level", async () => {
+    setDialLevel("org", "repo", 2, "admin");
+    await request("POST", "/api/dial/org/repo", {
+      dialLevel: 4,
+      updatedBy: "admin",
+    });
+    const res = await request("GET", "/api/dial/org/repo");
+    assert.equal(res.body["dialLevel"], 2);
+  });
+
+  it("should still return 400 (not 422) for out-of-range levels", async () => {
+    const res = await request("POST", "/api/dial/org/repo", {
+      dialLevel: 6,
+      updatedBy: "admin",
+    });
+    assert.equal(res.status, 400);
   });
 });
 
@@ -219,7 +320,7 @@ describe("POST /api/dial/check", () => {
   });
 
   it("should allow T3 action when dial level is sufficient", async () => {
-    setDialLevel("org", "repo", 5, "admin");
+    setDialLevel("org", "repo", 3, "admin");
     const res = await request("POST", "/api/dial/check", {
       action: "edit_file",
       owner: "org",
@@ -229,8 +330,8 @@ describe("POST /api/dial/check", () => {
     assert.equal(res.body["permitted"], true);
   });
 
-  it("should deny T5 action when dial level is insufficient", async () => {
-    setDialLevel("org", "repo", 4, "admin");
+  it("should deny T5 action at the CE maximum level", async () => {
+    setDialLevel("org", "repo", 3, "admin");
     const res = await request("POST", "/api/dial/check", {
       action: "merge_pr",
       owner: "org",
@@ -242,7 +343,7 @@ describe("POST /api/dial/check", () => {
   });
 
   it("should apply environment tier cap", async () => {
-    setDialLevel("org", "repo", 5, "admin");
+    setDialLevel("org", "repo", 3, "admin");
     const res = await request("POST", "/api/dial/check", {
       action: "merge_pr",
       owner: "org",
@@ -256,7 +357,7 @@ describe("POST /api/dial/check", () => {
   });
 
   it("should report unknown actions as T3", async () => {
-    setDialLevel("org", "repo", 5, "admin");
+    setDialLevel("org", "repo", 3, "admin");
     const res = await request("POST", "/api/dial/check", {
       action: "unknown_action_xyz",
       owner: "org",
@@ -337,8 +438,8 @@ describe("Permission decision scenarios", () => {
     }
   });
 
-  it("should deny all T5 actions at level 4", async () => {
-    setDialLevel("org", "repo", 4, "admin");
+  it("should deny all T5 actions at CE maximum level 3", async () => {
+    setDialLevel("org", "repo", 3, "admin");
     const t5Actions = ["merge_pr", "deploy", "delete_branch"];
     for (const action of t5Actions) {
       const res = await request("POST", "/api/dial/check", {
@@ -346,12 +447,12 @@ describe("Permission decision scenarios", () => {
         owner: "org",
         repo: "repo",
       });
-      assert.equal(res.body["permitted"], false, `${action} should be denied at level 4`);
+      assert.equal(res.body["permitted"], false, `${action} should be denied at level 3`);
     }
   });
 
-  it("should allow T4 actions at level 4", async () => {
-    setDialLevel("org", "repo", 4, "admin");
+  it("should deny all T4 actions at CE maximum level 3 (Enterprise-only tier)", async () => {
+    setDialLevel("org", "repo", 3, "admin");
     const t4Actions = ["push_commit", "create_pr", "approve_pr"];
     for (const action of t4Actions) {
       const res = await request("POST", "/api/dial/check", {
@@ -359,12 +460,26 @@ describe("Permission decision scenarios", () => {
         owner: "org",
         repo: "repo",
       });
-      assert.equal(res.body["permitted"], true, `${action} should be permitted at level 4`);
+      assert.equal(res.body["permitted"], false, `${action} should be denied at level 3`);
+      assert.equal(res.body["requiredLevel"], 4);
+    }
+  });
+
+  it("should allow T3 actions at CE maximum level 3", async () => {
+    setDialLevel("org", "repo", 3, "admin");
+    const t3Actions = ["edit_file", "create_branch", "assign_user"];
+    for (const action of t3Actions) {
+      const res = await request("POST", "/api/dial/check", {
+        action,
+        owner: "org",
+        repo: "repo",
+      });
+      assert.equal(res.body["permitted"], true, `${action} should be permitted at level 3`);
     }
   });
 
   it("should cap production environment at level 3", async () => {
-    setDialLevel("org", "repo", 5, "admin");
+    setDialLevel("org", "repo", 3, "admin");
     // T3 action (requires 3) should be allowed in production (capped at 3)
     const t3 = await request("POST", "/api/dial/check", {
       action: "edit_file",
@@ -385,15 +500,17 @@ describe("Permission decision scenarios", () => {
     assert.equal(t5.body["permitted"], false);
   });
 
-  it("should cap staging environment at level 4", async () => {
-    setDialLevel("org", "repo", 5, "admin");
-    const res = await request("POST", "/api/dial/check", {
-      action: "push_commit",
-      owner: "org",
-      repo: "repo",
-      environment: "staging",
-    });
-    assert.equal(res.body["permitted"], true);
-    assert.equal(res.body["effectiveLevel"], 4);
+  it("should cap every environment at CE maximum level 3", async () => {
+    setDialLevel("org", "repo", 3, "admin");
+    for (const environment of ["local", "dev", "staging", "production"]) {
+      const res = await request("POST", "/api/dial/check", {
+        action: "push_commit",
+        owner: "org",
+        repo: "repo",
+        environment,
+      });
+      assert.equal(res.body["permitted"], false, `push_commit should be denied in ${environment}`);
+      assert.equal(res.body["effectiveLevel"], 3, `${environment} should cap at 3`);
+    }
   });
 });
