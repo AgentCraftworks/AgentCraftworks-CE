@@ -5,7 +5,7 @@
  * Part of the Autonomy Dial system for dynamic AI agent permission control.
  *
  * Ported from the reference JS codebase (autonomy-dial.js).
- * The JS version uses PostgreSQL; this hackathon version uses in-memory Map.
+ * The JS version uses PostgreSQL; this Community Edition version uses an in-memory Map.
  */
 
 import type {

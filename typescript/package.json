@@ -1,5 +1,5 @@
 {
-  "name": "@agentcraftworks/core",
+  "name": "@agentcraftworks/ce",
   "version": "0.1.0",
   "description": "Open Protocol for AI Agent Governance — engagement levels, handoff FSM, CODEOWNERS routing, MCP tools",
   "main": "dist/index.js",
@@ -16,8 +16,7 @@
     "governance",
     "mcp",
     "github-app",
-    "devops",
-    "hackathon"
+    "devops"
   ],
   "author": "AICraftworks LLC",
   "license": "MIT",
