@@ -1,0 +1,25 @@
+── 0. Health check
+{"status":"ok","version":"1.0.0-ts","uptime":12.34,"timestamp":"2026-09-18T20:37:22.409Z"}
+HTTP 200
+
+── 1. Read the current level for octo/demo (default is 1 = observer)
+{"repoOwner":"octo","repoName":"demo","dialLevel":1,"updatedBy":null,"updatedAt":null,"createdAt":null,"isDefault":true,"engagementLevel":"observer"}
+HTTP 200
+
+── 2. Set the level to 3 (collaborator) — the CE maximum
+{"repoOwner":"octo","repoName":"demo","dialLevel":3,"updatedBy":"demo-user","updatedAt":"2026-09-18T20:37:22.459Z","createdAt":"2026-09-18T20:37:22.459Z","isDefault":false,"engagementLevel":"collaborator"}
+HTTP 200
+
+── 3. Ask whether a T2 action (add_label) is permitted in production → permitted
+{"action":"add_label","tier":"T2","tierName":"Informational","isKnownAction":true,"permitted":true,"dialLevel":3,"effectiveLevel":3,"requiredLevel":2,"reason":"Action permitted: effective level 3 meets requirement 2 for T2","environment":"production"}
+HTTP 200
+
+── 4. Ask whether a T4 action (push_commit) is permitted in production → BLOCKED
+{"action":"push_commit","tier":"T4","tierName":"Commit","isKnownAction":true,"permitted":false,"dialLevel":3,"effectiveLevel":3,"requiredLevel":4,"reason":"Action blocked: effective level 3 insufficient for T4, requires 4","environment":"production"}
+HTTP 200
+
+── 5. Try to raise the dial to 4 (delegated) → rejected: levels 4–5 require Enterprise
+{"error":"Unprocessable Entity","code":"ENTERPRISE_REQUIRED","message":"Engagement levels 4–5 (Delegated, Autonomous) require AgentCraftworks Enterprise — https://agentcraftworks.com","requestedLevel":4,"requestedLevelName":"delegated","maxLevel":3,"upgradeUrl":"https://agentcraftworks.com"}
+HTTP 422
+
+Done. Compare with expected-output.txt in this folder.
