@@ -5,11 +5,14 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:express --external:@octokit/rest --external:@octokit/webhooks --external:dotenv --external:ajv --external:jsonwebtoken --external:express-rate-limit",
+    "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:express --external:@octokit/rest --external:@octokit/webhooks --external:ajv --external:jsonwebtoken --external:express-rate-limit",
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/**/*.test.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "start:env": "node --env-file=../.env dist/index.js",
+    "mcp": "node --import tsx src/mcp/server.ts",
+    "mcp:env": "node --env-file=../.env --import tsx src/mcp/server.ts"
   },
   "keywords": [
     "ai-agents",
@@ -34,7 +37,6 @@
     "@octokit/rest": "^22.0.1",
     "@octokit/webhooks": "^14.2.0",
     "ajv": "^8.17.1",
-    "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
     "jsonwebtoken": "^9.0.3"

@@ -6,10 +6,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install all dependencies (dev deps are needed for esbuild/tsc)
 RUN npm ci
 
-# Copy source code
+# Copy source code (see .dockerignore for what is excluded)
 COPY . .
 
 # Build the application
@@ -20,20 +20,26 @@ FROM node:22-alpine
 
 WORKDIR /app
 
+ENV NODE_ENV=production
+
 # Copy package files
-COPY package*.json ./
+COPY --chown=node:node package*.json ./
 
 # Install production dependencies only
-RUN npm ci --production
+RUN npm ci --omit=dev
 
 # Copy built application from builder
-COPY --from=builder /app/dist ./dist
+COPY --chown=node:node --from=builder /app/dist ./dist
 
-# Expose port
+# Run as the unprivileged user shipped with the official Node image
+USER node
+
+# Expose port (default PORT in src/index.ts is 3000)
 EXPOSE 3000
 
-# Set environment
-ENV NODE_ENV=production
+# Container-level health check against GET /health (wget ships with alpine)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- "http://localhost:${PORT:-3000}/health" || exit 1
 
 # Start the application
 CMD ["node", "dist/index.js"]
