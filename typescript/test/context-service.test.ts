@@ -15,8 +15,8 @@ import {
   getContextsByHandoff,
   queryContexts,
   clearAllContexts,
-  type RegisterSchemaInput,
 } from "../src/services/context-service.js";
+import type { RegisterSchemaInput } from "../src/types/context.js";
 import type { JSONSchemaType } from "ajv";
 
 describe("Context Service", () => {
@@ -283,9 +283,11 @@ describe("Context Service", () => {
 
     it("should get context by ID", () => {
       const contexts = getContextsByHandoff(handoffId1);
-      const context = getContext(contexts[0].id);
+      const first = contexts[0];
+      assert.ok(first);
+      const context = getContext(first.id);
       assert.ok(context);
-      assert.strictEqual(context.id, contexts[0].id);
+      assert.strictEqual(context.id, first.id);
     });
 
     it("should return null for unknown ID", () => {

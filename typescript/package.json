@@ -7,8 +7,9 @@
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:express --external:@octokit/rest --external:@octokit/webhooks --external:dotenv --external:ajv --external:jsonwebtoken --external:express-rate-limit",
     "dev": "tsx watch src/index.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "test": "node --import tsx --test test/**/*.test.ts",
+    "test:coverage": "c8 --include=src/jobs/** --reporter=text --reporter=text-summary node --import tsx --test test/**/*.test.ts",
     "start": "node dist/index.js"
   },
   "keywords": [
@@ -25,6 +26,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.2.3",
+    "c8": "^12.0.0",
     "esbuild": "^0.28.1",
     "tsx": "^4.22.4",
     "typescript": "^5.9.3"

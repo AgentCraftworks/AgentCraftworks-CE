@@ -8,7 +8,7 @@ name: "GH-AW: Code Simplifier"
 
 on:
   schedule:
-    - cron: "0 11 * * *"
+    - cron: "0 10 * * 3"
   workflow_dispatch:
 
 permissions:

@@ -4,7 +4,15 @@
 
 # GH-AW Workflows
 
-AgentCraftworks uses **GitHub Agentic Workflows (GH-AW)** to automate development tasks. These workflows run as GitHub Actions and integrate with AI to perform intelligent automation.
+AgentCraftworks uses **GitHub Agentic Workflows (GH-AW)** to automate development tasks. These workflows run as GitHub Actions and implement the agentic-workflow patterns from [githubnext/agentics](https://github.com/githubnext/agentics) as deterministic scripts.
+
+## How these workflows work
+
+> **No LLM calls.** Every GH-AW job in this repository (`typescript/src/jobs/*.ts`) is a **deterministic, heuristic automation**: it reads GitHub data through the REST API, applies regex/keyword rules and simple scoring, and writes the result back as a comment, label, issue, or PR. None of them call Copilot, OpenAI, Azure OpenAI, or any other model. Their output is reproducible for the same input and costs nothing beyond Actions minutes and API requests.
+>
+> Names like "CI Coach" or "Grumpy Reviewer" describe the *role* of the automation, not an AI persona. If a job's heuristics do not fit your project, the rule tables at the top of each job file are the place to tune them.
+
+Schedules below are the authoritative crons from `.github/ghaw-config.json`; `node scripts/check-ghaw-config.mjs` (run in CI) fails if a workflow file or this table drifts from that config.
 
 ## Available Workflows
 
@@ -14,7 +22,7 @@ AgentCraftworks uses **GitHub Agentic Workflows (GH-AW)** to automate developmen
 |----------|---------|-------------|
 | **CI Coach** | `workflow_run` | Analyzes CI failures and suggests fixes as PR comments |
 | **CI Doctor** | `workflow_run` | Investigates CI failures and creates detailed diagnostic issues |
-| **Link Checker** | `schedule` (daily) | Finds and fixes broken links in documentation |
+| **Link Checker** | `schedule` (`0 6 * * 1`, weekly Mon 06:00 UTC) | Finds and fixes broken links in documentation |
 | **Issue Triage** | `issues` | Auto-labels and triages new issues with analysis notes |
 | **Plan Command** | `/plan` comment | Breaks down issues into actionable sub-tasks |
 
@@ -22,11 +30,11 @@ AgentCraftworks uses **GitHub Agentic Workflows (GH-AW)** to automate developmen
 
 | Workflow | Trigger | Description |
 |----------|---------|-------------|
-| **Daily Test Improver** | `schedule` (daily) | Identifies test coverage gaps and suggests new tests |
-| **Daily Doc Updater** | `schedule` (daily) | Updates documentation based on recent code changes |
-| **Sub-Issue Closer** | `schedule` (daily) | Closes parent issues when all sub-issues complete |
+| **Daily Test Improver** | `schedule` (`0 9 * * 1-5`, weekdays 09:00 UTC) | Identifies test coverage gaps and suggests new tests |
+| **Daily Doc Updater** | `schedule` (`0 8 * * 1-5`, weekdays 08:00 UTC) | Updates documentation based on recent code changes |
+| **Sub-Issue Closer** | `schedule` (`0 10 * * *`, daily 10:00 UTC) | Closes parent issues when all sub-issues complete |
 | **Grumpy Reviewer** | `/grumpy` comment | On-demand thorough code review with attitude |
-| **Code Simplifier** | `schedule` (daily) | Simplifies recently modified code while preserving functionality |
+| **Code Simplifier** | `schedule` (`0 10 * * 3`, weekly Wed 10:00 UTC) | Simplifies recently modified code while preserving functionality |
 
 ### Existing Workflows
 

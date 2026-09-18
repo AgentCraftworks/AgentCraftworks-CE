@@ -16,15 +16,85 @@
 import { Octokit } from "@octokit/rest";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { isDirectRun, runJob } from "./lib/entrypoint.js";
 
-interface ConsistencyIssue {
+export interface ConsistencyIssue {
   file: string;
   line: number;
   issue: string;
   suggestion: string;
 }
 
-async function checkRouteConsistency(handlersDir: string): Promise<ConsistencyIssue[]> {
+/** Route paths must be lowercase kebab-case (path params like `:id` are ignored). */
+export function checkRouteContent(fileLabel: string, content: string): ConsistencyIssue[] {
+  const issues: ConsistencyIssue[] = [];
+  const lines = content.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+
+    const routeMatch = line.match(/\.(get|post|put|delete|patch)\s*\(\s*["']([^"']+)["']/);
+    if (routeMatch) {
+      const path = routeMatch[2]!;
+      const segments = path.split("/").filter((s) => s && !s.startsWith(":"));
+      for (const segment of segments) {
+        if (segment !== segment.toLowerCase()) {
+          issues.push({
+            file: fileLabel,
+            line: i + 1,
+            issue: `Route segment "${segment}" is not lowercase`,
+            suggestion: `Use "${segment.toLowerCase()}" instead`,
+          });
+        }
+        if (segment.includes("_") && !segment.startsWith("_")) {
+          issues.push({
+            file: fileLabel,
+            line: i + 1,
+            issue: `Route segment "${segment}" uses underscores`,
+            suggestion: `Use kebab-case: "${segment.replace(/_/g, "-")}"`,
+          });
+        }
+      }
+    }
+  }
+
+  return issues;
+}
+
+/** MCP tool names must be lowercase snake_case. */
+export function checkMcpContent(fileLabel: string, content: string): ConsistencyIssue[] {
+  const issues: ConsistencyIssue[] = [];
+  const lines = content.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+
+    const nameMatch = line.match(/name:\s*["']([^"']+)["']/);
+    if (nameMatch) {
+      const name = nameMatch[1]!;
+      if (name !== name.toLowerCase()) {
+        issues.push({
+          file: fileLabel,
+          line: i + 1,
+          issue: `MCP tool name "${name}" contains uppercase`,
+          suggestion: `Use "${name.toLowerCase()}"`,
+        });
+      }
+      if (name.includes("-")) {
+        issues.push({
+          file: fileLabel,
+          line: i + 1,
+          issue: `MCP tool name "${name}" uses kebab-case`,
+          suggestion: `Use snake_case: "${name.replace(/-/g, "_")}"`,
+        });
+      }
+    }
+  }
+
+  return issues;
+}
+
+export async function checkRouteConsistency(handlersDir: string): Promise<ConsistencyIssue[]> {
   const issues: ConsistencyIssue[] = [];
 
   let files;
@@ -38,42 +108,13 @@ async function checkRouteConsistency(handlersDir: string): Promise<ConsistencyIs
     if (!file.endsWith(".ts")) continue;
 
     const content = await readFile(join(handlersDir, file), "utf-8");
-    const lines = content.split("\n");
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]!;
-
-      // Check route paths use kebab-case
-      const routeMatch = line.match(/\.(get|post|put|delete|patch)\s*\(\s*["']([^"']+)["']/);
-      if (routeMatch) {
-        const path = routeMatch[2]!;
-        const segments = path.split("/").filter((s) => s && !s.startsWith(":"));
-        for (const segment of segments) {
-          if (segment !== segment.toLowerCase()) {
-            issues.push({
-              file: `handlers/${file}`,
-              line: i + 1,
-              issue: `Route segment "${segment}" is not lowercase`,
-              suggestion: `Use "${segment.toLowerCase()}" instead`,
-            });
-          }
-          if (segment.includes("_") && !segment.startsWith("_")) {
-            issues.push({
-              file: `handlers/${file}`,
-              line: i + 1,
-              issue: `Route segment "${segment}" uses underscores`,
-              suggestion: `Use kebab-case: "${segment.replace(/_/g, "-")}"`,
-            });
-          }
-        }
-      }
-    }
+    issues.push(...checkRouteContent(`handlers/${file}`, content));
   }
 
   return issues;
 }
 
-async function checkMcpConsistency(mcpDir: string): Promise<ConsistencyIssue[]> {
+export async function checkMcpConsistency(mcpDir: string): Promise<ConsistencyIssue[]> {
   const issues: ConsistencyIssue[] = [];
 
   let files;
@@ -87,55 +128,13 @@ async function checkMcpConsistency(mcpDir: string): Promise<ConsistencyIssue[]> 
     if (!file.endsWith(".ts")) continue;
 
     const content = await readFile(join(mcpDir, file), "utf-8");
-    const lines = content.split("\n");
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]!;
-
-      // Check MCP tool names use snake_case
-      const nameMatch = line.match(/name:\s*["']([^"']+)["']/);
-      if (nameMatch) {
-        const name = nameMatch[1]!;
-        if (name !== name.toLowerCase()) {
-          issues.push({
-            file: `mcp/${file}`,
-            line: i + 1,
-            issue: `MCP tool name "${name}" contains uppercase`,
-            suggestion: `Use "${name.toLowerCase()}"`,
-          });
-        }
-        if (name.includes("-")) {
-          issues.push({
-            file: `mcp/${file}`,
-            line: i + 1,
-            issue: `MCP tool name "${name}" uses kebab-case`,
-            suggestion: `Use snake_case: "${name.replace(/-/g, "_")}"`,
-          });
-        }
-      }
-    }
+    issues.push(...checkMcpContent(`mcp/${file}`, content));
   }
 
   return issues;
 }
 
-async function main(): Promise<void> {
-  const token = process.env["GITHUB_TOKEN"];
-  const prNumber = process.env["PR_NUMBER"];
-  const repository = process.env["REPOSITORY"];
-
-  const srcDir = "src";
-  const allIssues: ConsistencyIssue[] = [
-    ...await checkRouteConsistency(join(srcDir, "handlers")),
-    ...await checkMcpConsistency(join(srcDir, "mcp")),
-  ];
-
-  if (allIssues.length === 0) {
-    console.log("CLI Consistency: All checks passed!");
-    return;
-  }
-
-  // Build report
+export function buildConsistencyReport(allIssues: ConsistencyIssue[]): string {
   const lines: string[] = [
     "## 🔍 CLI Consistency Report",
     "",
@@ -155,7 +154,26 @@ async function main(): Promise<void> {
     "*Generated by GH-AW CLI Consistency Checker — Engagement Level: T2 (Advisor)*",
   );
 
-  const body = lines.join("\n");
+  return lines.join("\n");
+}
+
+export async function main(): Promise<void> {
+  const token = process.env["GITHUB_TOKEN"];
+  const prNumber = process.env["PR_NUMBER"];
+  const repository = process.env["REPOSITORY"];
+
+  const srcDir = "src";
+  const allIssues: ConsistencyIssue[] = [
+    ...await checkRouteConsistency(join(srcDir, "handlers")),
+    ...await checkMcpConsistency(join(srcDir, "mcp")),
+  ];
+
+  if (allIssues.length === 0) {
+    console.log("CLI Consistency: All checks passed!");
+    return;
+  }
+
+  const body = buildConsistencyReport(allIssues);
 
   if (token && prNumber && repository) {
     const [owner, repo] = repository.split("/");
@@ -174,7 +192,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err: unknown) => {
-  console.error("CLI Consistency failed:", err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+if (isDirectRun(import.meta.url)) runJob("CLI Consistency", main);
