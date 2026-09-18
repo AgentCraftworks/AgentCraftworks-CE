@@ -16,12 +16,8 @@ param ghAppId string
 param ghAppPrivateKey string
 
 @secure()
-@description('PostgreSQL administrator password')
-param postgresPassword string
-
-@secure()
-@description('Redis primary access key')
-param redisPrimaryKey string
+@description('Bearer token protecting the REST API (/api/handoffs, /api/dial)')
+param ghApiToken string
 
 // Key Vault for secrets
 resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' = {
@@ -78,21 +74,12 @@ resource ghAppPrivateKeyResource 'Microsoft.KeyVault/vaults/secrets@2023-02-01' 
   }
 }
 
-// PostgreSQL Password
-resource postgresPasswordResource 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
+// REST API bearer token
+resource ghApiTokenResource 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
   parent: keyVault
-  name: 'POSTGRES-PASSWORD'
+  name: 'GH-CE-API-TOKEN'
   properties: {
-    value: postgresPassword
-  }
-}
-
-// Redis Primary Key
-resource redisPrimaryKeyResource 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
-  parent: keyVault
-  name: 'REDIS-PRIMARY-KEY'
-  properties: {
-    value: redisPrimaryKey
+    value: ghApiToken
   }
 }
 

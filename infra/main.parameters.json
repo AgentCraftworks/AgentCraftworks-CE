@@ -11,9 +11,6 @@
     "principalId": {
       "value": "${AZURE_PRINCIPAL_ID}"
     },
-    "postgresPassword": {
-      "value": "${postgresPassword}"
-    },
     "ghWebhookSecret": {
       "value": "${ghWebhookSecret}"
     },
@@ -22,6 +19,9 @@
     },
     "ghAppPrivateKey": {
       "value": "${ghAppPrivateKey}"
+    },
+    "ghApiToken": {
+      "value": "${ghApiToken}"
     }
   }
 }

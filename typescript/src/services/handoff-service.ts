@@ -1,7 +1,8 @@
 /**
  * Unified Handoff Service
  *
- * In-memory implementation of the handoff lifecycle.
+ * Handoff lifecycle backed by a pluggable {@link HandoffStore}
+ * (in-memory by default — see src/store/handoff-store.ts).
  * Open-source core: basic CRUD, state transitions, isOverdue.
  *
  * 4-state FSM:
@@ -36,26 +37,39 @@ import {
   isTerminalState,
   getAllowedNextStates,
 } from "../utils/handoff-state-machine.js";
+import {
+  getDefaultStore,
+  type HandoffStore,
+} from "../store/handoff-store.js";
 
-// ─── In-memory storage ──────────────────────────────────────────────────────────────
+// ─── Storage ────────────────────────────────────────────────────────────────────────
 
-const inMemoryHandoffs = new Map<string, Handoff>();
-const inMemoryStateChanges = new Map<string, StateChange[]>();
+let configuredStore: HandoffStore | null = null;
+
+function store(): HandoffStore {
+  return configuredStore ?? getDefaultStore();
+}
 
 // ─── Re-export types ────────────────────────────────────────────────────────────────
 
 export type { Handoff, HandoffState, HandoffFilters, HandoffStats };
+export type { HandoffStore };
 
 // ─── Init ───────────────────────────────────────────────────────────────────────────
 
+export interface HandoffServiceOptions {
+  /** Storage backend. Defaults to the shared in-memory store. */
+  store?: HandoffStore;
+  /** Retained for backward compatibility; the default store is already in-memory. */
+  forceInMemory?: boolean;
+}
+
 /**
  * Initialize the handoff service.
- * In this TypeScript port we always use in-memory storage.
+ * Community Edition uses the in-memory store unless a custom `store` is supplied.
  */
-export function initHandoffService(
-  _options: { forceInMemory?: boolean } = {},
-): void {
-  // Nothing to probe; always in-memory for the hackathon.
+export function initHandoffService(options: HandoffServiceOptions = {}): void {
+  configuredStore = options.store ?? null;
 }
 
 // ─── Create ─────────────────────────────────────────────────────────────────────────
@@ -116,8 +130,8 @@ export function createHandoff(
     session_id: null,
   };
 
-  inMemoryHandoffs.set(handoff_id, record);
-  inMemoryStateChanges.set(handoff_id, []);
+  store().setHandoff(handoff_id, record);
+  store().setStateChanges(handoff_id, []);
 
   return record;
 }
@@ -126,7 +140,7 @@ export function createHandoff(
 
 /** Get handoff by ID (UUID). */
 export function getHandoff(handoff_id: string): Handoff | null {
-  return inMemoryHandoffs.get(handoff_id) ?? null;
+  return store().getHandoff(handoff_id);
 }
 
 /**
@@ -136,7 +150,7 @@ export function getHandoffByPR(
   repo: string,
   prNumber: number,
 ): Handoff | null {
-  for (const h of inMemoryHandoffs.values()) {
+  for (const h of store().listHandoffs()) {
     if (h.repository_full_name === repo && h.issue_number === prNumber) {
       return h;
     }
@@ -158,7 +172,7 @@ export function listHandoffs(filters: HandoffFilters = {}): Handoff[] {
   const fromAgent = filters.from_agent;
   const repoFullName = filters.repository_full_name ?? filters.repo;
 
-  let results = Array.from(inMemoryHandoffs.values());
+  let results = store().listHandoffs();
 
   if (status) results = results.filter((h) => h.status === status);
   if (toAgent) results = results.filter((h) => h.to_agent === toAgent);
@@ -234,13 +248,12 @@ export function transitionHandoff(
       break;
   }
 
-  // Apply in-memory
   const updatedHandoff: Handoff = { ...handoff, ...updates } as Handoff;
-  inMemoryHandoffs.set(handoff_id, updatedHandoff);
+  store().setHandoff(handoff_id, updatedHandoff);
 
-  const changes = inMemoryStateChanges.get(handoff_id) ?? [];
+  const changes = store().getStateChanges(handoff_id);
   changes.push(stateChange);
-  inMemoryStateChanges.set(handoff_id, changes);
+  store().setStateChanges(handoff_id, changes);
 
   return { handoff: updatedHandoff, stateChange };
 }
@@ -348,7 +361,7 @@ export function updateHandoff(
   handoff_id: string,
   updates: Partial<Handoff>,
 ): Handoff | null {
-  const handoff = inMemoryHandoffs.get(handoff_id);
+  const handoff = store().getHandoff(handoff_id);
   if (!handoff) return null;
 
   const safeColumns = [
@@ -378,7 +391,7 @@ export function updateHandoff(
     updated_at: new Date().toISOString(),
   } as Handoff;
 
-  inMemoryHandoffs.set(handoff_id, updated);
+  store().setHandoff(handoff_id, updated);
   return updated;
 }
 
@@ -386,7 +399,7 @@ export function updateHandoff(
 
 /** Get state change history for a handoff. */
 export function getStateChangeHistory(handoff_id: string): StateChange[] {
-  return inMemoryStateChanges.get(handoff_id) ?? [];
+  return store().getStateChanges(handoff_id);
 }
 
 // ─── SLA Tracking ───────────────────────────────────────────────────────────────────
@@ -414,7 +427,7 @@ export function getActiveHandoffs(): Handoff[] {
  * Get handoff statistics.
  */
 export function getHandoffStats(): HandoffStats {
-  const allHandoffs = Array.from(inMemoryHandoffs.values());
+  const allHandoffs = store().listHandoffs();
 
   const byStatus: Partial<Record<HandoffState, number>> = {};
   for (const state of Object.values(HandoffStates)) {
@@ -473,8 +486,7 @@ export function getHandoffStats(): HandoffStats {
 
 /** Clear all handoffs (for testing). */
 export function clearAllHandoffs(): void {
-  inMemoryHandoffs.clear();
-  inMemoryStateChanges.clear();
+  store().clearHandoffs();
 }
 
 /**
@@ -484,13 +496,13 @@ export function cleanupOldHandoffs(maxAgeHours = 168): number {
   const cutoff = new Date(Date.now() - maxAgeHours * 3_600_000);
   let cleaned = 0;
 
-  for (const [id, handoff] of inMemoryHandoffs.entries()) {
+  for (const handoff of store().listHandoffs()) {
     if (
       isTerminalState(handoff.status) &&
       new Date(handoff.created_at) < cutoff
     ) {
-      inMemoryHandoffs.delete(id);
-      inMemoryStateChanges.delete(id);
+      store().deleteHandoff(handoff.handoff_id);
+      store().deleteStateChanges(handoff.handoff_id);
       cleaned++;
     }
   }

@@ -13,10 +13,6 @@ param location string
 param principalId string = ''
 
 @secure()
-@description('PostgreSQL administrator password. Generate with: openssl rand -base64 32')
-param postgresPassword string
-
-@secure()
 @description('GitHub Webhook Secret. Generate with: openssl rand -hex 32')
 param ghWebhookSecret string
 
@@ -27,6 +23,10 @@ param ghAppId string
 @secure()
 @description('GitHub App Private Key (PEM format)')
 param ghAppPrivateKey string
+
+@secure()
+@description('Bearer token protecting the REST API (/api/handoffs, /api/dial). Generate with: openssl rand -hex 32')
+param ghApiToken string
 
 // Tags that should be applied to all resources
 var tags = {
@@ -66,35 +66,13 @@ module keyVault './keyvault.bicep' = {
     ghWebhookSecret: ghWebhookSecret
     ghAppId: ghAppId
     ghAppPrivateKey: ghAppPrivateKey
-    postgresPassword: postgresPassword
-    redisPrimaryKey: redis.outputs.redisPrimaryKey
-  }
-}
-
-// Deploy PostgreSQL database
-module postgres './postgres.bicep' = {
-  name: 'postgres'
-  scope: rg
-  params: {
-    location: location
-    tags: tags
-    resourceToken: resourceToken
-    postgresPassword: postgresPassword
-  }
-}
-
-// Deploy Redis cache
-module redis './redis.bicep' = {
-  name: 'redis'
-  scope: rg
-  params: {
-    location: location
-    tags: tags
-    resourceToken: resourceToken
+    ghApiToken: ghApiToken
   }
 }
 
 // Deploy TypeScript Container App
+// Community Edition keeps all handoff state in memory (see docs/architecture.md → Storage),
+// so no database or cache is provisioned and the app runs as a single replica.
 module appTs './app-ts.bicep' = {
   name: 'app-ts'
   scope: rg
@@ -105,9 +83,6 @@ module appTs './app-ts.bicep' = {
     containerAppsEnvironmentId: resources.outputs.containerAppsEnvironmentId
     containerRegistryName: resources.outputs.containerRegistryName
     keyVaultName: keyVault.outputs.keyVaultName
-    postgresHost: postgres.outputs.postgresHost
-    redisHost: redis.outputs.redisHost
-    redisPort: redis.outputs.redisPort
   }
 }
 
@@ -118,7 +93,5 @@ output AZURE_RESOURCE_GROUP string = rg.name
 output AZURE_CONTAINER_REGISTRY_NAME string = resources.outputs.containerRegistryName
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.containerRegistryLoginServer
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.keyVaultName
-output AZURE_POSTGRES_HOST string = postgres.outputs.postgresHost
-output AZURE_REDIS_HOST string = redis.outputs.redisHost
 output AZURE_CONTAINER_APP_NAME string = appTs.outputs.containerAppName
 output TYPESCRIPT_APP_URL string = appTs.outputs.appUrl

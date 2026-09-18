@@ -9,7 +9,7 @@
  * - JSON Schema validation on write
  * - CRUD operations for contexts
  * - Schema registry management
- * - In-memory storage (matching handoff-service pattern)
+ * - Backed by the shared HandoffStore (in-memory by default)
  */
 
 import Ajv, { type JSONSchemaType } from "ajv";
@@ -22,11 +22,18 @@ import type {
   ContextFilters,
 } from "../types/context.js";
 import { BUILT_IN_SCHEMAS } from "./context-schemas.js";
+import {
+  getDefaultStore,
+  type HandoffStore,
+} from "../store/handoff-store.js";
 
-// ─── In-memory storage ──────────────────────────────────────────────────────────────
+// ─── Storage ────────────────────────────────────────────────────────────────────────
 
-const inMemoryContexts = new Map<string, Context>();
-const inMemorySchemas = new Map<string, ContextSchema>();
+let configuredStore: HandoffStore | null = null;
+
+function store(): HandoffStore {
+  return configuredStore ?? getDefaultStore();
+}
 
 // ─── JSON Schema validator ──────────────────────────────────────────────────────────
 
@@ -35,9 +42,12 @@ const ajv = new Ajv({ allErrors: true, strict: true });
 // ─── Init ───────────────────────────────────────────────────────────────────────────
 
 /**
- * Initialize the context service and register built-in schemas
+ * Initialize the context service and register built-in schemas.
+ * Community Edition uses the in-memory store unless a custom `store` is supplied.
  */
-export function initContextService(): void {
+export function initContextService(options: { store?: HandoffStore } = {}): void {
+  configuredStore = options.store ?? null;
+
   // Register built-in schemas
   for (const schemaInput of BUILT_IN_SCHEMAS) {
     registerSchema(schemaInput);
@@ -53,7 +63,7 @@ export function registerSchema(input: RegisterSchemaInput): ContextSchema {
   const now = new Date().toISOString();
 
   // Check if schema already exists
-  if (inMemorySchemas.has(input.name)) {
+  if (store().getSchema(input.name)) {
     throw new Error(`Schema '${input.name}' already registered`);
   }
 
@@ -75,7 +85,7 @@ export function registerSchema(input: RegisterSchemaInput): ContextSchema {
     updated_at: now,
   };
 
-  inMemorySchemas.set(schema.name, schema);
+  store().setSchema(schema.name, schema);
   return schema;
 }
 
@@ -83,14 +93,14 @@ export function registerSchema(input: RegisterSchemaInput): ContextSchema {
  * Get a schema by name
  */
 export function getSchema(name: string): ContextSchema | null {
-  return inMemorySchemas.get(name) ?? null;
+  return store().getSchema(name);
 }
 
 /**
  * List all registered schemas
  */
 export function listSchemas(): ContextSchema[] {
-  return Array.from(inMemorySchemas.values());
+  return store().listSchemas();
 }
 
 // ─── Context CRUD ───────────────────────────────────────────────────────────────────
@@ -100,7 +110,7 @@ export function listSchemas(): ContextSchema[] {
  */
 export function createContext(input: CreateContextInput): Context {
   // Get the schema
-  const schema = inMemorySchemas.get(input.schema_name);
+  const schema = store().getSchema(input.schema_name);
   if (!schema) {
     throw new Error(`Schema '${input.schema_name}' not found`);
   }
@@ -127,7 +137,7 @@ export function createContext(input: CreateContextInput): Context {
     created_at: now,
   };
 
-  inMemoryContexts.set(context.id, context);
+  store().setContext(context.id, context);
   return context;
 }
 
@@ -135,23 +145,23 @@ export function createContext(input: CreateContextInput): Context {
  * Get a context by ID
  */
 export function getContext(id: string): Context | null {
-  return inMemoryContexts.get(id) ?? null;
+  return store().getContext(id);
 }
 
 /**
  * Get all contexts for a handoff
  */
 export function getContextsByHandoff(handoff_id: string): Context[] {
-  return Array.from(inMemoryContexts.values()).filter(
-    (c) => c.handoff_id === handoff_id,
-  );
+  return store()
+    .listContexts()
+    .filter((c) => c.handoff_id === handoff_id);
 }
 
 /**
  * Query contexts with filters
  */
 export function queryContexts(filters: ContextFilters): Context[] {
-  let results = Array.from(inMemoryContexts.values());
+  let results = store().listContexts();
 
   if (filters.handoff_id) {
     results = results.filter((c) => c.handoff_id === filters.handoff_id);
@@ -169,9 +179,8 @@ export function queryContexts(filters: ContextFilters): Context[] {
 }
 
 /**
- * Clear all in-memory data (for testing)
+ * Clear all contexts and schemas (for testing)
  */
 export function clearAllContexts(): void {
-  inMemoryContexts.clear();
-  inMemorySchemas.clear();
+  store().clearContexts();
 }

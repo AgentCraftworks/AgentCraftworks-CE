@@ -4,9 +4,6 @@ param resourceToken string
 param containerAppsEnvironmentId string
 param containerRegistryName string
 param keyVaultName string
-param postgresHost string
-param redisHost string
-param redisPort int
 
 @description('Container image to deploy. Defaults to a public placeholder for initial provisioning.')
 param imageName string = ''
@@ -105,13 +102,8 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
           identity: managedIdentity.id
         }
         {
-          name: 'postgres-password'
-          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/POSTGRES-PASSWORD'
-          identity: managedIdentity.id
-        }
-        {
-          name: 'redis-primary-key'
-          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/REDIS-PRIMARY-KEY'
+          name: 'gh-ce-api-token'
+          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/GH-CE-API-TOKEN'
           identity: managedIdentity.id
         }
       ]
@@ -134,49 +126,23 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'PORT'
               value: '3000'
             }
+            // Env names must match what the runtime reads (typescript/src/utils/auth.ts,
+            // middleware/api-auth.ts): the GH_CE_* prefix, not GH_*.
             {
-              name: 'GH_WEBHOOK_SECRET'
+              name: 'GH_CE_WEBHOOK_SECRET'
               secretRef: 'gh-webhook-secret'
             }
             {
-              name: 'GH_APP_ID'
+              name: 'GH_CE_APP_ID'
               secretRef: 'gh-app-id'
             }
             {
-              name: 'GH_APP_PRIVATE_KEY'
+              name: 'GH_CE_APP_PRIVATE_KEY'
               secretRef: 'gh-app-private-key'
             }
             {
-              name: 'POSTGRES_HOST'
-              value: postgresHost
-            }
-            {
-              name: 'POSTGRES_DATABASE'
-              value: 'agentcraftworks'
-            }
-            {
-              name: 'POSTGRES_USER'
-              value: 'agentcraftworks'
-            }
-            {
-              name: 'POSTGRES_PASSWORD'
-              secretRef: 'postgres-password'
-            }
-            {
-              name: 'REDIS_HOST'
-              value: redisHost
-            }
-            {
-              name: 'REDIS_PORT'
-              value: string(redisPort)
-            }
-            {
-              name: 'REDIS_PASSWORD'
-              secretRef: 'redis-primary-key'
-            }
-            {
-              name: 'REDIS_SSL'
-              value: 'true'
+              name: 'GH_CE_API_TOKEN'
+              secretRef: 'gh-ce-api-token'
             }
           ]
           probes: [
@@ -203,9 +169,11 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
           ]
         }
       ]
+      // Handoff/dial/context state lives in process memory (InMemoryHandoffStore).
+      // Multiple replicas would each hold divergent state, so CE is pinned to one.
       scale: {
         minReplicas: 1
-        maxReplicas: 3
+        maxReplicas: 1
       }
     }
   }

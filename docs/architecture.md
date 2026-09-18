@@ -86,6 +86,31 @@ stateDiagram-v2
 - `failed` always carries a reason prefix: `rejected:`, `abandoned:`, `error:` or `timeout:`.
 - `overdue` is a **computed property**, not a stored state.
 
+## Storage
+
+Community Edition keeps all runtime state — handoffs, state-change history, engagement-level
+(dial) settings and attached contexts — **in process memory**.
+
+```mermaid
+graph LR
+    handoffSvc["handoff-service"] --> store
+    dialSvc["autonomy-dial"] --> store
+    contextSvc["context-service"] --> store
+    store["HandoffStore (interface)<br/>typescript/src/store/handoff-store.ts"]
+    store --> mem["InMemoryHandoffStore<br/>(Community Edition)"]
+    store -.-> durable["Durable / multi-replica store<br/>(Enterprise)"]
+```
+
+- **Single replica.** The Container App is pinned to `minReplicas: 1` / `maxReplicas: 1`
+  because each replica would hold its own copy of the state.
+- **State resets on restart.** A redeploy, crash or new revision clears every handoff;
+  GitHub issues and PRs remain the durable record of what happened.
+- **No database or cache is provisioned.** `infra/`, `docker-compose.yml` and `.env.example`
+  contain no database or cache wiring.
+- **Pluggable.** The three services read and write through the `HandoffStore` interface, and
+  each `init*` function accepts a `store` option. Durable, multi-replica storage is an
+  **Enterprise** feature — CE ships `InMemoryHandoffStore` only.
+
 ## MCP Tool Reference
 
 | Tool | Description |
