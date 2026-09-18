@@ -180,10 +180,12 @@ export async function webhookHandler(
     }
 
     if (event === "installation" || event === "installation_repositories") {
+      // Scaffolding runs on the in-process queue; acknowledge immediately so
+      // the delivery completes within GitHub's 10 s window.
       const result = await handleInstallationEvent(
         req.body as InstallationPayload,
       );
-      res.status(200).json(result);
+      res.status(202).json(result);
       return;
     }
 
