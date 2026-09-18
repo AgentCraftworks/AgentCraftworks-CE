@@ -10,6 +10,7 @@ import dialRouter from "./handlers/autonomy-dial-routes.js";
 import handoffRouter from "./handlers/handoff-api.js";
 import { webhookHandler } from "./handlers/pull-request.js";
 import { verifyWebhookSignatureMiddleware } from "./middleware/webhook-signature.js";
+import { apiAuth, apiRateLimiter } from "./middleware/api-auth.js";
 import { initHandoffService } from "./services/handoff-service.js";
 import { initContextService } from "./services/context-service.js";
 
@@ -110,8 +111,9 @@ app.post(
   },
 );
 
-app.use("/api/handoffs", handoffRouter);
-app.use("/api/dial", dialRouter);
+// Non-webhook REST surface: per-IP rate limit first (cheap rejection), then bearer auth.
+app.use("/api/handoffs", apiRateLimiter, apiAuth, handoffRouter);
+app.use("/api/dial", apiRateLimiter, apiAuth, dialRouter);
 
 app.listen(PORT, () => {
   console.log(`AgentCraftworks (TypeScript) listening on port ${PORT}`);
