@@ -45,7 +45,11 @@ All agent actions are classified into tiers (T1-T5) and validated against the cu
 
 ### Rate Limiting
 
-Webhook endpoints include rate limiting to prevent abuse.
+Webhook endpoints include rate limiting to prevent abuse, keyed by GitHub App installation ID (falling back to client IP). The REST API (`/api/handoffs`, `/api/dial`) has a separate per-IP limiter (`API_RATE_LIMIT`, default 60 requests/minute).
+
+### REST API Authentication
+
+The REST API (`/api/handoffs`, `/api/dial`) is protected by a shared bearer token: every request must send `Authorization: Bearer <token>` matching `GH_CE_API_TOKEN`, compared with a timing-safe equality check. The webhook endpoint (`/api/webhook`) is **not** bearer-protected — it is authenticated by HMAC-SHA256 signature instead. The API fails closed: when `NODE_ENV=production` and `GH_CE_API_TOKEN` is unset, the REST routes return `503` with an operator-facing error rather than serving unauthenticated traffic. In `development`/`test` the routes remain open and a single warning is logged. `/health` is unauthenticated.
 
 ## Dependencies
 
