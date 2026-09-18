@@ -30,7 +30,7 @@ graph TD
         eventFsm["Handoff FSM<br/>pending → active → completed | failed"]
         engagementLevels["Agent Engagement Levels<br/>Observer → Autonomous"]
         codeownersRouter["CODEOWNERS Router"]
-        mcpServer["MCP Server<br/>6 Core Tools"]
+        mcpServer["MCP Server<br/>6-tool subset"]
     end
 
     subgraph Actions["Agent Actions"]

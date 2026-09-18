@@ -8,7 +8,6 @@
 [![Node.js 22+](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/built%20with-TypeScript-blue)](https://www.typescriptlang.org)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-purple)](https://modelcontextprotocol.io)
-[![Hackathon](https://img.shields.io/badge/Microsoft%20AI%20Dev%20Days-2026-orange)](https://github.com/Azure/AI-Dev-Days-Hackathon)
 
 [Quick Start](#quick-start) · [How It Works](#how-it-works) · [Enterprise](#enterprise-edition) · [Docs](#documentation) · [Contribute](#contributing)
 
@@ -24,7 +23,14 @@ AI coding agents are powerful — but completely ungoverned. They merge PRs with
 
 ## What AgentCraftworks Community Edition Does
 
-AgentCraftworks Community Edition is a GitHub App + MCP server that intercepts every agent action and routes it through **configurable Agent Engagement Levels** before it reaches your codebase. Even when your team runs agents at full autonomy in development, CE keeps a human in the loop for production.
+AgentCraftworks Community Edition is a GitHub App + MCP server that provides the open protocol layer for agentic DevOps: a handoff finite state machine, the **Agent Engagement Levels** model, a 6-tool MCP server, and a GitHub App that opens a reviewable CODEOWNERS setup PR on install. It routes pull-request events by label and, once #266 lands, by CODEOWNERS. Even when your team runs agents at full autonomy in development, CE keeps a human in the loop for production.
+
+> **What CE is / isn't**
+>
+> - **Is:** the MIT-licensed protocol layer — the handoff FSM, engagement-level model, and the 6-tool MCP subset that AgentCraftworks Enterprise is compatible with.
+> - **Isn't:** the core that Enterprise is built on, and not a stripped-down Enterprise. Enterprise ships a 46-tool MCP catalogue plus orchestration and governance layers that are not in this repo.
+>
+> The full edition comparison lives in [docs/EDITIONS.md](docs/EDITIONS.md). <!-- TODO(#243): docs/EDITIONS.md is being authored in #243 -->
 
 ## SDLC Lifecycle Strategy
 
@@ -61,7 +67,7 @@ Pull Request / Push Event
 | Feature | Description |
 |---|---|
 | **Agent Engagement Levels** | 5-level governance control (Observer → Autonomous) — set per-repo, per-team, per-event type |
-| **MCP 6-Tool Interface** | Standard MCP server for agent handoffs: `create_handoff`, `accept_handoff`, `complete_handoff`, `query_workflow_state`, `attach_context`, `get_context` |
+| **MCP 6-Tool Interface** | The 6-tool subset of the Enterprise MCP catalogue, exposed as a standard MCP server for agent handoffs: `create_handoff`, `accept_handoff`, `complete_handoff`, `query_workflow_state`, `attach_context`, `get_context` |
 | **Finite State Machine** | Every handoff is a state transition — auditable, reproducible |
 | **CODEOWNERS Routing** | Events routed to the right agent based on ownership rules |
 | **Webhook Handling** | Handles GitHub PR, push, issue, and workflow events |
@@ -156,7 +162,7 @@ machine-readable. `overdue` is a **computed property**, not a stored state.
 This makes every agent action **auditable and reproducible** — essential for enterprise compliance.
 
 ### 3. MCP-Compatible
-AgentCraftworks Community Edition ships a fully compliant Model Context Protocol (MCP) server. Any MCP-capable AI client (GitHub Copilot, Claude, GPT-4) can connect and use the 6 core tools:
+AgentCraftworks Community Edition ships a fully compliant Model Context Protocol (MCP) server. Any MCP-capable AI client (GitHub Copilot, Claude, GPT-4) can connect and use the 6 tools below — CE exposes 6 of the 46 MCP tools in the Enterprise catalogue:
 
 | Tool | Description |
 |---|---|
@@ -181,7 +187,7 @@ The paid [AgentCraftworks Enterprise](https://agentcraftworks.com) extends CE wi
 | **Audit Trail** | Full rate-limiting audit log — 429 events, circuit breaker transitions, zone changes, and lease reclaims |
 | **Quarantine Bridge** | Abuse detection and automatic quarantine for agents exceeding rate thresholds |
 
-All Enterprise features build on the same finite state machine (FSM), CODEOWNERS routing, and MCP tool interface that CE provides — they add the orchestration and governance layers needed for production-scale multi-agent workflows.
+Enterprise includes the same finite state machine (FSM) and 6-tool MCP contract as a compatible subset, and adds the orchestration and governance layers needed for production-scale multi-agent workflows. CE exposes 6 of the 46 MCP tools in the Enterprise catalogue. See [docs/EDITIONS.md](docs/EDITIONS.md) for the full comparison. <!-- TODO(#243): docs/EDITIONS.md is being authored in #243 -->
 
 Learn more at [AgentCraftworks.com](https://agentcraftworks.com).
 

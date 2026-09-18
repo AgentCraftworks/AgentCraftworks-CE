@@ -2,7 +2,7 @@
  * Unified Handoff Service
  *
  * In-memory implementation of the handoff lifecycle.
- * Open-source core: basic CRUD, state transitions, isOverdue.
+ * Community Edition subset: basic CRUD, state transitions, isOverdue.
  *
  * 4-state FSM:
  *   pending → active → completed
@@ -55,7 +55,7 @@ export type { Handoff, HandoffState, HandoffFilters, HandoffStats };
 export function initHandoffService(
   _options: { forceInMemory?: boolean } = {},
 ): void {
-  // Nothing to probe; always in-memory for the hackathon.
+  // Nothing to probe; Community Edition is always in-memory.
 }
 
 // ─── Create ─────────────────────────────────────────────────────────────────────────

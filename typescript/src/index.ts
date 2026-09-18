@@ -1,5 +1,5 @@
 /**
- * AgentCraftworks Open-Source Core
+ * AgentCraftworks Community Edition — open protocol layer (subset of AgentCraftworks Enterprise)
  * Webhook-driven GitHub App for AI agent orchestration
  */
 
