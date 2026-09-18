@@ -223,19 +223,35 @@ cd typescript
 # Install dependencies
 npm install
 
-# Set environment variables
-export GH_CE_APP_ID=123456
-export GH_CE_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)"
-export GH_CE_WEBHOOK_SECRET=your_webhook_secret
-export PORT=3000
+# Configure environment (repo-root .env, loaded by Node's --env-file)
+cp ../.env.example ../.env
+# Edit ../.env and set GH_CE_APP_ID, GH_CE_APP_PRIVATE_KEY, GH_CE_WEBHOOK_SECRET (PORT defaults to 3000)
 
 # Development mode (watch)
 npm run dev
 
 # Production build
 npm run build
-npm start
+npm run start:env        # node --env-file=../.env dist/index.js
 ```
+
+The service reads configuration from the process environment only; nothing loads
+`.env` implicitly. `npm run start:env` (and `npm run mcp:env` for the stdio MCP
+server) pass `--env-file=../.env` to Node so the same command works in bash and
+PowerShell. If the variables are already exported in your shell or injected by CI,
+use plain `npm start` / `npm run mcp`.
+
+### Running the MCP server
+
+The MCP server uses the **stdio transport** — there is no HTTP endpoint for it.
+
+```bash
+cd typescript
+npm run mcp              # or: npm run mcp:env to load ../.env first
+```
+
+MCP clients launch it as a subprocess; see the repo-root [`.mcp.json`](.mcp.json)
+for a ready-made client configuration entry.
 
 ### Building the Docker Image Directly
 
@@ -458,7 +474,7 @@ AgentCraftworks Community Edition enforces the following protection rules to ens
 Both `main` and `staging` branches are protected with:
 
 - **Required status checks (strict):**
-  - `build-and-test` — TypeScript compilation, linting, and tests
+  - `build-and-test` — TypeScript type-check (`npm run typecheck`), build, and tests
   - `cla` — Contributor License Agreement check
 - **Additional conditional checks (via rulesets / required workflows):**
   - `ghaw-accessibility-review` — WCAG 2.2 AA conformance (runs on all PRs; posts checklist only when UI/content files are changed)

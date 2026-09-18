@@ -111,19 +111,22 @@ npm install
 cp ../.env.example ../.env
 # Add your GitHub App credentials — see DEPLOYMENT.md for how to create the App
 
-# Load environment variables (the service reads from the process environment, not .env automatically)
-set -a && source ../.env && set +a
-
 # Build and start
 npm run build
-npm start
+npm run start:env
 ```
+
+`npm run start:env` runs `node --env-file=../.env dist/index.js`, so the repo-root
+`.env` is loaded by Node itself — no shell `source`/`export` step, and it works the
+same in bash, zsh and PowerShell. (On PowerShell use `Copy-Item ..\.env.example ..\.env`
+instead of `cp`.) If you set the variables in your environment some other way
+(CI, a secrets manager, `docker compose`), plain `npm start` skips the `.env` file.
 
 Full instructions, including Docker Compose and Azure deployment, are in **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 **Webhook endpoint:** `POST /api/webhook`  
 **Health check:** `GET /health`  
-**MCP tools:** `GET /mcp/tools`
+**MCP server:** `npm run mcp` (stdio transport, not HTTP) — see [`.mcp.json`](.mcp.json) for an MCP client configuration example, and [MCP-Compatible](#3-mcp-compatible) below for the tool list
 
 ## How It Works
 
@@ -214,8 +217,8 @@ We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) 
 # Run tests
 cd typescript && npm test
 
-# Lint
-npm run lint
+# Type-check (strict TypeScript; there is no separate lint script)
+npm run typecheck
 ```
 
 ## License
