@@ -1,0 +1,109 @@
+[server] AgentCraftworks MCP server (TypeScript) running on stdio
+Connected to MCP server "agent-craftworks" v1.0.0-ts
+
+Tools exposed (6): create_handoff, accept_handoff, complete_handoff, query_workflow_state, attach_context, get_context
+
+▶ create_handoff({"to_agent":"@code-reviewer","task":"Review PR #42: docs: add accessibility statement","context":"First handoff from the CE demo","priority":"high","repository":"octo/demo","issue_number":42,"sla_hours":4})
+{
+  "success": true,
+  "handoff_id": "9318680c-1a35-40cb-8972-705a6cba6ff9",
+  "status": "pending",
+  "to_agent": "@code-reviewer",
+  "task": "Review PR #42: docs: add accessibility statement",
+  "priority": "high",
+  "sla_deadline": "2026-09-19T00:36:15.823Z",
+  "created_at": "2026-09-18T20:36:15.824Z"
+}
+
+▶ query_workflow_state({"handoff_id":"9318680c-1a35-40cb-8972-705a6cba6ff9"})
+{
+  "handoff_id": "9318680c-1a35-40cb-8972-705a6cba6ff9",
+  "status": "pending",
+  "from_agent": "mcp-client",
+  "to_agent": "@code-reviewer",
+  "task": "Review PR #42: docs: add accessibility statement",
+  "priority": "high",
+  "created_at": "2026-09-18T20:36:15.824Z",
+  "updated_at": "2026-09-18T20:36:15.824Z",
+  "sla_deadline": "2026-09-19T00:36:15.823Z",
+  "repository": "octo/demo",
+  "issue_number": 42
+}
+
+▶ accept_handoff({"handoff_id":"9318680c-1a35-40cb-8972-705a6cba6ff9","agent_name":"@code-reviewer","notes":"On it."})
+{
+  "success": true,
+  "handoff_id": "9318680c-1a35-40cb-8972-705a6cba6ff9",
+  "status": "active",
+  "agent": "@code-reviewer",
+  "task": "Review PR #42: docs: add accessibility statement",
+  "accepted_at": "2026-09-18T20:36:15.826Z",
+  "notes": "On it."
+}
+
+▶ attach_context({"handoff_id":"9318680c-1a35-40cb-8972-705a6cba6ff9","schema_name":"code-review","created_by":"@code-reviewer","data":{"file":"docs/accessibility.md","line_start":12,"line_end":18,"category":"best-practice","suggestion":"Heading order and alt text verified — no changes needed.","severity":"info"}})
+{
+  "success": true,
+  "context_id": "1f96cb1e-d8f2-4c7e-ae1b-7bdedba800c8",
+  "handoff_id": "9318680c-1a35-40cb-8972-705a6cba6ff9",
+  "schema_name": "code-review",
+  "schema_version": "1.0.0",
+  "created_by": "@code-reviewer",
+  "created_at": "2026-09-18T20:36:15.826Z"
+}
+
+▶ get_context({"handoff_id":"9318680c-1a35-40cb-8972-705a6cba6ff9"})
+{
+  "count": 1,
+  "contexts": [
+    {
+      "id": "1f96cb1e-d8f2-4c7e-ae1b-7bdedba800c8",
+      "schema_name": "code-review",
+      "schema_version": "1.0.0",
+      "data": {
+        "file": "docs/accessibility.md",
+        "line_start": 12,
+        "line_end": 18,
+        "category": "best-practice",
+        "suggestion": "Heading order and alt text verified — no changes needed.",
+        "severity": "info"
+      },
+      "created_by": "@code-reviewer",
+      "handoff_id": "9318680c-1a35-40cb-8972-705a6cba6ff9",
+      "created_at": "2026-09-18T20:36:15.826Z"
+    }
+  ]
+}
+
+▶ complete_handoff({"handoff_id":"9318680c-1a35-40cb-8972-705a6cba6ff9","agent_name":"@code-reviewer","outputs":{"summary":"Approved with no changes requested.","deliverables":["https://github.com/octo/demo/pull/42#pullrequestreview-1"]}})
+{
+  "success": true,
+  "handoff_id": "9318680c-1a35-40cb-8972-705a6cba6ff9",
+  "status": "completed",
+  "agent": "@code-reviewer",
+  "task": "Review PR #42: docs: add accessibility statement",
+  "outputs": {
+    "summary": "Approved with no changes requested.",
+    "deliverables": [
+      "https://github.com/octo/demo/pull/42#pullrequestreview-1"
+    ]
+  },
+  "completed_at": "2026-09-18T20:36:15.828Z"
+}
+
+▶ query_workflow_state({"handoff_id":"9318680c-1a35-40cb-8972-705a6cba6ff9"})
+{
+  "handoff_id": "9318680c-1a35-40cb-8972-705a6cba6ff9",
+  "status": "completed",
+  "from_agent": "mcp-client",
+  "to_agent": "@code-reviewer",
+  "task": "Review PR #42: docs: add accessibility statement",
+  "priority": "high",
+  "created_at": "2026-09-18T20:36:15.824Z",
+  "updated_at": "2026-09-18T20:36:15.828Z",
+  "sla_deadline": "2026-09-19T00:36:15.823Z",
+  "repository": "octo/demo",
+  "issue_number": 42
+}
+
+✔ Lifecycle complete: pending → active → completed

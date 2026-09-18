@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>AgentCraftworks Community Edition — two-minute architecture walkthrough</title>
+<meta name="description" content="A self-contained, accessible walkthrough of how Community Edition routes GitHub webhooks through CODEOWNERS, engagement levels, the handoff state machine and the MCP server.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f3f5f8;
+    --text: #1b1f24;
+    --muted: #4b5563;      /* 7.6:1 on white */
+    --accent: #0b5cad;     /* 7.3:1 on white */
+    --accent-text: #ffffff;
+    --border: #c7ced8;
+    --focus: #b45309;
+    --ok: #146c2e;         /* 6.0:1 on white */
+    --warn: #8a3b00;       /* 7.4:1 on white */
+    --node: #e8f0fb;
+    --node-border: #0b5cad;
+    --max-width: 60rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a;
+      --surface: #1a2338;
+      --text: #e6edf3;
+      --muted: #b3bfcf;    /* 9.6:1 on #0f172a */
+      --accent: #8cc8ff;   /* 10.4:1 on #0f172a */
+      --accent-text: #0f172a;
+      --border: #3b475e;
+      --focus: #ffb454;
+      --ok: #7ee2a0;
+      --warn: #ffb27a;
+      --node: #1e2a44;
+      --node-border: #8cc8ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+  body {
+    margin: 0;
+    font: 1.0625rem/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+  }
+  a { color: var(--accent); }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  .skip-link {
+    position: absolute; left: 1rem; top: -4rem;
+    padding: .5rem 1rem; background: var(--accent); color: var(--accent-text);
+    border-radius: .375rem; font-weight: 600; z-index: 10;
+  }
+  .skip-link:focus { top: 1rem; }
+  header, main, footer { width: min(100% - 2rem, var(--max-width)); margin: 0 auto; }
+  header { padding: 2rem 0 1rem; }
+  header h1 { font-size: clamp(1.75rem, 3vw + 1rem, 2.5rem); line-height: 1.2; margin: .25rem 0; }
+  .eyebrow { color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: .85rem; margin: 0; }
+  .lede { font-size: 1.2rem; color: var(--muted); max-width: 46rem; }
+
+  /* Step navigator (sticky, keyboard-operable) */
+  .stepper {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg);
+    border-block: 1px solid var(--border);
+    padding: .75rem 0;
+  }
+  .stepper-inner { width: min(100% - 2rem, var(--max-width)); margin: 0 auto; display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
+  .stepper ol { display: flex; flex-wrap: wrap; gap: .5rem; list-style: none; margin: 0; padding: 0; flex: 1 1 auto; }
+  .stepper a {
+    display: inline-block; min-width: 2.75rem; min-height: 2.75rem; padding: .4rem .75rem;
+    border: 1px solid var(--border); border-radius: .5rem;
+    text-decoration: none; color: var(--text); background: var(--surface); font-weight: 600; text-align: center;
+  }
+  .stepper a[aria-current="step"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .controls { display: flex; gap: .5rem; align-items: center; }
+  button {
+    font: inherit; font-weight: 600; min-height: 2.75rem; padding: .4rem 1rem;
+    border: 1px solid var(--accent); border-radius: .5rem; background: var(--accent); color: var(--accent-text); cursor: pointer;
+  }
+  button.secondary { background: transparent; color: var(--accent); }
+  button[aria-pressed="true"] { text-decoration: underline; }
+  .status { color: var(--muted); font-size: .95rem; margin: 0; }
+
+  main { padding: 1rem 0 3rem; }
+  section.step {
+    padding: 2rem 0 1.5rem;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 5.5rem;
+  }
+  section.step h2 { font-size: clamp(1.4rem, 1.5vw + 1rem, 1.9rem); margin: 0 0 .25rem; }
+  .step-meta { color: var(--muted); margin: 0 0 1rem; font-size: .95rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem 2rem; align-items: start; }
+  figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: .75rem; padding: 1rem; }
+  figcaption { color: var(--muted); font-size: .95rem; margin-top: .5rem; }
+  svg { width: 100%; height: auto; display: block; }
+  .node { fill: var(--node); stroke: var(--node-border); stroke-width: 2; }
+  .node-text { fill: var(--text); font: 600 15px system-ui, sans-serif; }
+  .edge { stroke: var(--muted); stroke-width: 2; fill: none; marker-end: url(#arrow); }
+  .edge-label { fill: var(--muted); font: 13px system-ui, sans-serif; }
+  .highlight .node { stroke-width: 4; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95em; }
+  pre { background: var(--surface); border: 1px solid var(--border); border-radius: .5rem; padding: .75rem 1rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0 1rem; }
+  caption { text-align: left; font-weight: 600; margin-bottom: .25rem; }
+  th, td { border: 1px solid var(--border); padding: .45rem .6rem; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+  @media (max-width: 30rem) { th, td { padding: .3rem .4rem; font-size: .9rem; } }
+  th { background: var(--surface); }
+  .ok { color: var(--ok); font-weight: 600; }
+  .warn { color: var(--warn); font-weight: 600; }
+  .callout { border-left: 4px solid var(--accent); background: var(--surface); padding: .75rem 1rem; border-radius: 0 .5rem .5rem 0; }
+  footer { color: var(--muted); font-size: .95rem; padding-bottom: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+  .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(1px,1px,1px,1px); white-space: nowrap; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to the walkthrough</a>
+
+<header>
+  <p class="eyebrow">AgentCraftworks Community Edition</p>
+  <h1>Two-minute architecture walkthrough</h1>
+  <p class="lede">How a GitHub webhook becomes a governed, reviewable handoff — through CODEOWNERS routing,
+    engagement levels, a four-state machine and a six-tool MCP server. Community Edition is the
+    <strong>open protocol layer for agentic DevOps</strong>: a MIT-licensed subset that Enterprise is compatible with.</p>
+</header>
+
+<nav class="stepper" aria-label="Walkthrough steps">
+  <div class="stepper-inner">
+    <ol id="step-list">
+      <li><a href="#step-1" aria-current="step">1<span class="visually-hidden">: Webhook arrives</span></a></li>
+      <li><a href="#step-2">2<span class="visually-hidden">: CODEOWNERS routing</span></a></li>
+      <li><a href="#step-3">3<span class="visually-hidden">: Engagement levels</span></a></li>
+      <li><a href="#step-4">4<span class="visually-hidden">: Handoff state machine</span></a></li>
+      <li><a href="#step-5">5<span class="visually-hidden">: MCP server</span></a></li>
+      <li><a href="#step-6">6<span class="visually-hidden">: What ships in CE</span></a></li>
+    </ol>
+    <div class="controls">
+      <button type="button" id="prev" class="secondary" aria-label="Previous step">← Previous</button>
+      <button type="button" id="next" class="secondary" aria-label="Next step">Next →</button>
+      <button type="button" id="play" aria-pressed="false">Auto-advance every 20 s</button>
+    </div>
+    <p class="status" id="status" aria-live="polite" aria-atomic="true">Step 1 of 6: Webhook arrives</p>
+  </div>
+</nav>
+
+<main id="main" tabindex="-1">
+
+  <section class="step" id="step-1" aria-labelledby="h-step-1">
+    <h2 id="h-step-1">1. A webhook arrives — and is verified first</h2>
+    <p class="step-meta">~20 seconds · <code>typescript/src/middleware/webhook-signature.ts</code></p>
+    <div class="grid">
+      <div>
+        <p>GitHub calls <code>POST /api/webhook</code> when a pull request is opened, reopened, labelled or
+          synchronised, and on <code>ping</code>, <code>installation</code> and <code>installation_repositories</code>.</p>
+        <p>Before anything is parsed, CE recomputes the HMAC-SHA256 of the <em>raw</em> body with
+          <code>GH_CE_WEBHOOK_SECRET</code> and compares it in constant time with the
+          <code>X-Hub-Signature-256</code> header. A mismatch is a <span class="warn">401</span>; nothing downstream runs.</p>
+        <pre><code>sha256=HMAC(secret, rawBody)  →  200 handled
+anything else                 →  401 Invalid webhook signature</code></pre>
+      </div>
+      <figure>
+        <svg viewBox="0 0 520 150" role="img" aria-labelledby="fig1-title fig1-desc">
+          <title id="fig1-title">Webhook verification flow</title>
+          <desc id="fig1-desc">GitHub sends a webhook to the CE server. The signature middleware checks it; verified requests go on to the pull request handler, unverified ones are rejected with 401.</desc>
+          <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--muted)"/></marker></defs>
+          <rect class="node" x="10" y="50" width="120" height="50" rx="8"/><text class="node-text" x="70" y="80" text-anchor="middle">GitHub</text>
+          <rect class="node highlight" x="200" y="50" width="140" height="50" rx="8"/><text class="node-text" x="270" y="80" text-anchor="middle">Verify HMAC</text>
+          <rect class="node" x="400" y="10" width="110" height="50" rx="8"/><text class="node-text" x="455" y="40" text-anchor="middle">Handler</text>
+          <rect class="node" x="400" y="90" width="110" height="50" rx="8"/><text class="node-text" x="455" y="120" text-anchor="middle">401</text>
+          <path class="edge" d="M130 75 H198"/>
+          <path class="edge" d="M340 68 L398 40"/><text class="edge-label" x="345" y="45">valid</text>
+          <path class="edge" d="M340 82 L398 110"/><text class="edge-label" x="345" y="118">invalid</text>
+        </svg>
+        <figcaption>Every request is authenticated before it is interpreted.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="step" id="step-2" aria-labelledby="h-step-2">
+    <h2 id="h-step-2">2. CODEOWNERS decides who reviews</h2>
+    <p class="step-meta">~20 seconds · <code>services/codeowners-router.ts</code>, <code>utils/codeowners.ts</code></p>
+    <div class="grid">
+      <div>
+        <p>For a pull request, CE fetches the changed files and the repository's CODEOWNERS
+          (<code>.github/CODEOWNERS</code>, then <code>CODEOWNERS</code>, then <code>docs/CODEOWNERS</code>) and
+          matches paths to owners. Precedence is <strong>CODEOWNERS → labels → none</strong>
+          (<code>@code-reviewer</code>).</p>
+        <p>When the App is first installed on a repository without CODEOWNERS, CE opens a
+          <strong>setup pull request</strong> proposing a default file — humans merge it; CE never does.</p>
+      </div>
+      <figure>
+        <table>
+          <caption>Default routing template (excerpt)</caption>
+          <thead><tr><th scope="col">Path</th><th scope="col">Owners</th></tr></thead>
+          <tbody>
+            <tr><td><code>*.ts</code></td><td>security-scanner agent + security lead</td></tr>
+            <tr><td><code>docs/**</code></td><td>docs-reviewer agent</td></tr>
+            <tr><td><code>infra/**</code></td><td>platform humans only</td></tr>
+            <tr><td><code>*</code></td><td>code-reviewer agent + team lead</td></tr>
+          </tbody>
+        </table>
+        <figcaption>Owners can be agents, humans or both.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="step" id="step-3" aria-labelledby="h-step-3">
+    <h2 id="h-step-3">3. Engagement levels decide what agents may do</h2>
+    <p class="step-meta">~25 seconds · <code>services/action-gate.ts</code>, <code>services/action-classifier.ts</code></p>
+    <div class="grid">
+      <div>
+        <p>Each repository has a <strong>dial</strong> (default <strong>1 — Observer</strong>). Every action is classified
+          into a tier, and an action is permitted only when the effective level reaches the tier's requirement.
+          Denied writes are skipped and logged; at level 2+ a single PR comment explains what was withheld.</p>
+        <p class="callout"><strong>Community Edition supports levels 1–3.</strong> Requesting level 4 or 5 on
+          <code>POST /api/dial/:owner/:repo</code> returns <span class="warn">422 ENTERPRISE_REQUIRED</span>
+          (ADR-CE-001).</p>
+      </div>
+      <figure>
+        <table>
+          <caption>Levels and tiers</caption>
+          <thead><tr><th scope="col">Level</th><th scope="col">Name</th><th scope="col">Unlocks</th><th scope="col">Edition</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Observer</td><td>T1 read, view, list</td><td class="ok">Community</td></tr>
+            <tr><td>2</td><td>Advisor</td><td>T2 comment, label</td><td class="ok">Community</td></tr>
+            <tr><td>3</td><td>Collaborator</td><td>T3 edit file, create branch, assign</td><td class="ok">Community</td></tr>
+            <tr><td>4</td><td>Delegated</td><td>T4 push commit, request review</td><td class="warn">Enterprise</td></tr>
+            <tr><td>5</td><td>Autonomous</td><td>T5 merge, deploy</td><td class="warn">Enterprise</td></tr>
+          </tbody>
+        </table>
+        <figcaption><code>effective level = min(dial, environment cap)</code></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="step" id="step-4" aria-labelledby="h-step-4">
+    <h2 id="h-step-4">4. Work moves through a four-state handoff machine</h2>
+    <p class="step-meta">~20 seconds · <code>utils/handoff-state-machine.ts</code>, <code>services/handoff-service.ts</code></p>
+    <div class="grid">
+      <div>
+        <p>A <strong>handoff</strong> is the unit of work passed from one agent (or human) to another. It is a UUID
+          with a state, a history of transitions and optional schema-validated context
+          (<code>code-review</code>, <code>security-finding</code>, <code>test-result</code>).</p>
+        <p><code>failed</code> always carries a reason prefix — <code>rejected:</code>, <code>abandoned:</code>,
+          <code>error:</code> or <code>timeout:</code>. <em>Overdue</em> is computed, never stored.
+          State lives <strong>in memory</strong> and resets when the process restarts.</p>
+      </div>
+      <figure>
+        <svg viewBox="0 0 520 190" role="img" aria-labelledby="fig4-title fig4-desc">
+          <title id="fig4-title">Handoff state machine</title>
+          <desc id="fig4-desc">Four states. Pending transitions to active on accept, active transitions to completed on complete. Both pending and active can transition to failed with a reason prefix.</desc>
+          <rect class="node" x="10" y="20" width="120" height="50" rx="25"/><text class="node-text" x="70" y="50" text-anchor="middle">pending</text>
+          <rect class="node" x="200" y="20" width="120" height="50" rx="25"/><text class="node-text" x="260" y="50" text-anchor="middle">active</text>
+          <rect class="node" x="390" y="20" width="120" height="50" rx="25"/><text class="node-text" x="450" y="50" text-anchor="middle">completed</text>
+          <rect class="node" x="200" y="120" width="120" height="50" rx="25"/><text class="node-text" x="260" y="150" text-anchor="middle">failed</text>
+          <path class="edge" d="M130 45 H198"/><text class="edge-label" x="140" y="38">accept</text>
+          <path class="edge" d="M320 45 H388"/><text class="edge-label" x="322" y="38">complete</text>
+          <path class="edge" d="M90 70 L228 120"/><text class="edge-label" x="110" y="105">reject / abandon</text>
+          <path class="edge" d="M260 70 V118"/><text class="edge-label" x="268" y="100">error / timeout</text>
+        </svg>
+        <figcaption>Two terminal states: <code>completed</code> and <code>failed</code>.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="step" id="step-5" aria-labelledby="h-step-5">
+    <h2 id="h-step-5">5. Agents drive the same machine over MCP</h2>
+    <p class="step-meta">~20 seconds · <code>mcp/server.ts</code>, <code>.mcp.json</code></p>
+    <div class="grid">
+      <div>
+        <p>The MCP server is a <strong>stdio</strong> process (<code>npm run mcp</code>) that GitHub Copilot, Claude and
+          other MCP clients launch from <code>.mcp.json</code>. It exposes exactly six tools — the protocol contract
+          that Enterprise is compatible with.</p>
+        <pre><code>create_handoff      accept_handoff      complete_handoff
+query_workflow_state attach_context      get_context</code></pre>
+      </div>
+      <figure>
+        <svg viewBox="0 0 520 130" role="img" aria-labelledby="fig5-title fig5-desc">
+          <title id="fig5-title">MCP client to server</title>
+          <desc id="fig5-desc">An MCP client such as Copilot or Claude talks JSON-RPC over stdio to the CE MCP server, which operates the handoff state machine.</desc>
+          <rect class="node" x="10" y="40" width="150" height="50" rx="8"/><text class="node-text" x="85" y="70" text-anchor="middle">Copilot / Claude</text>
+          <rect class="node highlight" x="215" y="40" width="130" height="50" rx="8"/><text class="node-text" x="280" y="70" text-anchor="middle">MCP server</text>
+          <rect class="node" x="400" y="40" width="110" height="50" rx="8"/><text class="node-text" x="455" y="70" text-anchor="middle">Handoff FSM</text>
+          <path class="edge" d="M160 65 H213"/><text class="edge-label" x="150" y="30">JSON-RPC / stdio</text>
+          <path class="edge" d="M345 65 H398"/><text class="edge-label" x="352" y="30">6 tools</text>
+        </svg>
+        <figcaption>Same store, same states — whether driven by webhook, REST or MCP.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="step" id="step-6" aria-labelledby="h-step-6">
+    <h2 id="h-step-6">6. What ships in Community Edition</h2>
+    <p class="step-meta">~15 seconds · <code>docs/EDITIONS.md</code></p>
+    <div class="grid">
+      <div>
+        <ul>
+          <li>Webhook server with HMAC-SHA256 verification and per-IP rate limiting</li>
+          <li>CODEOWNERS routing with label fallback, and the setup pull request</li>
+          <li>Engagement levels 1–3 with the action gate and REST dial API</li>
+          <li>Four-state handoff machine with schema-validated context</li>
+          <li>Six-tool MCP server over stdio</li>
+          <li>In-memory storage — single replica, state resets on restart</li>
+          <li>Docker Compose for local runs; Azure Container Apps via <code>azd</code></li>
+        </ul>
+      </div>
+      <div class="callout">
+        <p><strong>CE is</strong> the MIT-licensed protocol layer — the handoff FSM, the engagement-level model and the
+          six-tool MCP subset that Enterprise is compatible with.</p>
+        <p><strong>CE isn't</strong> the core Enterprise is built on, nor a stripped-down Enterprise. Levels 4–5,
+          durable multi-replica storage and the full tool catalogue are Enterprise features.</p>
+        <p>Next: <a href="../getting-started.md">Getting Started</a> · <a href="README.md">Run the demos</a> ·
+          <a href="../EDITIONS.md">Editions</a></p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>This page is self-contained (no external scripts, fonts or images), keyboard-navigable and honours
+    <code>prefers-reduced-motion</code> and <code>prefers-color-scheme</code>. Automated checks are not a substitute
+    for testing with a screen reader — please report any barrier as an issue labelled <code>accessibility</code>.</p>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var steps = Array.prototype.slice.call(document.querySelectorAll("section.step"));
+  var links = Array.prototype.slice.call(document.querySelectorAll("#step-list a"));
+  var status = document.getElementById("status");
+  var prev = document.getElementById("prev");
+  var next = document.getElementById("next");
+  var play = document.getElementById("play");
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var current = 0;
+  var timer = null;
+  var INTERVAL_MS = 20000;
+
+  function titleOf(i) {
+    var h = steps[i].querySelector("h2").textContent;
+    return h.replace(/^\d+\.\s*/, "");
+  }
+
+  function setCurrent(i, focus) {
+    current = Math.max(0, Math.min(steps.length - 1, i));
+    links.forEach(function (a, idx) {
+      if (idx === current) { a.setAttribute("aria-current", "step"); } else { a.removeAttribute("aria-current"); }
+    });
+    prev.disabled = current === 0;
+    next.disabled = current === steps.length - 1;
+    status.textContent = "Step " + (current + 1) + " of " + steps.length + ": " + titleOf(current);
+    if (focus) {
+      steps[current].scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+      steps[current].querySelector("h2").setAttribute("tabindex", "-1");
+      steps[current].querySelector("h2").focus({ preventScroll: true });
+    }
+  }
+
+  function stopAuto() {
+    if (timer) { clearInterval(timer); timer = null; }
+    play.setAttribute("aria-pressed", "false");
+    play.textContent = "Auto-advance every 20 s";
+  }
+
+  function startAuto() {
+    stopAuto();
+    play.setAttribute("aria-pressed", "true");
+    play.textContent = "Stop auto-advance";
+    timer = setInterval(function () {
+      if (current >= steps.length - 1) { stopAuto(); return; }
+      setCurrent(current + 1, true);
+    }, INTERVAL_MS);
+  }
+
+  prev.addEventListener("click", function () { stopAuto(); setCurrent(current - 1, true); });
+  next.addEventListener("click", function () { stopAuto(); setCurrent(current + 1, true); });
+  play.addEventListener("click", function () {
+    if (timer) { stopAuto(); } else { startAuto(); }
+  });
+  links.forEach(function (a, idx) {
+    a.addEventListener("click", function (e) { e.preventDefault(); stopAuto(); setCurrent(idx, true); history.replaceState(null, "", a.getAttribute("href")); });
+  });
+
+  // Arrow keys move between steps when focus is inside the stepper.
+  document.querySelector(".stepper").addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); stopAuto(); setCurrent(current + 1, true); }
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); stopAuto(); setCurrent(current - 1, true); }
+    if (e.key === "Home") { e.preventDefault(); stopAuto(); setCurrent(0, true); }
+    if (e.key === "End") { e.preventDefault(); stopAuto(); setCurrent(steps.length - 1, true); }
+  });
+
+  // Keep the navigator in sync with manual scrolling, without stealing focus.
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { setCurrent(steps.indexOf(en.target), false); }
+      });
+    }, { rootMargin: "-40% 0px -55% 0px" });
+    steps.forEach(function (s) { io.observe(s); });
+  }
+
+  // Users who prefer reduced motion never get automatic content changes.
+  if (reduced) { play.disabled = true; play.textContent = "Auto-advance off (reduced motion)"; }
+
+  var hash = location.hash && document.getElementById(location.hash.slice(1));
+  setCurrent(hash ? steps.indexOf(hash) : 0, false);
+})();
+</script>
+</body>
+</html>

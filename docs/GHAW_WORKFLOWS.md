@@ -109,7 +109,7 @@ Some workflows are triggered by slash commands in issue/PR comments:
 
 ## Engagement Levels
 
-Workflows operate at different engagement levels per [ENGAGEMENT_LEVELS.md](ENGAGEMENT_LEVELS.md):
+Workflows operate at different engagement levels per the [Agent Engagement Levels Reference](architecture.md#agent-engagement-levels-reference):
 
 - **T2 (Advisor)**: Creates comments, labels, issues — no code changes
 - **T3 (Collaborator)**: Creates PRs with code/doc changes

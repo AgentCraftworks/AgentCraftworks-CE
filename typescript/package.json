@@ -5,11 +5,14 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:express --external:@octokit/rest --external:@octokit/webhooks --external:dotenv --external:ajv --external:jsonwebtoken --external:express-rate-limit",
+    "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:express --external:@octokit/rest --external:@octokit/webhooks --external:ajv --external:jsonwebtoken --external:express-rate-limit",
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/**/*.test.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "start:env": "node --env-file=../.env dist/index.js",
+    "mcp": "node --import tsx src/mcp/server.ts",
+    "mcp:env": "node --env-file=../.env --import tsx src/mcp/server.ts"
   },
   "keywords": [
     "ai-agents",
