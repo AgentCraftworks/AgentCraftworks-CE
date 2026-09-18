@@ -1,5 +1,8 @@
 name: TypeScript CI
 
+# TypeScript CI — typecheck, build, test, and lint workflow files against ORG-STANDARD.
+# Engagement Level: T1 (Observer) — read-only validation, no changes permitted.
+
 on:
   push:
     branches-ignore:
@@ -25,6 +28,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Check workflow ORG-STANDARD compliance
+        run: node scripts/check-workflow-standards.mjs
       - run: npm -w typescript run typecheck
       - run: npm -w typescript run build
       - run: npm -w typescript test
