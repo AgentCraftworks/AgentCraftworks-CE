@@ -14,10 +14,11 @@
  */
 
 import { Octokit } from "@octokit/rest";
+import { isDirectRun, runJob } from "./lib/entrypoint.js";
 
-type BumpType = "patch" | "minor" | "major";
+export type BumpType = "patch" | "minor" | "major";
 
-interface ChangeEntry {
+export interface ChangeEntry {
   pr: number;
   title: string;
   author: string;
@@ -25,20 +26,20 @@ interface ChangeEntry {
   labels: string[];
 }
 
-function determineBump(labels: string[], title: string): BumpType {
+export function determineBump(labels: string[], title: string): BumpType {
   const labelNames = labels.map((l) => l.toLowerCase());
   if (labelNames.includes("breaking") || labelNames.includes("major")) return "major";
   if (labelNames.includes("enhancement") || labelNames.includes("feature") || title.startsWith("feat")) return "minor";
   return "patch";
 }
 
-function highestBump(entries: ChangeEntry[]): BumpType {
+export function highestBump(entries: ChangeEntry[]): BumpType {
   if (entries.some((e) => e.bump === "major")) return "major";
   if (entries.some((e) => e.bump === "minor")) return "minor";
   return "patch";
 }
 
-function bumpVersion(version: string, bump: BumpType): string {
+export function bumpVersion(version: string, bump: BumpType): string {
   const parts = version.replace(/^v/, "").split(".").map(Number);
   const [major = 0, minor = 0, patch = 0] = parts;
   switch (bump) {
@@ -48,7 +49,16 @@ function bumpVersion(version: string, bump: BumpType): string {
   }
 }
 
-async function main(): Promise<void> {
+export function buildChangelog(entries: ChangeEntry[], newVersion: string, today: string): string {
+  return [
+    `## ${newVersion} (${today})`,
+    "",
+    ...entries.map((e) => `- ${e.title} (#${e.pr}) @${e.author}`),
+    "",
+  ].join("\n");
+}
+
+export async function main(): Promise<void> {
   const token = process.env["GITHUB_TOKEN"];
   const repository = process.env["REPOSITORY"];
   const dryRun = process.env["DRY_RUN"] === "true";
@@ -106,15 +116,9 @@ async function main(): Promise<void> {
 
   const bump = highestBump(entries);
   const newVersion = bumpVersion(latestTag, bump);
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toISOString().split("T")[0]!;
 
-  // Generate changelog entry
-  const changelog = [
-    `## ${newVersion} (${today})`,
-    "",
-    ...entries.map((e) => `- ${e.title} (#${e.pr}) @${e.author}`),
-    "",
-  ].join("\n");
+  const changelog = buildChangelog(entries, newVersion, today);
 
   console.log(`Changeset: ${latestTag} → v${newVersion} (${bump} bump)`);
   console.log(`Changes: ${entries.length} merged PRs`);
@@ -130,7 +134,4 @@ async function main(): Promise<void> {
   console.log("(Full implementation requires git operations — see issue for details)");
 }
 
-main().catch((err: unknown) => {
-  console.error("Changeset failed:", err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+if (isDirectRun(import.meta.url)) runJob("Changeset", main);

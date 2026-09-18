@@ -14,8 +14,9 @@
  */
 
 import { Octokit } from "@octokit/rest";
+import { isDirectRun, runJob } from "./lib/entrypoint.js";
 
-interface CodeSmell {
+export interface CodeSmell {
   name: string;
   pattern: RegExp;
   severity: "error" | "warning" | "info";
@@ -23,7 +24,7 @@ interface CodeSmell {
   suggestion: string;
 }
 
-const CODE_SMELLS: CodeSmell[] = [
+export const CODE_SMELLS: CodeSmell[] = [
   {
     name: "eval() usage",
     pattern: /\beval\s*\(/,
@@ -117,7 +118,7 @@ const CODE_SMELLS: CodeSmell[] = [
   },
 ];
 
-const GRUMPY_INTROS = [
+export const GRUMPY_INTROS = [
   "Alright, let's see what we've got here... *cracks knuckles* 😤",
   "Another PR to review. Joy. Let me put on my reading glasses. 👓",
   "You want a code review? Fine. But I'm not going to sugarcoat anything. 🍬",
@@ -125,124 +126,96 @@ const GRUMPY_INTROS = [
   "*Sigh* Here we go again. At least there's coffee. ☕",
 ];
 
-const GRUMPY_OUTROS_GOOD = [
+export const GRUMPY_OUTROS_GOOD = [
   "Surprisingly, this isn't terrible. Don't let it go to your head. 😏",
   "I've seen worse. Much worse. You pass... barely. ✅",
   "Clean code? In MY repository? It's more likely than you think. 🎉",
   "Well, would you look at that. Someone actually reads the style guide. 📚",
 ];
 
-const GRUMPY_OUTROS_BAD = [
+export const GRUMPY_OUTROS_BAD = [
   "Please fix these issues. I believe in you. Maybe. Perhaps. 🤔",
   "This needs work. Rome wasn't built in a day, but it also wasn't built with eval(). 🏛️",
   "Back to the drawing board. Or at least back to the linter. 📐",
   "I'm not angry, just disappointed. Okay, maybe a little angry. 😠",
 ];
 
-interface ReviewComment {
+export interface ReviewComment {
   path: string;
   line: number;
   body: string;
   severity: CodeSmell["severity"];
 }
 
-function pickRandom<T>(arr: T[]): T {
+export function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
-async function main(): Promise<void> {
-  const token = process.env["GITHUB_TOKEN"];
-  const prNumber = process.env["PR_NUMBER"];
-  const repository = process.env["REPOSITORY"];
+export const CODE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"];
 
-  if (!token || !prNumber || !repository) {
-    console.log("Grumpy Reviewer: Missing required environment variables. Skipping.");
-    return;
-  }
+export function isCodeFile(filename: string): boolean {
+  return CODE_EXTENSIONS.some((ext) => filename.endsWith(ext));
+}
 
-  const [owner, repo] = repository.split("/");
-  if (!owner || !repo) {
-    console.error("Grumpy Reviewer: Invalid REPOSITORY format. Expected owner/repo.");
-    process.exit(1);
-  }
+export function severityEmoji(severity: CodeSmell["severity"]): string {
+  return severity === "error" ? "🚨" : severity === "warning" ? "⚠️" : "💡";
+}
 
-  const octokit = new Octokit({ auth: token });
-  const prNum = parseInt(prNumber, 10);
+/** Runs every code smell against every line of a file. */
+export function analyzeFileForSmells(filename: string, fileContent: string): ReviewComment[] {
+  const comments: ReviewComment[] = [];
+  const lines = fileContent.split("\n");
 
-  // Get PR details
-  const { data: pr } = await octokit.pulls.get({
-    owner,
-    repo,
-    pull_number: prNum,
-  });
-
-  // Get changed files
-  const { data: files } = await octokit.pulls.listFiles({
-    owner,
-    repo,
-    pull_number: prNum,
-  });
-
-  const reviewComments: ReviewComment[] = [];
-  const issuesByFile: Map<string, ReviewComment[]> = new Map();
-
-  // Analyze each file
-  for (const file of files) {
-    if (file.status === "removed") continue;
-
-    // Only analyze code files
-    const codeExtensions = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"];
-    if (!codeExtensions.some((ext) => file.filename.endsWith(ext))) continue;
-
-    // Get file content from the PR's head branch
-    try {
-      const { data: content } = await octokit.repos.getContent({
-        owner,
-        repo,
-        path: file.filename,
-        ref: pr.head.sha,
-      });
-
-      if (Array.isArray(content) || content.type !== "file" || !("content" in content)) {
-        continue;
+  for (const smell of CODE_SMELLS) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? "";
+      if (smell.pattern.test(line)) {
+        comments.push({
+          path: filename,
+          line: i + 1,
+          body: `### ${severityEmoji(smell.severity)} ${smell.name}\n\n${smell.grumpyComment}\n\n**Suggestion:** ${smell.suggestion}`,
+          severity: smell.severity,
+        });
       }
-
-      const fileContent = Buffer.from(content.content, "base64").toString("utf-8");
-      const lines = fileContent.split("\n");
-
-      for (const smell of CODE_SMELLS) {
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i] ?? "";
-          if (smell.pattern.test(line)) {
-            const comment: ReviewComment = {
-              path: file.filename,
-              line: i + 1,
-              body: `### ${smell.severity === "error" ? "🚨" : smell.severity === "warning" ? "⚠️" : "💡"} ${smell.name}\n\n${smell.grumpyComment}\n\n**Suggestion:** ${smell.suggestion}`,
-              severity: smell.severity,
-            };
-
-            reviewComments.push(comment);
-
-            if (!issuesByFile.has(file.filename)) {
-              issuesByFile.set(file.filename, []);
-            }
-            issuesByFile.get(file.filename)!.push(comment);
-          }
-        }
-      }
-    } catch {
-      console.log(`Grumpy Reviewer: Could not read ${file.filename}. Skipping.`);
     }
   }
 
-  // Build review body
+  return comments;
+}
+
+export function groupByFile(comments: ReviewComment[]): Map<string, ReviewComment[]> {
+  const byFile = new Map<string, ReviewComment[]>();
+  for (const c of comments) {
+    if (!byFile.has(c.path)) byFile.set(c.path, []);
+    byFile.get(c.path)!.push(c);
+  }
+  return byFile;
+}
+
+export type ReviewEvent = "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
+
+export function determineReviewEvent(errors: number, total: number): ReviewEvent {
+  if (errors > 0) return "REQUEST_CHANGES";
+  if (total === 0) return "APPROVE";
+  return "COMMENT";
+}
+
+export const GRUMPY_BAD_THRESHOLD = 5;
+
+export function buildGrumpyReview(
+  reviewComments: ReviewComment[],
+  voice: { intro?: string; outro?: string } = {},
+): { body: string; event: ReviewEvent; errors: number; warnings: number; infos: number } {
   const errors = reviewComments.filter((c) => c.severity === "error").length;
   const warnings = reviewComments.filter((c) => c.severity === "warning").length;
   const infos = reviewComments.filter((c) => c.severity === "info").length;
   const total = reviewComments.length;
 
-  const intro = pickRandom(GRUMPY_INTROS);
-  const outro = total > 5 ? pickRandom(GRUMPY_OUTROS_BAD) : pickRandom(GRUMPY_OUTROS_GOOD);
+  const intro = voice.intro ?? pickRandom(GRUMPY_INTROS);
+  const outro =
+    voice.outro ?? (total > GRUMPY_BAD_THRESHOLD ? pickRandom(GRUMPY_OUTROS_BAD) : pickRandom(GRUMPY_OUTROS_GOOD));
+
+  const issuesByFile = groupByFile(reviewComments);
 
   const bodyLines = [
     "## 👴 Grumpy Reviewer's Assessment",
@@ -284,15 +257,77 @@ async function main(): Promise<void> {
 
   bodyLines.push(outro, "", "---", "*Generated by GH-AW Grumpy Reviewer — Engagement Level: T2 (Advisor)*");
 
-  const reviewBody = bodyLines.join("\n");
+  return {
+    body: bodyLines.join("\n"),
+    event: determineReviewEvent(errors, total),
+    errors,
+    warnings,
+    infos,
+  };
+}
 
-  // Determine review event type
-  let event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT" = "COMMENT";
-  if (errors > 0) {
-    event = "REQUEST_CHANGES";
-  } else if (total === 0) {
-    event = "APPROVE";
+export async function main(): Promise<void> {
+  const token = process.env["GITHUB_TOKEN"];
+  const prNumber = process.env["PR_NUMBER"];
+  const repository = process.env["REPOSITORY"];
+
+  if (!token || !prNumber || !repository) {
+    console.log("Grumpy Reviewer: Missing required environment variables. Skipping.");
+    return;
   }
+
+  const [owner, repo] = repository.split("/");
+  if (!owner || !repo) {
+    console.error("Grumpy Reviewer: Invalid REPOSITORY format. Expected owner/repo.");
+    process.exit(1);
+  }
+
+  const octokit = new Octokit({ auth: token });
+  const prNum = parseInt(prNumber, 10);
+
+  // Get PR details
+  const { data: pr } = await octokit.pulls.get({
+    owner,
+    repo,
+    pull_number: prNum,
+  });
+
+  // Get changed files
+  const { data: files } = await octokit.pulls.listFiles({
+    owner,
+    repo,
+    pull_number: prNum,
+  });
+
+  const reviewComments: ReviewComment[] = [];
+
+  // Analyze each file
+  for (const file of files) {
+    if (file.status === "removed") continue;
+    if (!isCodeFile(file.filename)) continue;
+
+    // Get file content from the PR's head branch
+    try {
+      const { data: content } = await octokit.repos.getContent({
+        owner,
+        repo,
+        path: file.filename,
+        ref: pr.head.sha,
+      });
+
+      if (Array.isArray(content) || content.type !== "file" || !("content" in content)) {
+        continue;
+      }
+
+      const fileContent = Buffer.from(content.content, "base64").toString("utf-8");
+      reviewComments.push(...analyzeFileForSmells(file.filename, fileContent));
+    } catch {
+      console.log(`Grumpy Reviewer: Could not read ${file.filename}. Skipping.`);
+    }
+  }
+
+  const { body: reviewBody, event } = buildGrumpyReview(reviewComments);
+  const total = reviewComments.length;
 
   // Submit review
   await octokit.pulls.createReview({
@@ -311,7 +346,4 @@ async function main(): Promise<void> {
   console.log(`Grumpy Reviewer: Submitted ${event} review on PR #${prNum} with ${total} findings.`);
 }
 
-main().catch((err: unknown) => {
-  console.error("Grumpy Reviewer failed:", err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+if (isDirectRun(import.meta.url)) runJob("Grumpy Reviewer", main);

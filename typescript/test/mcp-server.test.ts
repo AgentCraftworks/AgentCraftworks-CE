@@ -30,10 +30,11 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function parseResult(result: { content: Array<{ type: string; text: string }> }): unknown {
+function parseResult(result: { content: Array<{ type: string; text?: string }> }): unknown {
   const textContent = result.content[0];
   assert.ok(textContent, "Expected at least one content item");
   assert.equal(textContent.type, "text");
+  assert.ok(typeof textContent.text === "string", "Expected text content");
   return JSON.parse(textContent.text);
 }
 

@@ -3,6 +3,7 @@
  * Webhook-driven GitHub App for AI agent orchestration
  */
 
+import { createRequire } from "node:module";
 import type { Request, Response } from "express";
 import express from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -12,6 +13,9 @@ import { webhookHandler } from "./handlers/pull-request.js";
 import { verifyWebhookSignatureMiddleware } from "./middleware/webhook-signature.js";
 import { initHandoffService } from "./services/handoff-service.js";
 import { initContextService } from "./services/context-service.js";
+
+// Resolves from both src/ (tsx) and the bundled dist/index.js
+const { version: PACKAGE_VERSION } = createRequire(import.meta.url)("../package.json") as { version: string };
 
 const PORT = parseInt(process.env["PORT"] ?? "3000", 10);
 const app = express();
@@ -95,7 +99,7 @@ initContextService();
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
-    version: "1.0.0-ts",
+    version: PACKAGE_VERSION,
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });

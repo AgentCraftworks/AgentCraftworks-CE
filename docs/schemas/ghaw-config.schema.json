@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentcraftworks.dev/schemas/ghaw-config.schema.json",
+  "title": "GH-AW Configuration",
+  "description": "Configuration schema for GitHub Automation Workflows (GH-AW). Each repo places a ghaw-config.json in .github/ to declare its managed workflows, schedules, output routing, and notification preferences.",
+  "type": "object",
+  "required": ["$schema", "org", "repo", "workflows"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Pointer to this JSON Schema for IDE validation."
+    },
+    "org": {
+      "type": "string",
+      "description": "GitHub organisation that owns the repo.",
+      "examples": ["AgentCraftworks"]
+    },
+    "repo": {
+      "type": "string",
+      "description": "Repository name (without org prefix).",
+      "examples": ["AgentCraftworks", "AgentCraftworks-CE"]
+    },
+    "workflows": {
+      "type": "array",
+      "description": "Ordered list of GH-AW managed workflows in this repo.",
+      "items": { "$ref": "#/$defs/workflow" },
+      "minItems": 1
+    },
+    "notificationChannelDefs": {
+      "type": "array",
+      "description": "Repo-level notification channel definitions. Referenced by workflow notificationChannels entries.",
+      "items": { "$ref": "#/$defs/notificationChannelDef" }
+    }
+  },
+  "$defs": {
+    "workflow": {
+      "type": "object",
+      "required": ["id", "name", "enabled"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Workflow identifier matching the YAML filename without extension (e.g. ghaw-workflow-health).",
+          "pattern": "^ghaw-[a-z0-9-]+$|^ops-[a-z0-9-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable workflow name (should match the YAML `name:` field)."
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule",
+          "description": "Schedule configuration. Required for cron-triggered workflows; omit for event-only workflows."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Master kill-switch. When false, the workflow exits early at runtime (checked via config read step).",
+          "default": true
+        },
+        "trigger": {
+          "type": "string",
+          "description": "Primary trigger type for documentation/dashboard display.",
+          "enum": ["schedule", "pull_request", "push", "check_run", "workflow_run", "workflow_dispatch"]
+        },
+        "outputDestinations": {
+          "type": "array",
+          "description": "Where the workflow writes its results.",
+          "items": {
+            "type": "string",
+            "enum": ["github-issue", "github-pr-comment", "github-pages", "dashboard", "sharepoint", "log-only"]
+          },
+          "default": ["github-issue"]
+        },
+        "notificationChannels": {
+          "type": "array",
+          "description": "Channels to notify on workflow completion or failure. Use channel types from notificationChannelDefs, or 'none'.",
+          "items": {
+            "type": "string",
+            "enum": ["teams", "email", "slack", "none"]
+          },
+          "default": ["none"]
+        }
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "required": ["cron"],
+      "additionalProperties": false,
+      "properties": {
+        "cron": {
+          "type": "string",
+          "description": "Cron expression matching the YAML schedule trigger. Canonical source for dashboard display.",
+          "pattern": "^[0-9*,/-]+ [0-9*,/-]+ [0-9*,/-]+ [0-9*,/-]+ [0-9*,/-]+$",
+          "examples": ["0 7 * * 1-5", "0 9 * * 1-5"]
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA timezone for human-readable display. GitHub Actions cron always runs in UTC.",
+          "default": "UTC"
+        }
+      }
+    },
+    "notificationChannelDef": {
+      "type": "object",
+      "required": ["type", "events"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["teams", "slack", "email", "webhook"],
+          "description": "Channel type."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["on-failure", "on-success", "weekly-digest"]
+          },
+          "minItems": 1,
+          "description": "Events that trigger a notification on this channel."
+        },
+        "webhookUrlSecret": {
+          "type": "string",
+          "description": "Name of the GitHub Actions secret containing the webhook URL. Required for teams, slack, and webhook types."
+        },
+        "recipients": {
+          "type": "array",
+          "items": { "type": "string", "format": "email" },
+          "description": "Email addresses for the email channel type."
+        },
+        "apiKeySecret": {
+          "type": "string",
+          "description": "Name of the secret containing the email provider API key. Defaults to SENDGRID_API_KEY."
+        },
+        "from": {
+          "type": "string",
+          "format": "email",
+          "description": "Sender address for the email channel."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "teams" } } },
+          "then": { "required": ["webhookUrlSecret"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "slack" } } },
+          "then": { "required": ["webhookUrlSecret"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "webhook" } } },
+          "then": { "required": ["webhookUrlSecret"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "email" } } },
+          "then": { "required": ["recipients"] }
+        }
+      ]
+    }
+  }
+}

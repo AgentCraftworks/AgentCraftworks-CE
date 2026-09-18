@@ -28,3 +28,4 @@ jobs:
       - run: npm -w typescript run typecheck
       - run: npm -w typescript run build
       - run: npm -w typescript test
+      - run: node scripts/check-ghaw-config.mjs
