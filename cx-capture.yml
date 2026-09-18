@@ -1,8 +1,14 @@
 # cx-capture.yml
-# Registry of CX capture specs for the weekly synthetic validation run.
+# status: planned
 #
-# Add an entry here for every `cx:required` feature so it stays validated
-# on every weekly `ghaw-cx-synthetic` workflow run.
+# Registry of CX capture specs for a future weekly capture run. No workflow
+# consumes this file yet — there is no `ghaw-cx-synthetic` (or `acw-*`)
+# workflow in .github/workflows/. Per the paid RecordingStudio policy, CX
+# captures must be *real product captures*, not synthetic fixtures; this
+# registry will be wired up when that pipeline lands.
+#
+# Add an entry here for every `cx:required` feature so it is picked up once
+# the weekly capture workflow exists.
 #
 # Format:
 #   - slug: <feature-slug>          # matches RecordingStudio/capture-specs/<feature-slug>.yaml

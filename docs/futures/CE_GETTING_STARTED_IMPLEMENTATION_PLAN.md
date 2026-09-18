@@ -474,7 +474,7 @@ tool names exported by `mcp/server.ts`. Prevents DEF-1 recurring.
 | **D-4** | Add `detect_repo` as a 7th MCP tool? | **No.** Preserve the 6-tool contract; expose via REST. |
 | **D-5** | Does CE need `mode: workflow \| agent \| both`? | **Ship the field** for forward-compatibility, defaulting to `workflow`. |
 | **D-6** | Publish docs to a site? | **Not in this scope.** |
-| **D-7** | Where do product standards get authored? | Upstream in `AgentCraftworks`, consumed here via ORG-STANDARD sync. |
+| **D-7** | Where do product standards get authored? | Upstream in `AgentCraftworks`, consumed here via ORG-STANDARD sync. **Correction (#275):** authored in `AgentCraftworks/AgentCraftworks`, but *published for sync* from `AgentCraftworks/.github` — that is the repo `sync-org-standards.yml` actually pulls from. |
 
 ### 7.1 ⚠️ Upstream dependency created by D-1
 

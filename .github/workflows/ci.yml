@@ -28,3 +28,23 @@ jobs:
       - run: npm -w typescript run typecheck
       - run: npm -w typescript run build
       - run: npm -w typescript test
+
+  link-check:
+    # Non-blocking for now (fail: false); offline mode validates only local file links and anchors.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check local Markdown links and anchors
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --offline
+            --include-fragments
+            --no-progress
+            --exclude-path node_modules
+            --exclude-path typescript/node_modules
+            --exclude-path typescript/dist
+            --exclude-path dist
+            --exclude-path docs/futures
+            './**/*.md'
+          fail: false

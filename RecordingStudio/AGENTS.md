@@ -22,11 +22,11 @@ RecordingStudio/
       RecordingStudio/capture-specs/<feature-slug>.yaml
    ```
 2. Fill in all required fields: `source_app`, `description`, `base_url`, `pass_criteria`, `selectors`.
-3. Run the synthetic test locally **after** `RecordingStudio/playwright.config.ts` is added:
+3. Run Playwright locally **after** `RecordingStudio/playwright.config.ts` is added:
    ```bash
    npx playwright test --config RecordingStudio/playwright.config.ts
    ```
-4. Add your feature slug to [`cx-capture.yml`](../cx-capture.yml) so it runs on every weekly scan.
+4. Add your feature slug to [`cx-capture.yml`](../cx-capture.yml) (`status: planned` — no workflow consumes it yet) so it is picked up once the weekly capture run exists.
 
 ## Capture Spec Format
 
@@ -42,12 +42,13 @@ Required top-level fields:
 | `pass_criteria` | List of assertions that must all succeed |
 | `selectors` | Key interactive elements used during recording |
 
-## Running CX Synthetic Tests
+## Running CX Capture Tests
 
 > **Note**: The Playwright configuration (`RecordingStudio/playwright.config.ts`) and the weekly
-> automation workflow (`ghaw-cx-synthetic.yml`) are planned infrastructure — they will be added
-> when the CX synthetic testing pipeline is wired up. In the meantime, contributors can run
-> Playwright manually against specs using:
+> capture workflow are **planned** infrastructure — neither exists in this repo yet (there is no
+> `ghaw-cx-synthetic.yml` in `.github/workflows/`). Per the paid `RecordingStudio` policy, captures
+> must be **real product captures**, not synthetic fixtures. In the meantime, contributors can run
+> Playwright manually against a running product instance using:
 
 ```bash
 # Set the base URL (defaults to http://localhost:3000)
@@ -61,11 +62,12 @@ npx playwright test --config RecordingStudio/playwright.config.ts \
   --grep "<feature-slug>"
 ```
 
-## Weekly Automated Run
+## Weekly Automated Run (planned)
 
-The `ghaw-cx-synthetic.yml` workflow (planned) will run all specs registered in `cx-capture.yml`
-every week once the pipeline is wired up.
-Screenshots will be uploaded as workflow artifacts and linked from the PR.
+A weekly capture workflow (name pending the prefix decision in
+[#277](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/277)) is planned to run all specs
+registered in [`cx-capture.yml`](../cx-capture.yml) against a real product instance once the pipeline
+is wired up. Screenshots will be uploaded as workflow artifacts and linked from the PR.
 
 ## Full Tooling Documentation
 

@@ -91,7 +91,7 @@ The AgentCraftworks org separates **Product**, **Platform Operations**, and **Bu
 
 ### Standards hierarchy
 
-Product-specific agent standards (engagement levels, handoff FSM, action tiers, MCP tools, CODEOWNERS routing) are **authored in `AgentCraftworks`** (the paid product repo) and **consumed here** via the `ORG-STANDARD` sync mechanism. Do not author new product agent standards in this repo — propose them in `AgentCraftworks` first.
+Product-specific agent standards (engagement levels, handoff FSM, action tiers, MCP tools, CODEOWNERS routing) are **authored in `AgentCraftworks/AgentCraftworks`** (the paid product repo), **published for sync from `AgentCraftworks/.github`** (the shared org standards repo that `sync-org-standards.yml` actually pulls from), and **consumed here** via the `ORG-STANDARD` sync mechanism. Do not author new product agent standards in this repo — propose them in `AgentCraftworks/AgentCraftworks` first.
 
 `AgentCraftworks-PlatformOps` is the central product development and platform engineering hub for org-wide engineering standards (CI/CD, infrastructure, process automation).
 
@@ -100,9 +100,10 @@ Product-specific agent standards (engagement levels, handoff FSM, action tiers, 
 1. **Never use ops credentials** (`GH_OPS_APP_ID`) — those belong to PlatformOps
 2. **Never create internal cost reports here** — those go to PlatformOps issues
 3. **GH-AW workflows** (`ghaw-*` prefix) belong here — product CI/CD automation
+   > **Prefix drift note:** the paid repo has moved to the `acw-*` prefix. CE currently has both (`acw-pr-readiness.yml` plus 20 `ghaw-*` workflows). The decision and rename are tracked in [#277](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/277) — do not rename workflow files until it is resolved.
 4. **Ops workflows** (`ops-*` prefix) belong in `AgentCraftworks-PlatformOps`
 5. **Product app credentials** (`GH_APP_ID` / `GH_APP_PRIVATE_KEY`) are for customer-facing webhook processing only
-6. **This repo consumes product standards from `AgentCraftworks`** — do not create new product standards here
+6. **This repo consumes product standards authored in `AgentCraftworks/AgentCraftworks` and synced from `AgentCraftworks/.github`** — do not create new product standards here
 
 ---
 
@@ -224,14 +225,16 @@ The `sync-org-standards` workflow in each product repo detects drift in the `<!-
 ```
 AgentCraftworks-PlatformOps      ← Org-wide engineering standards (CI/CD, infra, process)
     ↓
-AgentCraftworks (paid product)   ← Source of truth for product-specific agent standards
+AgentCraftworks (paid product)   ← Authoring repo for product-specific agent standards
     ↓                               (engagement levels, handoff FSM, action tiers, etc.)
+AgentCraftworks/.github          ← Publishes the ORG-STANDARD block that sync-org-standards.yml pulls
+    ↓
 AgentCraftworks-CE (this repo)   ← Consumes standards via ORG-STANDARD sync
 AgentCraftworks-VSCode            ← Consumes standards via ORG-STANDARD sync
 AgentCraftworks_WebSite           ← Consumes standards via ORG-STANDARD sync
 ```
 
-1. The `AgentCraftworks` repo (paid product) is the **source of truth** for all product-specific agent standards.
+1. The `AgentCraftworks/AgentCraftworks` repo (paid product) is the **authoring repo** for all product-specific agent standards; the `AgentCraftworks/.github` repo is the **publication point** whose `AGENTS.md` the `sync-org-standards` workflow compares against.
 2. `AgentCraftworks-PlatformOps` is the central product development hub for org-wide engineering standards.
 3. Every downstream product repo (`AgentCraftworks-CE`, `AgentCraftworks-VSCode`) embeds the `ORG-STANDARD` sections and runs `sync-org-standards` weekly.
 4. When the source of truth is updated (e.g., adding engagement level changes), all repos detect drift within one week and open a sync issue.
@@ -240,7 +243,7 @@ AgentCraftworks_WebSite           ← Consumes standards via ORG-STANDARD sync
 
 - [ ] `AgentCraftworks-PlatformOps` adds the same `ORG-STANDARD:BEGIN/END` markers to its `AGENTS.md` and `copilot/instructions.md`
 - [ ] `AgentCraftworks-PlatformOps` adds an `ops-sync-standards.yml` workflow equivalent to `sync-org-standards.yml` in this repo
-- [ ] All future product-specific agent standards are authored first in `AgentCraftworks/AGENTS.md` and propagated via the sync workflows
+- [ ] All future product-specific agent standards are authored first in `AgentCraftworks/AgentCraftworks` (`AGENTS.md`), published to `AgentCraftworks/.github`, and propagated via the sync workflows
 - [ ] Org-wide engineering standards are authored in `AgentCraftworks-PlatformOps` and propagated to all repos
 - [ ] The accessibility agent team (above) is listed in all repos including `AgentCraftworks-PlatformOps` so internal engineering always keeps Accessibility front and center
 

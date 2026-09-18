@@ -30,6 +30,6 @@
 
 # Root-level configuration
 /package.json @AgentCraftworks/maintainers
-/tsconfig.json @AgentCraftworks/maintainers
+/typescript/tsconfig.json @AgentCraftworks/maintainers
 /CONTRIBUTING.md @AgentCraftworks/maintainers
 /README.md @AgentCraftworks/maintainers
