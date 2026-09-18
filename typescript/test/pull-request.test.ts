@@ -148,11 +148,56 @@ describe("handlePullRequestEvent", () => {
   });
 
   it("should ignore unsupported PR actions", async () => {
-    const payload = makePrPayload({ action: "labeled" });
+    const payload = makePrPayload({ action: "edited" });
     const result = await handlePullRequestEvent(payload as never);
 
     assert.equal(result.handled, false);
     assert.ok(result.message.includes("Ignored"));
+  });
+
+  it("should treat labeled as actionable and track an existing handoff", async () => {
+    const existing = createHandoff(
+      { task: "Review PR #42", to: "@code-reviewer" },
+      { repository_full_name: "testorg/testrepo", issue_number: 42 },
+    );
+
+    const payload = makePrPayload({ action: "labeled" });
+    const result = await handlePullRequestEvent(payload as never);
+
+    assert.equal(result.handled, true);
+    assert.equal(result.handoff_id, existing.handoff_id);
+    assert.ok(result.message.includes("existing handoff"));
+  });
+
+  it("should report label routing source when no GitHub client is available", async () => {
+    const payload = makePrPayload({
+      action: "opened",
+      pull_request: {
+        number: 42,
+        title: "Docs",
+        user: { login: "dev-user" },
+        head: { ref: "docs/x", sha: "abc123" },
+        base: { ref: "main" },
+        draft: false,
+        labels: [{ name: "docs-review" }],
+      },
+    });
+    const result = await handlePullRequestEvent(payload as never);
+
+    assert.deepEqual(result.routing, {
+      teams: [],
+      agents: ["@docs-reviewer"],
+      source: "labels",
+    });
+    assert.deepEqual(result.actions, []);
+  });
+
+  it("should report routing source none when there are no labels and no CODEOWNERS", async () => {
+    const payload = makePrPayload({ action: "opened" });
+    const result = await handlePullRequestEvent(payload as never);
+
+    assert.equal(result.routing?.source, "none");
+    assert.deepEqual(result.routing?.agents, ["@code-reviewer"]);
   });
 
   it("should skip draft PRs", async () => {
