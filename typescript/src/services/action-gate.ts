@@ -1,4 +1,9 @@
-import type { ActionTier, DialLevel } from "../types/autonomy.js";
+import type {
+  ActionTier,
+  DialLevel,
+  EnvironmentTier,
+} from "../types/autonomy.js";
+import { ENGAGEMENT_LEVEL_NAMES } from "../types/autonomy.js";
 import {
   getRuntimePolicy,
   type RuntimePolicy,
@@ -59,9 +64,14 @@ export const actionGate = {
     }
 
     if (
-      ["create_branch", "create_agent_branch", "push_agent_commit", "edit_file", "create_file", "delete_file"].includes(
-        classification.actionType,
-      ) &&
+      [
+        "create_branch",
+        "create_agent_branch",
+        "push_agent_commit",
+        "edit_file",
+        "create_file",
+        "delete_file",
+      ].includes(classification.actionType) &&
       !request.branchName?.startsWith("agent/")
     ) {
       return {
@@ -98,7 +108,7 @@ export const actionGate = {
     if (!permission.permitted) {
       return {
         allowed: false,
-        code: "INSUFFICIENT_LEVEL",
+        code: permission.code ?? "INSUFFICIENT_LEVEL",
         action: classification.actionType,
         tier: classification.tier,
         dialLevel: permission.dialLevel,
@@ -121,3 +131,48 @@ export const actionGate = {
     };
   },
 };
+
+/** Compatibility shape for the PR webhook's denial summary. */
+export interface GateDecision extends ActionGateDecision {
+  level: DialLevel;
+  levelName: string;
+  env: EnvironmentTier;
+}
+
+export type ActionType = string;
+
+export function gateAction(
+  owner: string,
+  repo: string,
+  action: ActionType,
+  policy: RuntimePolicy = getRuntimePolicy(),
+): GateDecision {
+  const decision = actionGate.check({ owner, repo, action }, policy);
+  return {
+    ...decision,
+    level: decision.dialLevel,
+    levelName: ENGAGEMENT_LEVEL_NAMES[decision.effectiveLevel],
+    env: policy.environment,
+  };
+}
+
+export function canComment(
+  owner: string,
+  repo: string,
+  policy: RuntimePolicy = getRuntimePolicy(),
+): boolean {
+  return gateAction(owner, repo, "post_comment", policy).allowed;
+}
+
+export function describeDenial(decision: GateDecision): string {
+  const environmentLimit =
+    decision.bounds.environmentCeiling === decision.effectiveLevel &&
+    decision.effectiveLevel < decision.level
+      ? ` (capped from ${decision.level} by the \`${decision.env}\` environment, max ${decision.bounds.environmentCeiling})`
+      : "";
+  return (
+    `\`${decision.action}\` is a ${decision.tier} action and requires engagement level ` +
+    `${decision.requiredLevel}. This repository is at level ${decision.effectiveLevel} ` +
+    `(${decision.levelName})${environmentLimit}.`
+  );
+}
