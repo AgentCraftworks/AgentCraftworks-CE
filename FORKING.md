@@ -13,6 +13,8 @@ You can disable a workflow by deleting its file under `.github/workflows/` in yo
 | Refresh staging branch after promotion | .github/workflows/ghaw-staging-refresh.yml | Force-deletes and recreates the `staging` branch on the upstream remote; forks typically do not mirror this branch policy. | Remove the file to avoid branch deletions in your fork. |
 | GH-AW: Changeset | .github/workflows/ghaw-changeset.yml | Requires the AgentCraftworks GitHub App token to write branches and changelog updates. | Delete it, or switch to manual (`workflow_dispatch`) after configuring your own app/token. |
 | CLA Assistant | .github/workflows/cla.yml | Points to AgentCraftworks CLA content and stores signatures in `cla-signatures`; not valid for other projects. | Remove it, or update the CLA URL and branch to your own before re-enabling. |
+| ACW PR Readiness | .github/workflows/acw-pr-readiness.yml | Calls the reusable workflow `AgentCraftworks/.github/.github/workflows/acw-pr-readiness-reusable.yml`, which forks cannot resolve without org access. | Delete it, or point `uses:` at a reusable workflow in your own org. |
+| ghaw-changed-files-guard | .github/workflows/ghaw-changed-files-guard.yml | Calls the reusable workflow `AgentCraftworks/AgentCraftworks-PlatformOps/.github/workflows/ghaw-changed-files-guard-reusable.yml` in the private PlatformOps repo; fails on forks. | Delete it, or replace the `uses:` target with your own reusable workflow. |
 
 ## Fork-safe workflows
 

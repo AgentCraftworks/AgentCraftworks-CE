@@ -64,7 +64,7 @@ Pull Request / Push Event
 | **MCP 6-Tool Interface** | Standard MCP server for agent handoffs: `create_handoff`, `accept_handoff`, `complete_handoff`, `query_workflow_state`, `attach_context`, `get_context` |
 | **Finite State Machine** | Every handoff is a state transition — auditable, reproducible |
 | **CODEOWNERS Routing** | Events routed to the right agent based on ownership rules |
-| **Webhook Handling** | Handles GitHub PR, push, issue, and workflow events |
+| **Webhook Handling** | Handles GitHub `pull_request`, `installation`, `installation_repositories` and `ping` events |
 | **GitHub App Scaffold** | Drop-in GitHub App: one install, works across all repos in your org |
 | **Setup PR on Install** | Installing the App opens a reviewable CODEOWNERS pull request — no silent repository changes |
 | **Enterprise Upgrade Path** | Same finite state machine and same MCP tools, plus the orchestration and governance layers listed under [Enterprise Edition](#enterprise-edition) |
