@@ -1,5 +1,14 @@
 name: ACW PR Readiness
 
+# PR Readiness — Delegates to the org-wide reusable workflow that checks review
+# state, requests Copilot review, and escalates to a human reviewer when needed.
+# Engagement Level: T3 (Collaborator) — labels PRs, requests reviewers, posts comments.
+#
+# Fork configuration:
+#   - Secrets:   GH_CE_APP_ID, GH_CE_APP_PRIVATE_KEY (same App used by all other workflows)
+#   - Variable:  REQUIRED_HUMAN_REVIEWER — GitHub login of the required human reviewer.
+#                Falls back to the upstream maintainer (jenperret) when unset.
+
 on:
   pull_request:
     types: [opened, reopened, synchronize, edited, ready_for_review, review_requested]
@@ -22,11 +31,11 @@ jobs:
     with:
       pull_number: ${{ github.event.pull_request.number }}
       trigger_action: ${{ github.event.action }}
-      required_human_reviewer: jenperret
+      required_human_reviewer: ${{ vars.REQUIRED_HUMAN_REVIEWER || 'jenperret' }}
       enforced_base_branches: staging,main
       request_copilot_review: true
       copilot_reviewer_candidates: copilot,github-copilot[bot]
       escalation_label: needs-human-decision
     secrets:
-      GH_APP_ID: ${{ secrets.AGENTCRAFTWORKS_APP_ID }}
-      GH_APP_PRIVATE_KEY: ${{ secrets.AGENTCRAFTWORKS_APP_PRIVATE_KEY }}
+      GH_APP_ID: ${{ secrets.GH_CE_APP_ID }}
+      GH_APP_PRIVATE_KEY: ${{ secrets.GH_CE_APP_PRIVATE_KEY }}
