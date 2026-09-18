@@ -5,8 +5,13 @@
  *   1 = Observer     (T1 — read-only)
  *   2 = Advisor      (T2 — informational)
  *   3 = Collaborator (T3 — modify)
- *   4 = Delegated    (T4 — commit)
- *   5 = Autonomous   (T5 — merge/deploy)
+ *   4 = Delegated    (T4 — commit)        — Enterprise only
+ *   5 = Autonomous   (T5 — merge/deploy)  — Enterprise only
+ *
+ * Community Edition permits levels 1–3 in every environment (ADR-CE-001,
+ * mirroring paid ADR-077). Levels 4–5 are retained in the type system so
+ * that error messages, classification tables, and Enterprise builds can
+ * reference them, but the CE setter rejects them.
  */
 
 /** Action classification tiers (T1 = lowest risk, T5 = highest) */
@@ -78,13 +83,82 @@ export const TIER_MIN_LEVELS: Record<ActionTier, DialLevel> = {
   T5: 5,
 } as const;
 
-/** Maximum autonomy level per environment tier */
+/**
+ * Highest engagement level available in Community Edition (ADR-CE-001).
+ * Levels above this require AgentCraftworks Enterprise.
+ */
+export const CE_MAX_LEVEL: DialLevel = 3;
+
+/** Public URL surfaced in Enterprise-required error messages */
+export const ENTERPRISE_UPGRADE_URL = "https://agentcraftworks.com";
+
+/** Machine-readable code carried by Enterprise-required errors */
+export const ENTERPRISE_REQUIRED_CODE = "ENTERPRISE_REQUIRED";
+
+/** Human-readable message for level 4–5 requests in CE */
+export const ENTERPRISE_REQUIRED_MESSAGE =
+  `Engagement levels 4–5 (Delegated, Autonomous) require AgentCraftworks Enterprise — ${ENTERPRISE_UPGRADE_URL}`;
+
+/**
+ * Maximum autonomy level per environment tier.
+ *
+ * CE caps every environment at CE_MAX_LEVEL. The per-environment mechanism
+ * is retained so Enterprise can raise individual caps (its defaults are
+ * local 5 / dev 5 / staging 4 / production 3).
+ */
 export const ENV_MAX_LEVELS: Record<EnvironmentTier, DialLevel> = {
-  local: 5,
-  dev: 5,
-  staging: 4,
-  production: 3,
+  local: CE_MAX_LEVEL,
+  dev: CE_MAX_LEVEL,
+  staging: CE_MAX_LEVEL,
+  production: CE_MAX_LEVEL,
 } as const;
+
+/** True when the level is valid (1–5) but above the CE cap. */
+export function isEnterpriseOnlyLevel(level: number): boolean {
+  return Number.isInteger(level) && level > CE_MAX_LEVEL && level <= 5;
+}
+
+/**
+ * Thrown when a caller requests an engagement level that requires Enterprise.
+ * Carries structured fields so HTTP handlers can map it to 422 without
+ * string-matching the message.
+ */
+export class EnterpriseLevelError extends Error {
+  readonly code = ENTERPRISE_REQUIRED_CODE;
+  readonly requestedLevel: number;
+  readonly requestedLevelName: EngagementLevelName | null;
+  readonly maxLevel: DialLevel = CE_MAX_LEVEL;
+  readonly upgradeUrl = ENTERPRISE_UPGRADE_URL;
+
+  constructor(requestedLevel: number) {
+    super(ENTERPRISE_REQUIRED_MESSAGE);
+    this.name = "EnterpriseLevelError";
+    this.requestedLevel = requestedLevel;
+    this.requestedLevelName =
+      requestedLevel >= 1 && requestedLevel <= 5
+        ? ENGAGEMENT_LEVEL_NAMES[requestedLevel as DialLevel]
+        : null;
+  }
+
+  /** JSON-serialisable shape for API error bodies */
+  toJSON(): {
+    code: string;
+    message: string;
+    requestedLevel: number;
+    requestedLevelName: EngagementLevelName | null;
+    maxLevel: DialLevel;
+    upgradeUrl: string;
+  } {
+    return {
+      code: this.code,
+      message: this.message,
+      requestedLevel: this.requestedLevel,
+      requestedLevelName: this.requestedLevelName,
+      maxLevel: this.maxLevel,
+      upgradeUrl: this.upgradeUrl,
+    };
+  }
+}
 
 /**
  * Map old 11-level dial values to new 5-level engagement levels.

@@ -27,7 +27,12 @@ import {
 import {
   mapLegacyDialLevel,
   resolveEngagementLevel,
+  isEnterpriseOnlyLevel,
+  CE_MAX_LEVEL,
   ENGAGEMENT_LEVEL_NAMES,
+  ENV_MAX_LEVELS,
+  ENTERPRISE_REQUIRED_MESSAGE,
+  EnterpriseLevelError,
 } from "../src/types/autonomy.js";
 
 // ─── Action Classifier Tests ────────────────────────────────────────────────
@@ -257,15 +262,15 @@ describe("Autonomy Dial", () => {
   });
 
   it("should set and get dial level", () => {
-    setDialLevel("owner", "repo", 4, "admin-user");
+    setDialLevel("owner", "repo", 3, "admin-user");
     const config = getDialLevel("owner", "repo");
-    assert.equal(config.dialLevel, 4);
+    assert.equal(config.dialLevel, 3);
     assert.equal(config.isDefault, false);
     assert.equal(config.updatedBy, "admin-user");
     assert.ok(config.updatedAt);
   });
 
-  it("should validate dial level range 1-5", () => {
+  it("should validate dial level range 1-5 before the edition cap", () => {
     assert.throws(
       () => setDialLevel("o", "r", 0, "user"),
       /between 1 and 5/,
@@ -274,11 +279,49 @@ describe("Autonomy Dial", () => {
       () => setDialLevel("o", "r", 6, "user"),
       /between 1 and 5/,
     );
-    // Valid extremes
+    // Valid CE extremes
     setDialLevel("o", "r", 1, "user");
     assert.equal(getDialLevel("o", "r").dialLevel, 1);
-    setDialLevel("o", "r", 5, "user");
-    assert.equal(getDialLevel("o", "r").dialLevel, 5);
+    setDialLevel("o", "r", CE_MAX_LEVEL, "user");
+    assert.equal(getDialLevel("o", "r").dialLevel, CE_MAX_LEVEL);
+  });
+
+  it("should reject Enterprise-only levels 4 and 5 with a structured error (ADR-CE-001)", () => {
+    for (const level of [4, 5]) {
+      assert.throws(
+        () => setDialLevel("o", "r", level, "user"),
+        (err: unknown) => {
+          assert.ok(err instanceof EnterpriseLevelError);
+          assert.equal(err.code, "ENTERPRISE_REQUIRED");
+          assert.equal(err.message, ENTERPRISE_REQUIRED_MESSAGE);
+          assert.equal(err.requestedLevel, level);
+          assert.equal(err.requestedLevelName, ENGAGEMENT_LEVEL_NAMES[level as 4 | 5]);
+          assert.equal(err.maxLevel, CE_MAX_LEVEL);
+          assert.equal(err.upgradeUrl, "https://agentcraftworks.com");
+          return true;
+        },
+      );
+    }
+    // Nothing persisted
+    assert.equal(getDialLevel("o", "r").isDefault, true);
+  });
+
+  it("should reject Enterprise-only levels requested by name", () => {
+    for (const name of ["delegated", "autonomous", "agent-team", "full-agent-team"]) {
+      const level = resolveEngagementLevel(name);
+      assert.ok(isEnterpriseOnlyLevel(level), `${name} should resolve to an Enterprise-only level`);
+      assert.throws(
+        () => setDialLevel("o", "r", level, "user"),
+        EnterpriseLevelError,
+      );
+    }
+  });
+
+  it("should expose the Enterprise message with the expected wording", () => {
+    assert.equal(
+      ENTERPRISE_REQUIRED_MESSAGE,
+      "Engagement levels 4–5 (Delegated, Autonomous) require AgentCraftworks Enterprise — https://agentcraftworks.com",
+    );
   });
 
   it("should require updatedBy", () => {
@@ -307,24 +350,26 @@ describe("Autonomy Dial", () => {
   });
 
   it("should apply environment tier cap", () => {
-    setDialLevel("owner", "repo", 5, "admin");
-    // Production caps at 3
-    const effective = getEffectiveLevel("owner", "repo", "production");
-    assert.equal(effective, 3);
-    // Staging caps at 4
-    const effectiveStaging = getEffectiveLevel("owner", "repo", "staging");
-    assert.equal(effectiveStaging, 4);
-    // Local has no cap (5)
-    const effectiveLocal = getEffectiveLevel("owner", "repo", "local");
-    assert.equal(effectiveLocal, 5);
+    setDialLevel("owner", "repo", 3, "admin");
+    // CE caps every environment at CE_MAX_LEVEL (ADR-CE-001)
+    for (const env of ["local", "dev", "staging", "production"] as const) {
+      assert.equal(ENV_MAX_LEVELS[env], CE_MAX_LEVEL);
+      assert.equal(getEffectiveLevel("owner", "repo", env), 3);
+    }
+    // Lower dial levels are preserved (cap is a ceiling, not a floor)
+    setDialLevel("owner", "repo", 2, "admin");
+    assert.equal(getEffectiveLevel("owner", "repo", "local"), 2);
   });
 
   it("should factor env tier into permission check", () => {
-    setDialLevel("owner", "repo", 5, "admin");
-    // Without env tier, merge_pr (requires 5) should be allowed at level 5
-    const allowed = dialIsActionPermitted("owner", "repo", "merge_pr");
-    assert.equal(allowed.permitted, true);
-    // With production cap (3), merge_pr should be denied
+    setDialLevel("owner", "repo", 3, "admin");
+    // edit_file (requires 3) allowed at CE max with and without env tier
+    assert.equal(dialIsActionPermitted("owner", "repo", "edit_file").permitted, true);
+    assert.equal(
+      dialIsActionPermitted("owner", "repo", "edit_file", "production").permitted,
+      true,
+    );
+    // merge_pr (requires 5) denied everywhere in CE
     const denied = dialIsActionPermitted(
       "owner",
       "repo",
@@ -332,11 +377,12 @@ describe("Autonomy Dial", () => {
       "production",
     );
     assert.equal(denied.permitted, false);
+    assert.equal(denied.effectiveLevel, 3);
   });
 
   it("should clear all dials", () => {
     setDialLevel("o1", "r1", 3, "user");
-    setDialLevel("o2", "r2", 4, "user");
+    setDialLevel("o2", "r2", 2, "user");
     clearAllDials();
     assert.equal(getDialLevel("o1", "r1").isDefault, true);
     assert.equal(getDialLevel("o2", "r2").isDefault, true);

@@ -6,6 +6,7 @@
  * Routes:
  *   GET  /api/dial/:owner/:repo  — Get dial level for a repo
  *   POST /api/dial/:owner/:repo  — Set dial level for a repo
+ *                                  (levels 4–5 → 422 ENTERPRISE_REQUIRED, ADR-CE-001)
  *   POST /api/dial/check         — Check action permission
  *   GET  /api/dial/actions       — List all classified actions
  */
@@ -14,8 +15,11 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import type { EnvironmentTier } from "../types/autonomy.js";
 import {
+  CE_MAX_LEVEL,
   ENGAGEMENT_LEVEL_NAMES,
+  EnterpriseLevelError,
   VALID_ENGAGEMENT_LEVEL_NAMES,
+  isEnterpriseOnlyLevel,
   resolveEngagementLevel,
 } from "../types/autonomy.js";
 import {
@@ -35,6 +39,14 @@ const router = Router();
 function paramStr(val: string | string[] | undefined): string | undefined {
   if (Array.isArray(val)) return val[0];
   return val;
+}
+
+/** Build the 422 body for an Enterprise-only level request */
+function enterpriseRequired(res: Response, err: EnterpriseLevelError): void {
+  res.status(422).json({
+    error: "Unprocessable Entity",
+    ...err.toJSON(),
+  });
 }
 
 // ─── GET /api/dial/actions — List all classified actions ────────────────────
@@ -140,6 +152,7 @@ router.get("/:owner/:repo", (req: Request, res: Response): void => {
     res.json({
       ...config,
       engagementLevel: ENGAGEMENT_LEVEL_NAMES[config.dialLevel],
+      maxLevel: CE_MAX_LEVEL,
     });
   } catch (error: unknown) {
     const message =
@@ -167,21 +180,27 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
     }
 
     const body = req.body as Record<string, unknown>;
-    const rawDialLevel = body["dialLevel"] as number | undefined;
+    // `level` is accepted as an alias for `dialLevel` (number) or `engagement` (name)
+    const rawDialLevel = (body["dialLevel"] ?? body["level"]) as
+      | number
+      | string
+      | undefined;
     const engagement = body["engagement"] as string | undefined;
     const updatedBy = body["updatedBy"] as string | undefined;
 
-    // Resolve dial level from either dialLevel or engagement name
+    // Resolve dial level from either dialLevel/level or engagement name
     let dialLevel: number | undefined;
-    if (rawDialLevel !== undefined && rawDialLevel !== null) {
+    const nameInput =
+      typeof rawDialLevel === "string" ? rawDialLevel : engagement;
+    if (typeof rawDialLevel === "number") {
       dialLevel = rawDialLevel;
-    } else if (engagement) {
+    } else if (nameInput) {
       try {
-        dialLevel = resolveEngagementLevel(engagement);
+        dialLevel = resolveEngagementLevel(nameInput);
       } catch {
         res.status(400).json({
           error: "Bad Request",
-          message: `Invalid engagement level: "${engagement}". Valid names: ${VALID_ENGAGEMENT_LEVEL_NAMES.join(", ")}`,
+          message: `Invalid engagement level: "${nameInput}". Valid names: ${VALID_ENGAGEMENT_LEVEL_NAMES.join(", ")}`,
         });
         return;
       }
@@ -208,6 +227,13 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
       return;
     }
 
+    // ADR-CE-001: levels 4–5 require Enterprise. Checked before updatedBy so
+    // callers learn about the edition boundary first.
+    if (isEnterpriseOnlyLevel(dialLevel)) {
+      enterpriseRequired(res, new EnterpriseLevelError(dialLevel));
+      return;
+    }
+
     if (!updatedBy || typeof updatedBy !== "string") {
       res.status(400).json({
         error: "Bad Request",
@@ -221,8 +247,14 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
     res.json({
       ...config,
       engagementLevel: ENGAGEMENT_LEVEL_NAMES[config.dialLevel],
+      maxLevel: CE_MAX_LEVEL,
     });
   } catch (error: unknown) {
+    if (error instanceof EnterpriseLevelError) {
+      enterpriseRequired(res, error);
+      return;
+    }
+
     const message =
       error instanceof Error ? error.message : "Failed to set dial level";
 
