@@ -9,17 +9,40 @@
  * If one does not exist, the handler creates a branch and opens a PR with a
  * default template so the repository owner can review and customise it before
  * merging.
+ *
+ * The webhook handler returns immediately (202 Accepted); the per-repository
+ * work runs on the in-process {@link ScaffoldQueue} with bounded concurrency
+ * and rate-limit back-off.  Per-delivery work is capped at
+ * `SCAFFOLD_MAX_REPOS`; the remainder is listed in a single tracking issue.
+ * See `services/scaffold-queue.ts` for the single-replica assumption.
  */
 
 import type { Octokit } from "@octokit/rest";
 import { getInstallationOctokit } from "../utils/auth.js";
+import {
+  DEFAULT_SCAFFOLD_MAX_REPOS,
+  defaultLogger,
+  getScaffoldQueue,
+  readPositiveIntEnv,
+  withRateLimitBackoff,
+  type Logger,
+  type ScaffoldQueue,
+} from "../services/scaffold-queue.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Repository {
+export interface Repository {
   name: string;
   full_name: string;
   private: boolean;
+  /**
+   * Present on `GET /installation/repositories` results and on
+   * `installation_repositories` payloads; absent on the slim `repositories`
+   * list of `installation.created`.  When absent the flags are re-checked
+   * from `GET /repos/{owner}/{repo}` inside {@link scaffoldCodeowners}.
+   */
+  archived?: boolean;
+  fork?: boolean;
 }
 
 export interface InstallationPayload {
@@ -63,10 +86,45 @@ export type ScaffoldFn = (
  */
 export type ListReposFn = (installationId: number) => Promise<Repository[]>;
 
+/** Injectable factory for an installation-authenticated Octokit client. */
+export type OctokitFactory = (installationId: number) => Promise<Octokit>;
+
+/** Summary emitted when a delivery's background scaffolding finishes. */
+export interface ScaffoldRunSummary {
+  installationId: number;
+  action: string;
+  results: ScaffoldResult[];
+  /** Repositories skipped before any API call (archived / fork / malformed). */
+  skipped: ScaffoldResult[];
+  /** Repositories beyond `SCAFFOLD_MAX_REPOS` that were listed in the tracking issue. */
+  deferred: string[];
+  trackingIssueUrl?: string;
+}
+
+export interface HandleInstallationOptions {
+  /** Defaults to {@link scaffoldCodeowners}. Pass a mock in tests. */
+  scaffoldFn?: ScaffoldFn;
+  /** Defaults to paging `GET /installation/repositories`. */
+  listReposFn?: ListReposFn;
+  /** Defaults to {@link getInstallationOctokit}. */
+  octokitFactory?: OctokitFactory;
+  /** Defaults to the process-wide queue from {@link getScaffoldQueue}. */
+  queue?: ScaffoldQueue;
+  /** Defaults to `SCAFFOLD_MAX_REPOS` or 25. */
+  maxRepos?: number;
+  /** Delay function for back-off; injectable so tests do not sleep. */
+  sleep?: (ms: number) => Promise<void>;
+  logger?: Logger;
+  /** Invoked once the background run for this delivery completes. */
+  onComplete?: (summary: ScaffoldRunSummary) => void;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SETUP_BRANCH = "agentcraftworks/setup-codeowners";
 const CODEOWNERS_PATH = ".github/CODEOWNERS";
+const TRACKING_ISSUE_TITLE_PREFIX =
+  "AgentCraftworks CE: CODEOWNERS setup pending for";
 
 /** All valid CODEOWNERS locations that GitHub recognises. */
 const CODEOWNERS_LOCATIONS = [
@@ -182,6 +240,33 @@ export async function scaffoldCodeowners(
 ): Promise<ScaffoldResult> {
   const client = octokit ?? (await getInstallationOctokit(installationId));
 
+  // Fetch repository metadata first: one call tells us the default branch and
+  // whether the repo is archived or a fork, avoiding three CODEOWNERS probes
+  // for repositories we will skip anyway.
+  const repoData = await client.request("GET /repos/{owner}/{repo}", {
+    owner,
+    repo,
+  });
+  const repoMeta = repoData.data as {
+    default_branch: string;
+    archived?: boolean;
+    fork?: boolean;
+  };
+  if (repoMeta.archived) {
+    return {
+      repository: `${owner}/${repo}`,
+      skipped: true,
+      message: "Repository is archived — skipped",
+    };
+  }
+  if (repoMeta.fork) {
+    return {
+      repository: `${owner}/${repo}`,
+      skipped: true,
+      message: "Repository is a fork — skipped",
+    };
+  }
+
   // Skip if a CODEOWNERS file already exists anywhere in the repo.
   const exists = await codeownersExists(client, owner, repo);
   if (exists) {
@@ -192,13 +277,7 @@ export async function scaffoldCodeowners(
     };
   }
 
-  // Resolve the default branch and its current HEAD SHA.
-  const repoData = await client.request("GET /repos/{owner}/{repo}", {
-    owner,
-    repo,
-  });
-  const defaultBranch = (repoData.data as { default_branch: string })
-    .default_branch;
+  const defaultBranch = repoMeta.default_branch;
 
   const refData = await client.request(
     "GET /repos/{owner}/{repo}/git/ref/{ref}",
@@ -333,40 +412,39 @@ async function listInstallationRepos(
 /**
  * Handle an `installation` or `installation_repositories` webhook event.
  *
- * Extracts the list of affected repositories and calls
- * {@link scaffoldCodeowners} for each one.  Errors for individual
- * repositories are captured and surfaced in the result list rather than
- * propagated, so a failure for one repo does not block others.
+ * Resolves the affected repositories, filters out archived / fork /
+ * malformed entries, caps the batch at `SCAFFOLD_MAX_REPOS`, and enqueues the
+ * remaining work on the in-process {@link ScaffoldQueue}.  Returns as soon as
+ * the work is queued so the webhook can be acknowledged within GitHub's 10 s
+ * delivery window.  Per-repository errors are logged with a correlation id
+ * (`installation:<id>` / `installation:<id>:<repo>`) and never propagate.
  *
- * @param scaffoldFn   - Optional override for the scaffolding implementation.
- *   Defaults to {@link scaffoldCodeowners}.  Pass a custom function in tests
- *   to avoid real GitHub API calls.
- * @param listReposFn  - Optional override for listing installation repos.
- *   Defaults to {@link listInstallationRepos}.  Used when GitHub omits the
- *   `repositories` field on org-wide (`repository_selection: "all"`) installs.
+ * For org-wide installs GitHub omits `repositories`; the (potentially slow)
+ * listing call is deferred to the background job as well.
  */
 export async function handleInstallationEvent(
   payload: InstallationPayload,
-  scaffoldFn: ScaffoldFn = scaffoldCodeowners,
-  listReposFn: ListReposFn = listInstallationRepos,
+  options: HandleInstallationOptions = {},
 ): Promise<{
   handled: boolean;
   action: string;
-  results: ScaffoldResult[];
+  /** Number of repositories queued for scaffolding in this delivery. */
+  queued: number;
+  /** Number of repositories beyond the cap listed in the tracking issue. */
+  deferred: number;
   message: string;
 }> {
   const { action, installation } = payload;
+  const logger = options.logger ?? defaultLogger;
+  const correlationId = `installation:${installation.id}`;
 
-  // Determine which repositories to process based on the action.
-  let repos: Repository[] = [];
+  let repos: Repository[] | undefined;
+  let needsListing = false;
   if (action === "created") {
     if (payload.repositories) {
-      // Specific-repos installation: list is provided inline.
       repos = payload.repositories;
     } else {
-      // Org-wide installation (repository_selection: "all"): GitHub omits the
-      // repositories list — fall back to the Installation Repositories API.
-      repos = await listReposFn(installation.id);
+      needsListing = true;
     }
   } else if (action === "added" && payload.repositories_added) {
     repos = payload.repositories_added;
@@ -374,95 +452,374 @@ export async function handleInstallationEvent(
     return {
       handled: false,
       action,
-      results: [],
+      queued: 0,
+      deferred: 0,
       message: `Installation action '${action}' not handled`,
     };
   }
 
-  if (repos.length === 0) {
+  if (!needsListing && (repos === undefined || repos.length === 0)) {
     return {
       handled: true,
       action,
-      results: [],
+      queued: 0,
+      deferred: 0,
       message: "No repositories to process",
     };
   }
 
-  const results: ScaffoldResult[] = [];
+  const maxRepos =
+    options.maxRepos ??
+    readPositiveIntEnv("SCAFFOLD_MAX_REPOS", DEFAULT_SCAFFOLD_MAX_REPOS);
+  const queue = options.queue ?? getScaffoldQueue();
 
-  // Helper to scaffold CODEOWNERS for a single repository and return a result.
-  async function scaffoldRepoForInstallation(
-    repo: Repository,
-    installationId: number,
-  ): Promise<ScaffoldResult> {
-    const parts = repo.full_name.split("/");
-    if (parts.length !== 2 || !parts[0] || !parts[1]) {
-      return {
-        repository: repo.full_name,
-        skipped: false,
-        message: `Error scaffolding CODEOWNERS: malformed repository name '${repo.full_name}'`,
-      };
-    }
+  // Partition now when the list is inline so the response can report exact
+  // counts; org-wide installs are partitioned inside the job after listing.
+  const plan = repos ? planScaffoldBatch(repos, maxRepos) : undefined;
 
-    const owner = parts[0];
-    const repoName = parts[1];
+  queue.enqueue(() =>
+    runScaffoldJob(payload, plan, maxRepos, {
+      ...options,
+      logger,
+      correlationId,
+      queue,
+    }),
+  );
 
-    try {
-      const result = await scaffoldFn(
-        owner,
-        repoName,
-        installationId,
-      );
-      return result;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      return {
-        repository: repo.full_name,
-        skipped: false,
-        message: `Error scaffolding CODEOWNERS: ${message}`,
-      };
-    }
+  logger("info", {
+    msg: "installation scaffolding queued",
+    correlationId,
+    action,
+    queued: plan?.toProcess.length ?? null,
+    deferred: plan?.deferred.length ?? null,
+    skipped: plan?.skipped.length ?? null,
+    orgWideListing: needsListing,
+  });
+
+  if (!plan) {
+    return {
+      handled: true,
+      action,
+      queued: 0,
+      deferred: 0,
+      message: `Accepted: listing installation repositories in background (cap ${maxRepos})`,
+    };
   }
 
-  // Process repositories with a bounded concurrency limit to avoid webhook timeouts
-  // while still parallelising work across multiple repositories.
-  const CONCURRENCY_LIMIT = 5;
-  const queue: Repository[] = [...repos];
-  const workerCount = Math.min(CONCURRENCY_LIMIT, queue.length);
-  const workers: Promise<void>[] = [];
-
-  for (let i = 0; i < workerCount; i += 1) {
-    workers.push(
-      (async () => {
-        // Each worker pulls repositories from the shared queue until it is empty.
-        // Array.prototype.shift is safe here because JavaScript runs this code on a
-        // single event loop thread; concurrent access is serialized.
-        while (true) {
-          const nextRepo = queue.shift();
-          if (!nextRepo) {
-            return;
-          }
-
-          const result = await scaffoldRepoForInstallation(
-            nextRepo,
-            installation.id,
-          );
-          results.push(result);
-        }
-      })(),
-    );
-  }
-
-  await Promise.all(workers);
+  const n = plan.toProcess.length;
   return {
     handled: true,
     action,
-    results,
-    message: `Processed ${repos.length} repositor${repos.length === 1 ? "y" : "ies"}`,
+    queued: n,
+    deferred: plan.deferred.length,
+    message: `Accepted: scaffolding ${n} repositor${n === 1 ? "y" : "ies"} in background`,
   };
 }
 
+// ─── Background job ───────────────────────────────────────────────────────────
+
+interface ScaffoldPlan {
+  toProcess: Repository[];
+  deferred: Repository[];
+  skipped: ScaffoldResult[];
+}
+
+/**
+ * Split repositories into: eligible-and-within-cap, eligible-but-deferred,
+ * and skipped (archived / fork / malformed name — no API call needed).
+ */
+export function planScaffoldBatch(
+  repos: Repository[],
+  maxRepos: number,
+): ScaffoldPlan {
+  const skipped: ScaffoldResult[] = [];
+  const eligible: Repository[] = [];
+
+  for (const repo of repos) {
+    if (repo.archived) {
+      skipped.push({
+        repository: repo.full_name,
+        skipped: true,
+        message: "Repository is archived — skipped",
+      });
+    } else if (repo.fork) {
+      skipped.push({
+        repository: repo.full_name,
+        skipped: true,
+        message: "Repository is a fork — skipped",
+      });
+    } else if (!splitFullName(repo.full_name)) {
+      skipped.push({
+        repository: repo.full_name,
+        skipped: false,
+        message: `Error scaffolding CODEOWNERS: malformed repository name '${repo.full_name}'`,
+      });
+    } else {
+      eligible.push(repo);
+    }
+  }
+
+  return {
+    toProcess: eligible.slice(0, maxRepos),
+    deferred: eligible.slice(maxRepos),
+    skipped,
+  };
+}
+
+interface JobContext extends HandleInstallationOptions {
+  logger: Logger;
+  correlationId: string;
+  queue: ScaffoldQueue;
+}
+
+/**
+ * Coordinator job for one webhook delivery.  Lists repositories if needed,
+ * then fans out one queue job per repository so the shared queue bounds
+ * GitHub API concurrency globally (across concurrent deliveries), and
+ * finalises — tracking issue + summary — once the last repository job ends.
+ */
+async function runScaffoldJob(
+  payload: InstallationPayload,
+  initialPlan: ScaffoldPlan | undefined,
+  maxRepos: number,
+  ctx: JobContext,
+): Promise<void> {
+  const { installation, action } = payload;
+  const scaffoldFn = ctx.scaffoldFn ?? scaffoldCodeowners;
+  const listReposFn = ctx.listReposFn ?? listInstallationRepos;
+  const octokitFactory = ctx.octokitFactory ?? getInstallationOctokit;
+  const { logger, correlationId } = ctx;
+
+  const summary: ScaffoldRunSummary = {
+    installationId: installation.id,
+    action,
+    results: [],
+    skipped: [],
+    deferred: [],
+  };
+
+  let finalised = false;
+  const finalise = async (
+    octokit: Octokit | undefined,
+    plan: ScaffoldPlan | undefined,
+  ): Promise<void> => {
+    if (finalised) return;
+    finalised = true;
+    if (octokit && plan && plan.deferred.length > 0) {
+      summary.trackingIssueUrl = await openTrackingIssue(
+        octokit,
+        installation.account.login,
+        plan.toProcess[0] ?? plan.deferred[0],
+        plan.deferred,
+        ctx,
+      );
+    }
+    logger("info", {
+      msg: "installation scaffolding finished",
+      correlationId,
+      processed: summary.results.length,
+      created: summary.results.filter((r) => r.pr_url).length,
+      skipped:
+        summary.skipped.length + summary.results.filter((r) => r.skipped).length,
+      errors: summary.results.filter((r) => !r.skipped && !r.pr_url).length,
+      deferred: summary.deferred.length,
+      trackingIssueUrl: summary.trackingIssueUrl,
+    });
+    ctx.onComplete?.(summary);
+  };
+
+  let plan = initialPlan;
+  try {
+    if (!plan) {
+      const listed = await withRateLimitBackoff(
+        () => listReposFn(installation.id),
+        { sleep: ctx.sleep, logger, correlationId },
+      );
+      plan = planScaffoldBatch(listed, maxRepos);
+      logger("info", {
+        msg: "installation repositories listed",
+        correlationId,
+        total: listed.length,
+        queued: plan.toProcess.length,
+        deferred: plan.deferred.length,
+        skipped: plan.skipped.length,
+      });
+    }
+    summary.skipped = plan.skipped;
+    summary.deferred = plan.deferred.map((r) => r.full_name);
+    for (const s of plan.skipped) {
+      logger("info", {
+        msg: "repository skipped",
+        correlationId,
+        repo: s.repository,
+        reason: s.message,
+      });
+    }
+
+    if (plan.toProcess.length === 0 && plan.deferred.length === 0) {
+      await finalise(undefined, plan);
+      return;
+    }
+
+    // One authenticated client per delivery; the token cache in auth.ts
+    // makes this cheap but it also keeps the auth path out of the hot loop.
+    const octokit = await octokitFactory(installation.id);
+
+    let remaining = plan.toProcess.length;
+    if (remaining === 0) {
+      await finalise(octokit, plan);
+      return;
+    }
+
+    const readyPlan = plan;
+    for (const repo of readyPlan.toProcess) {
+      ctx.queue.enqueue(async () => {
+        const result = await scaffoldOneRepo(
+          repo,
+          installation.id,
+          octokit,
+          scaffoldFn,
+          ctx,
+        );
+        summary.results.push(result);
+        remaining -= 1;
+        if (remaining === 0) {
+          await finalise(octokit, readyPlan);
+        }
+      });
+    }
+  } catch (err: unknown) {
+    logger("error", {
+      msg: "installation scaffolding job failed",
+      correlationId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    await finalise(undefined, plan);
+  }
+}
+
+async function scaffoldOneRepo(
+  repo: Repository,
+  installationId: number,
+  octokit: Octokit,
+  scaffoldFn: ScaffoldFn,
+  ctx: JobContext,
+): Promise<ScaffoldResult> {
+  const parts = splitFullName(repo.full_name);
+  const correlationId = `${ctx.correlationId}:${repo.full_name}`;
+  if (!parts) {
+    return {
+      repository: repo.full_name,
+      skipped: false,
+      message: `Error scaffolding CODEOWNERS: malformed repository name '${repo.full_name}'`,
+    };
+  }
+  const [owner, name] = parts;
+
+  try {
+    const result = await withRateLimitBackoff(
+      () => scaffoldFn(owner, name, installationId, octokit),
+      { sleep: ctx.sleep, logger: ctx.logger, correlationId },
+    );
+    ctx.logger("info", {
+      msg: result.skipped ? "repository skipped" : "CODEOWNERS PR created",
+      correlationId,
+      repo: repo.full_name,
+      prUrl: result.pr_url,
+      reason: result.skipped ? result.message : undefined,
+    });
+    return result;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    ctx.logger("error", {
+      msg: "CODEOWNERS scaffolding failed",
+      correlationId,
+      repo: repo.full_name,
+      status: (err as { status?: number }).status,
+      error: message,
+    });
+    return {
+      repository: repo.full_name,
+      skipped: false,
+      message: `Error scaffolding CODEOWNERS: ${message}`,
+    };
+  }
+}
+
+/**
+ * Open a single tracking issue listing repositories that exceeded the
+ * per-delivery cap.  Prefers the account's `.github` repository; falls back to
+ * `fallbackRepo` when it does not exist.  Failures are logged, not thrown.
+ */
+async function openTrackingIssue(
+  octokit: Octokit,
+  owner: string,
+  fallbackRepo: Repository | undefined,
+  deferred: Repository[],
+  ctx: JobContext,
+): Promise<string | undefined> {
+  const { logger, correlationId } = ctx;
+  try {
+    let targetRepo = ".github";
+    try {
+      await octokit.request("GET /repos/{owner}/{repo}", { owner, repo: targetRepo });
+    } catch (err: unknown) {
+      if (!isNotFoundError(err)) throw err;
+      const fallback = fallbackRepo ? splitFullName(fallbackRepo.full_name) : undefined;
+      if (!fallback) return undefined;
+      targetRepo = fallback[1];
+    }
+
+    const n = deferred.length;
+    const title = `${TRACKING_ISSUE_TITLE_PREFIX} ${n} repositor${n === 1 ? "y" : "ies"}`;
+    const body = [
+      "## 🤖 AgentCraftworks CE: CODEOWNERS setup pending",
+      "",
+      `This installation included more repositories than the per-delivery cap (\`SCAFFOLD_MAX_REPOS\`). CODEOWNERS pull requests were opened for the first batch; the following ${n} repositor${n === 1 ? "y" : "ies"} still need a default \`.github/CODEOWNERS\`:`,
+      "",
+      ...deferred.map((r) => `- [ ] ${r.full_name}`),
+      "",
+      "### How to finish setup",
+      "",
+      "1. Remove and re-add the pending repositories to the installation (**Settings → GitHub Apps → Configure**) in batches, or",
+      "2. Copy the default template from an already-scaffolded repository into each one manually.",
+      "",
+      "---",
+      "*Generated by AgentCraftworks CE — [Documentation](https://github.com/AgentCraftworks/AgentCraftworks-CE)*",
+    ].join("\n");
+
+    const issue = await withRateLimitBackoff(
+      () =>
+        octokit.request("POST /repos/{owner}/{repo}/issues", {
+          owner,
+          repo: targetRepo,
+          title,
+          body,
+        }),
+      { sleep: ctx.sleep, logger, correlationId },
+    );
+    const url = (issue.data as { html_url: string }).html_url;
+    logger("info", { msg: "tracking issue created", correlationId, repo: `${owner}/${targetRepo}`, deferred: n, url });
+    return url;
+  } catch (err: unknown) {
+    logger("error", {
+      msg: "failed to create tracking issue",
+      correlationId,
+      deferred: deferred.length,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return undefined;
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Split `owner/repo`; returns `undefined` for malformed names. */
+function splitFullName(fullName: string): [string, string] | undefined {
+  const parts = fullName.split("/");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return undefined;
+  return [parts[0], parts[1]];
+}
 
 function isNotFoundError(err: unknown): boolean {
   return (

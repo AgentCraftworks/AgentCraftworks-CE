@@ -92,15 +92,17 @@ After deployment, update your GitHub App webhook URL to `https://<your-url>/api/
    - **Homepage URL:** Your repo URL (e.g., `https://github.com/YOUR-ORG/YOUR-REPO`)
    - **Webhook URL:** Leave blank (update after deploy)
    - **Webhook Secret:** Generate one: `openssl rand -hex 32` — **save this value**
-3. **Permissions** (Repository):
-   - Contents: Read & Write
-   - Issues: Read & Write
-   - Pull Requests: Read & Write
-   - Metadata: Read-only
-   - Checks: Read & Write
-   - Commit statuses: Read & Write
-   - Actions: Read-only
-4. **Subscribe to events:** Pull request, Pull request review, Issues, Issue comment, Push
+3. **Permissions** (Repository) — CE requests only what its handlers use:
+
+   | Permission | Access | Used by |
+   |------------|--------|---------|
+   | Contents | Read & Write | CODEOWNERS scaffolding — create setup branch and commit `.github/CODEOWNERS` |
+   | Pull requests | Read & Write | Open the CODEOWNERS setup PR; receive `pull_request` events for handoff routing |
+   | Issues | Read & Write | Open the single "CODEOWNERS setup pending" tracking issue when an installation exceeds `SCAFFOLD_MAX_REPOS` |
+   | Metadata | Read-only | Repository lookup (default branch, archived / fork flags); mandatory for all Apps |
+
+   Do **not** grant Checks, Commit statuses, or Actions — CE does not use them.
+4. **Subscribe to events:** Installation, Installation repositories, Pull request. (`ping` is delivered automatically on webhook creation and needs no subscription.)
 5. Click **Create GitHub App**
 6. Note the **App ID**
 
@@ -300,6 +302,22 @@ Resource Group (rg-{env-name})
 The Container App uses a User-Assigned Managed Identity with:
 - **Key Vault Secrets User** role for accessing secrets
 - **AcrPull** role for pulling container images
+
+### Background scaffolding & replicas
+
+When the App is installed (`installation.created` / `installation_repositories.added`), the webhook is acknowledged immediately with `202 Accepted` and CODEOWNERS pull requests are opened by an **in-process background queue** (`typescript/src/services/scaffold-queue.ts`). The queue is held in process memory — it is not persisted and not shared between replicas:
+
+- **Run CE as a single replica.** With multiple replicas the concurrency cap applies *per replica*, and a delivery's work can be lost if the replica that accepted it is scaled in or restarted mid-run. Scaffolding is idempotent, so redelivering the webhook from the App's **Advanced → Recent Deliveries** page safely resumes it.
+- Tuning knobs (all optional):
+
+  | Variable | Default | Purpose |
+  |----------|---------|---------|
+  | `SCAFFOLD_CONCURRENCY` | `3` | Maximum repositories scaffolded in parallel per process |
+  | `SCAFFOLD_MAX_REPOS` | `25` | Repositories scaffolded per webhook delivery. Eligible repositories beyond this cap are listed in one tracking issue (in the account's `.github` repo when it exists, otherwise the first scaffolded repo) titled *"AgentCraftworks CE: CODEOWNERS setup pending for N repositories"* |
+
+- Archived repositories, forks, and repositories that already contain a `CODEOWNERS` file are skipped.
+- GitHub `403`/`429` rate-limit responses are retried up to 3 times with exponential back-off, honouring `retry-after` and `x-ratelimit-reset`.
+- Every log line carries a `correlationId` of `installation:<id>` or `installation:<id>:<owner>/<repo>` for tracing in Azure Monitor.
 
 ### View Environment Info
 
