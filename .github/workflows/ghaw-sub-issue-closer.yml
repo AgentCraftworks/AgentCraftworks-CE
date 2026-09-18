@@ -20,8 +20,17 @@ jobs:
     runs-on: ${{ vars.RUNNER_MODE == 'self-hosted' && 'self-hosted' || 'ubuntu-latest' }}
 
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_CE_APP_ID }}
+          private-key: ${{ secrets.GH_CE_APP_PRIVATE_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Check GH-AW config
         id: ghaw-config
@@ -55,6 +64,6 @@ jobs:
         if: steps.ghaw-config.outputs.skip != 'true'
         working-directory: typescript
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           REPOSITORY: ${{ github.repository }}
         run: npx tsx src/jobs/sub-issue-closer.ts

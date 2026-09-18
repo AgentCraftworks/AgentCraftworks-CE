@@ -2,6 +2,8 @@
 
 This repository includes several GitHub Actions workflows that assume AgentCraftworks organization infrastructure and secrets. When you fork the repo, disable the org-specific workflows below so your CI stays green.
 
+Forks that keep any T3+ workflow enabled must create the `GH_CE_APP_ID` and `GH_CE_APP_PRIVATE_KEY` repository secrets (from your own GitHub App) and the `REQUIRED_HUMAN_REVIEWER` repository variable (used by `acw-pr-readiness.yml`); every workflow in this repo uses these same names, and `ci.yml` runs `scripts/check-workflow-standards.mjs` to enforce the ORG-STANDARD auth rules.
+
 ## Workflows to Disable on Fork
 
 You can disable a workflow by deleting its file under `.github/workflows/` in your fork, or by changing its triggers so it only runs via `workflow_dispatch` after you have replaced org-specific settings.
