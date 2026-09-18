@@ -202,8 +202,8 @@ docker compose down
 
 Services started by Docker Compose:
 - **TypeScript API**: http://localhost:3000 (health: `/health`)
-- **PostgreSQL 17**: localhost:5432 (db: `agentcraftworks`)
-- **Redis 7**: localhost:6379
+
+No database or cache container is required — see [Storage](#storage).
 
 Expected health response:
 ```json
@@ -287,13 +287,13 @@ Resource Group (rg-{env-name})
 ├── Key Vault (kv-{token})
 │   ├── GH-WEBHOOK-SECRET
 │   ├── GH-APP-ID
-│   └── GH-APP-PRIVATE-KEY
-├── PostgreSQL Flexible Server (psql-{token})
-│   └── Database: agentcraftworks
-├── Redis Cache (redis-{token})
+│   ├── GH-APP-PRIVATE-KEY
+│   └── GH-CE-API-TOKEN
 ├── Log Analytics Workspace (log-{token})
 └── Managed Identity (TypeScript App)
 ```
+
+No database or cache is provisioned — see [Storage](#storage).
 
 ### Managed Identity Configuration
 
@@ -307,7 +307,24 @@ The Container App uses a User-Assigned Managed Identity with:
 azd env get-values
 ```
 
-Key outputs: `TYPESCRIPT_APP_URL`, `AZURE_KEY_VAULT_NAME`, `AZURE_CONTAINER_REGISTRY_NAME`, `AZURE_POSTGRES_HOST`, `AZURE_REDIS_HOST`
+Key outputs: `TYPESCRIPT_APP_URL`, `AZURE_KEY_VAULT_NAME`, `AZURE_CONTAINER_REGISTRY_NAME`, `AZURE_CONTAINER_APP_NAME`
+
+### Storage
+
+Community Edition keeps **all runtime state in process memory**: handoffs and their
+state-change history, per-repository engagement-level (dial) settings, and attached
+contexts. Consequences:
+
+- **State resets on restart.** A new Container App revision, a crash, or `docker compose down`
+  clears every handoff. Use GitHub issues/PRs as the durable record.
+- **Single replica only.** `infra/app-ts.bicep` pins `minReplicas: 1` / `maxReplicas: 1`.
+  Do not raise `maxReplicas` — replicas would each hold divergent state.
+- **No database or cache to provision.** There are no database/cache connection
+  variables; nothing else needs to be running for the app to start.
+
+Storage is pluggable via the `HandoffStore` interface
+(`typescript/src/store/handoff-store.ts`); CE ships `InMemoryHandoffStore`. Durable,
+multi-replica storage is an **Enterprise** feature and is not part of Community Edition.
 
 ### Option 2: Manual Azure CLI
 
@@ -370,21 +387,6 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 | `GH_CE_APP_ID` | GitHub App ID (from app settings page) | `cla.yml`, `ghaw-changeset.yml`, `sync-org-standards.yml`, `deploy-azd.yml` |
 | `GH_CE_APP_PRIVATE_KEY` | Full PEM file contents including headers | Same as above |
 | `GH_CE_WEBHOOK_SECRET` | Webhook validation secret (generate: `openssl rand -hex 32`) | Runtime only (not CI/CD) |
-| `POSTGRES_PASSWORD` | PostgreSQL admin password (generate: `openssl rand -base64 32`) | `deploy-azd.yml` |
-
-> **Managing the PostgreSQL password (`POSTGRES_PASSWORD`):**
-> Setting `POSTGRES_PASSWORD` as a GitHub environment secret (in `production`, `staging`, and `dev`)
-> is the **recommended** approach for stable credential management. The `deploy-azd.yml` workflow
-> uses the following priority order:
->
-> 1. **`POSTGRES_PASSWORD` secret** — used as-is when set; guarantees a stable, known password.
-> 2. **Existing azd environment value** — preserved if already set and no secret is provided;
->    prevents accidental rotation on `deploy`-only runs.
-> 3. **Auto-generated password** — a random value is generated with `openssl rand -base64 32`
->    only on the very first provision when neither of the above is available.
->
-> To set the secret for each environment, go to
-> **Settings → Environments → {environment} → Add secret → `POSTGRES_PASSWORD`**.
 
 ### For deploy-production.yml (Docker-based deploy)
 
@@ -802,11 +804,11 @@ Approximate monthly costs:
 | Container Apps Environment | Consumption | $0 |
 | Container App (1 app) | 0.5 vCPU, 1GB RAM | ~$15-25/month |
 | Container Registry | Basic | ~$5/month |
-| PostgreSQL Flexible Server | Burstable B1ms | ~$15-20/month |
-| Redis Cache | Basic C0 | ~$17/month |
 | Key Vault | Standard | ~$0.03/month |
 | Log Analytics | Pay-as-you-go | ~$5-10/month |
-| **Total** | | **~$57-77/month** |
+| **Total** | | **~$25-40/month** |
+
+No database or cache is provisioned for Community Edition (see [Storage](#storage)).
 
 Use the [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/) for precise estimates.
 
@@ -819,7 +821,7 @@ Use the [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculato
 azd down
 ```
 
-This deletes all Azure resources and cleans up local environment config. **This is irreversible and deletes all data.**
+This deletes all Azure resources and cleans up local environment config. **This is irreversible.**
 
 To remove only the app (keep infrastructure):
 ```bash
@@ -840,7 +842,7 @@ docker compose logs typescript-api
 ### Service Won't Start Locally
 
 ```bash
-# Check env vars are set, verify PostgreSQL is running
+# Check env vars are set (GH_CE_APP_ID, GH_CE_APP_PRIVATE_KEY, GH_CE_WEBHOOK_SECRET)
 docker compose logs -f
 ```
 

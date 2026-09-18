@@ -1,37 +1,8 @@
 version: "3.8"
 
 services:
-  # PostgreSQL database
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: agentcraftworks
-      POSTGRES_USER: agentcraftworks
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password_change_in_prod}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agentcraftworks"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis cache
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
   # TypeScript service
+  # Community Edition keeps all state in process memory — no database or cache is needed.
   typescript-api:
     build:
       context: ./typescript
@@ -44,18 +15,9 @@ services:
       NODE_ENV: development
     ports:
       - "3000:3000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-
-volumes:
-  postgres_data:
-  redis_data:

@@ -17,17 +17,6 @@ services:
       PORT: 3000
       NODE_ENV: production
 
-# Infrastructure resources
-resources:
-  postgres:
-    type: postgres
-    uses:
-      - typescript-api
-  redis:
-    type: redis
-    uses:
-      - typescript-api
-
 hooks:
   # Run smoke tests after deployment
   postdeploy:

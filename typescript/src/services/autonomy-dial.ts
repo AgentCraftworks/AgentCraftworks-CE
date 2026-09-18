@@ -1,11 +1,9 @@
 /**
  * Autonomy Dial Service
  *
- * In-memory implementation of per-repository autonomy dial settings.
+ * Per-repository autonomy dial settings, backed by the shared
+ * {@link HandoffStore} (in-memory by default — see src/store/handoff-store.ts).
  * Part of the Autonomy Dial system for dynamic AI agent permission control.
- *
- * Ported from the reference JS codebase (autonomy-dial.js).
- * The JS version uses PostgreSQL; this hackathon version uses in-memory Map.
  */
 
 import type {
@@ -15,27 +13,35 @@ import type {
 } from "../types/autonomy.js";
 import { ENV_MAX_LEVELS } from "../types/autonomy.js";
 import { classifyAction } from "./action-classifier.js";
+import {
+  getDefaultStore,
+  type DialRecord,
+  type HandoffStore,
+} from "../store/handoff-store.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────────
 
 export const DEFAULT_DIAL_LEVEL: DialLevel = 1;
 
-// ─── In-memory storage ──────────────────────────────────────────────────────────────
+// ─── Storage ────────────────────────────────────────────────────────────────────────
 
-interface DialRecord {
-  repoOwner: string;
-  repoName: string;
-  dialLevel: DialLevel;
-  updatedBy: string | null;
-  updatedAt: string | null;
-  createdAt: string | null;
+export type { DialRecord };
+
+let configuredStore: HandoffStore | null = null;
+
+function store(): HandoffStore {
+  return configuredStore ?? getDefaultStore();
 }
 
 /**
- * Key format: "owner/repo" -> DialRecord
+ * Initialize the autonomy dial service.
+ * Community Edition uses the in-memory store unless a custom `store` is supplied.
  */
-const dialStore = new Map<string, DialRecord>();
+export function initAutonomyDial(options: { store?: HandoffStore } = {}): void {
+  configuredStore = options.store ?? null;
+}
 
+/** Store key format: "owner/repo". */
 function makeKey(owner: string, repo: string): string {
   return `${owner}/${repo}`;
 }
@@ -65,7 +71,7 @@ export function getDialLevel(
   }
 
   const key = makeKey(repoOwner, repoName);
-  const record = dialStore.get(key);
+  const record = store().getDial(key);
 
   if (!record) {
     return {
@@ -113,7 +119,7 @@ export function setDialLevel(
   }
 
   const key = makeKey(repoOwner, repoName);
-  const existing = dialStore.get(key);
+  const existing = store().getDial(key);
   const now = new Date().toISOString();
 
   const record: DialRecord = {
@@ -125,7 +131,7 @@ export function setDialLevel(
     createdAt: existing?.createdAt ?? now,
   };
 
-  dialStore.set(key, record);
+  store().setDial(key, record);
 
   return {
     ...record,
@@ -189,5 +195,5 @@ export function getEffectiveLevel(
  * Clear all dial configurations (for testing).
  */
 export function clearAllDials(): void {
-  dialStore.clear();
+  store().clearDials();
 }
