@@ -1,0 +1,139 @@
+name: ghaw-changed-files-guard-reusable
+
+on:
+  workflow_call:
+    inputs:
+      max_changed_files:
+        description: Maximum allowed changed files in a PR.
+        required: false
+        type: number
+        default: 30
+      require_declared_files:
+        description: Require declared changed-files block on review request.
+        required: false
+        type: boolean
+        default: false
+      declared_files_start_marker:
+        description: Start marker for declared files block in PR body.
+        required: false
+        type: string
+        default: "<!-- changed-files:start -->"
+      declared_files_end_marker:
+        description: End marker for declared files block in PR body.
+        required: false
+        type: string
+        default: "<!-- changed-files:end -->"
+      allowed_prefixes:
+        description: Optional newline-delimited list of allowed path prefixes.
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changed-files-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate changed files scope
+        uses: actions/github-script@v8
+        env:
+          MAX_CHANGED_FILES: ${{ inputs.max_changed_files }}
+          REQUIRE_DECLARED_FILES: ${{ inputs.require_declared_files }}
+          START_MARKER: ${{ inputs.declared_files_start_marker }}
+          END_MARKER: ${{ inputs.declared_files_end_marker }}
+          ALLOWED_PREFIXES: ${{ inputs.allowed_prefixes }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.notice('No pull_request payload found. Skipping changed-files guard.');
+              return;
+            }
+
+            const action = context.payload.action || 'unknown';
+            const maxChangedFiles = Number(process.env.MAX_CHANGED_FILES || 30);
+            const requireDeclared = String(process.env.REQUIRE_DECLARED_FILES || 'false').toLowerCase() === 'true';
+            const startMarker = process.env.START_MARKER || '<!-- changed-files:start -->';
+            const endMarker = process.env.END_MARKER || '<!-- changed-files:end -->';
+            const allowedPrefixes = (process.env.ALLOWED_PREFIXES || '')
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const changedPaths = files.map(f => f.filename).sort();
+
+            const body = pr.body || '';
+            const startIndex = body.indexOf(startMarker);
+            const endIndex = body.indexOf(endMarker);
+            let declaredPaths = [];
+            if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+              const block = body.slice(startIndex + startMarker.length, endIndex);
+              declaredPaths = block
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+                .map(line => line.replace(/^[-*]\s+/, ''))
+                .filter(line => !line.startsWith('#'))
+                .sort();
+            }
+
+            const reviewGate = action === 'review_requested' || action === 'ready_for_review';
+            const failures = [];
+
+            if (changedPaths.length > maxChangedFiles) {
+              failures.push(
+                `Changed files (${changedPaths.length}) exceed configured max (${maxChangedFiles}).`
+              );
+            }
+
+            if (allowedPrefixes.length > 0) {
+              const disallowed = changedPaths.filter(
+                path => !allowedPrefixes.some(prefix => path.startsWith(prefix))
+              );
+              if (disallowed.length > 0) {
+                failures.push(
+                  `Detected ${disallowed.length} changed file(s) outside allowed prefixes.`
+                );
+              }
+            }
+
+            if ((requireDeclared || reviewGate) && declaredPaths.length === 0) {
+              failures.push(
+                `PR body must include declared files between markers ${startMarker} and ${endMarker} before requesting review.`
+              );
+            }
+
+            if (declaredPaths.length > 0) {
+              const changedSet = new Set(changedPaths);
+              const declaredSet = new Set(declaredPaths);
+              const undeclared = changedPaths.filter(path => !declaredSet.has(path));
+              const missing = declaredPaths.filter(path => !changedSet.has(path));
+
+              if (undeclared.length > 0 || missing.length > 0) {
+                failures.push(
+                  `Declared files block does not match actual changed files (undeclared: ${undeclared.length}, missing: ${missing.length}).`
+                );
+              }
+            }
+
+            core.summary
+              .addHeading('Changed Files Guard')
+              .addRaw(`Action: ${action}\n\n`)
+              .addRaw(`Changed files: ${changedPaths.length}\n\n`)
+              .addRaw(`Max allowed: ${maxChangedFiles}\n\n`)
+              .addRaw(`Declared block present: ${declaredPaths.length > 0 ? 'yes' : 'no'}\n\n`)
+              .addDetails('Changed file list', changedPaths.join('\n') || '(none)')
+              .write();
+
+            if (failures.length > 0) {
+              core.setFailed(failures.join('\n'));
+            }
