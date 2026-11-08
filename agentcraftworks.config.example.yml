@@ -1,0 +1,7 @@
+version: "1"
+agents:
+  ceiling: 4
+  protected_actions: []
+  budgets:
+    T4: 20/h
+    T5: 5/h
