@@ -30,13 +30,13 @@ graph TD
         codeownersRouter["CODEOWNERS Router<br/>changed files → owners → agents<br/>(fallback: labels → none)"]
         eventFsm["Handoff FSM<br/>pending → active → completed | failed"]
         actionGate["Action Gate<br/>actionGate.check({ owner, repo, action })"]
-        engagementLevels["Agent Engagement Levels<br/>Observer → Autonomous<br/>(capped by NODE_ENV tier)"]
+        engagementLevels["Agent Engagement Levels<br/>Observer → Autonomous<br/>(server-configured environment policy)"]
         mcpServer["MCP Server<br/>6 Core Tools"]
     end
 
     subgraph Actions["Agent Actions"]
         level1["Observer (T1): Read, view, list"]
-        level2["Advisor (T2): Comment, suggest"]
+        level2["Advisor (T2): Comment, review comments, suggest"]
         level3["Collaborator (T3): Propose changes on agent branches"]
         level4["Delegated (T4): Approve, close issues, request reviews"]
         level5["Autonomous (T5): Merge, deploy, modify CI, orchestrate agents"]
