@@ -22,6 +22,7 @@ import {
   DEFAULT_API_RATE_LIMIT,
   createApiAuthMiddleware,
   createApiRateLimiter,
+  configureApiProxy,
   extractBearerToken,
   getApiRateLimitFromEnv,
   tokensMatch,
@@ -45,6 +46,7 @@ interface TestServer {
 async function startApp(env: Env): Promise<TestServer> {
   const warnings: Record<string, unknown>[] = [];
   const app = express();
+  configureApiProxy(app, env);
   app.use(express.json());
   const limiter = createApiRateLimiter(env);
   const auth = createApiAuthMiddleware({ env, warn: (e) => warnings.push(e) });
@@ -76,9 +78,10 @@ async function request(
   baseUrl: string,
   method: string,
   path: string,
-  opts: { token?: string; rawAuth?: string; body?: Record<string, unknown> } = {},
+  opts: { token?: string; rawAuth?: string; forwardedFor?: string; body?: Record<string, unknown> } = {},
 ): Promise<FetchResult> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (opts.forwardedFor !== undefined) headers["X-Forwarded-For"] = opts.forwardedFor;
   if (opts.rawAuth !== undefined) headers["Authorization"] = opts.rawAuth;
   else if (opts.token !== undefined) headers["Authorization"] = `Bearer ${opts.token}`;
 
@@ -279,20 +282,63 @@ describe("REST API auth — token not configured", () => {
     }
   });
 
-  it("allows requests when NODE_ENV is undefined (treated as non-production)", async () => {
-    const srv = await startApp({});
-    try {
-      const r = await request(srv.baseUrl, "GET", "/api/handoffs");
-      assert.equal(r.status, 200);
-    } finally {
-      await srv.close();
-    }
-  });
+  for (const nodeEnv of [undefined, "staging", "qa", "Production", ""]) {
+    it(`fails closed when NODE_ENV is ${String(nodeEnv)}`, async () => {
+      const srv = await startApp({ NODE_ENV: nodeEnv });
+      try {
+        assert.equal((await request(srv.baseUrl, "GET", "/api/handoffs")).status, 503);
+        assert.equal((await request(srv.baseUrl, "POST", "/api/dial/acme/widgets", {
+          body: { dialLevel: 5, updatedBy: "spoofed" },
+        })).status, 503);
+      } finally {
+        await srv.close();
+      }
+    });
+  }
 });
 
 // ─── Integration: rate limiting ─────────────────────────────────────────────
 
 describe("REST API rate limiting", () => {
+  it("isolates clients behind explicitly trusted ingress and ignores spoofed leftmost hops", async () => {
+    const srv = await startApp({
+      [API_TOKEN_ENV]: TOKEN, API_RATE_LIMIT: "1",
+      GH_CE_TRUST_PROXY: "127.0.0.1,::1",
+    });
+    try {
+      const first = { token: TOKEN, forwardedFor: "198.51.100.10" };
+      assert.equal((await request(srv.baseUrl, "GET", "/api/handoffs", first)).status, 200);
+      assert.equal((await request(srv.baseUrl, "GET", "/api/handoffs", first)).status, 429);
+      assert.equal((await request(srv.baseUrl, "GET", "/api/handoffs", {
+        token: TOKEN, forwardedFor: "198.51.100.11",
+      })).status, 200);
+      assert.equal((await request(srv.baseUrl, "GET", "/api/handoffs", {
+        token: TOKEN, forwardedFor: "203.0.113.99, 198.51.100.10",
+      })).status, 429);
+    } finally {
+      await srv.close();
+    }
+  });
+
+  it("does not trust forwarded addresses by default", async () => {
+    const srv = await startApp({ [API_TOKEN_ENV]: TOKEN, API_RATE_LIMIT: "1" });
+    try {
+      assert.equal((await request(srv.baseUrl, "GET", "/api/handoffs", {
+        token: TOKEN, forwardedFor: "198.51.100.20",
+      })).status, 200);
+      assert.equal((await request(srv.baseUrl, "GET", "/api/handoffs", {
+        token: TOKEN, forwardedFor: "198.51.100.21",
+      })).status, 429);
+    } finally {
+      await srv.close();
+    }
+  });
+
+  it("rejects unsafe or invalid proxy configuration", () => {
+    for (const value of ["true", "1", "0.0.0.0/0", "::/0", "127.0.0.1/33", "127.0.0.1,"]) {
+      assert.throws(() => configureApiProxy(express(), { GH_CE_TRUST_PROXY: value }));
+    }
+  });
   it("returns 429 once API_RATE_LIMIT is exceeded, before auth runs", async () => {
     const limit = 3;
     const srv = await startApp({

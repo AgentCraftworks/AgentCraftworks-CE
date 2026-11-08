@@ -8,12 +8,13 @@
  * `GH_CE_API_TOKEN`. Callers send `Authorization: Bearer <token>`.
  *
  * Fail-closed semantics when the token is not configured:
- *  - `NODE_ENV=production` → 503 with an operator-facing error
- *  - any other NODE_ENV     → allow, logging a warning once
+ *  - explicit development/test → allow, logging a warning once
+ *  - any other NODE_ENV → 503 with an operator-facing error
  */
 
-import { timingSafeEqual } from "node:crypto";
-import type { NextFunction, Request, RequestHandler, Response } from "express";
+import { createHash, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
+import type { Express, NextFunction, Request, RequestHandler, Response } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 type Env = Record<string, string | undefined>;
@@ -21,6 +22,28 @@ type Env = Record<string, string | undefined>;
 export const API_TOKEN_ENV = "GH_CE_API_TOKEN";
 export const API_RATE_LIMIT_ENV = "API_RATE_LIMIT";
 export const DEFAULT_API_RATE_LIMIT = 60;
+export const TRUST_PROXY_ENV = "GH_CE_TRUST_PROXY";
+
+/** Trust only operator-specified ingress addresses, never arbitrary forwarded headers. */
+export function configureApiProxy(app: Express, env: Env = process.env): void {
+  const raw = env[TRUST_PROXY_ENV];
+  if (!raw) {
+    app.set("trust proxy", false);
+    return;
+  }
+  const addresses = raw.split(",").map((address) => address.trim());
+  for (const address of addresses) {
+    const parts = address.split("/");
+    const family = isIP(parts[0] ?? "");
+    const prefix = parts[1];
+    if (!family || parts.length > 2 ||
+        (prefix !== undefined && (!/^\d+$/.test(prefix) ||
+          Number(prefix) < 1 || Number(prefix) > (family === 4 ? 32 : 128)))) {
+      throw new Error(`${TRUST_PROXY_ENV} must contain trusted proxy IP addresses or nonzero CIDR ranges`);
+    }
+  }
+  app.set("trust proxy", addresses);
+}
 
 export interface ApiAuthOptions {
   /** Environment source; defaults to `process.env`. Read per request so rotation needs no restart. */
@@ -31,13 +54,8 @@ export interface ApiAuthOptions {
 
 /** Constant-time comparison that does not leak length information via early exit. */
 export function tokensMatch(presented: string, expected: string): boolean {
-  const a = Buffer.from(presented, "utf-8");
-  const b = Buffer.from(expected, "utf-8");
-  if (a.length !== b.length) {
-    // Compare against self to keep timing uniform, then reject.
-    timingSafeEqual(a, a);
-    return false;
-  }
+  const a = createHash("sha256").update(presented).digest();
+  const b = createHash("sha256").update(expected).digest();
   return timingSafeEqual(a, b);
 }
 
@@ -62,7 +80,7 @@ export function createApiAuthMiddleware(options: ApiAuthOptions = {}): RequestHa
     const expected = env[API_TOKEN_ENV];
 
     if (expected === undefined || expected === "") {
-      if (env["NODE_ENV"] === "production") {
+      if (env["NODE_ENV"] !== "development" && env["NODE_ENV"] !== "test") {
         res.status(503).json({
           error: "Service Unavailable",
           message: `REST API authentication is not configured. Set ${API_TOKEN_ENV} to enable /api/handoffs and /api/dial.`,
@@ -76,7 +94,7 @@ export function createApiAuthMiddleware(options: ApiAuthOptions = {}): RequestHa
           msg: "REST API running without authentication",
           reason: `${API_TOKEN_ENV} is unset`,
           nodeEnv: env["NODE_ENV"] ?? "undefined",
-          hint: "Allowed only outside production; set the token before deploying.",
+          hint: "Allowed only in explicit development/test; set the token before deploying.",
         });
       }
       next();

@@ -10,12 +10,13 @@ import dialRouter from "./handlers/autonomy-dial-routes.js";
 import handoffRouter from "./handlers/handoff-api.js";
 import { webhookHandler } from "./handlers/pull-request.js";
 import { verifyWebhookSignatureMiddleware } from "./middleware/webhook-signature.js";
-import { apiAuth, apiRateLimiter } from "./middleware/api-auth.js";
+import { apiAuth, apiRateLimiter, configureApiProxy } from "./middleware/api-auth.js";
 import { initHandoffService } from "./services/handoff-service.js";
 import { initContextService } from "./services/context-service.js";
 
 const PORT = parseInt(process.env["PORT"] ?? "3000", 10);
 const app = express();
+configureApiProxy(app);
 
 export const DEFAULT_IP_RATE_LIMIT = 2000;
 

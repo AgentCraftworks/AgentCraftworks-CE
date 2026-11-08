@@ -49,7 +49,9 @@ Webhook endpoints include rate limiting to prevent abuse, keyed by GitHub App in
 
 ### REST API Authentication
 
-The REST API (`/api/handoffs`, `/api/dial`) is protected by a shared bearer token: every request must send `Authorization: Bearer <token>` matching `GH_CE_API_TOKEN`, compared with a timing-safe equality check. The webhook endpoint (`/api/webhook`) is **not** bearer-protected — it is authenticated by HMAC-SHA256 signature instead. The API fails closed: when `NODE_ENV=production` and `GH_CE_API_TOKEN` is unset, the REST routes return `503` with an operator-facing error rather than serving unauthenticated traffic. In `development`/`test` the routes remain open and a single warning is logged. `/health` is unauthenticated.
+The REST API (`/api/handoffs`, `/api/dial`) requires the shared bearer token configured in `GH_CE_API_TOKEN`, compared using fixed-length SHA-256 digests and timing-safe equality. The webhook endpoint (`/api/webhook`) instead requires an HMAC-SHA256 signature. Without a token, only explicit `NODE_ENV=development` or `NODE_ENV=test` allows requests and logs a warning; every other value, including unset and staging, returns `503`. `/health` remains unauthenticated.
+
+Forwarded client addresses are ignored unless `GH_CE_TRUST_PROXY` contains operator-verified ingress IP addresses or CIDRs. Configure these behind Azure ingress to isolate client rate-limit buckets. Never trust arbitrary forwarding headers, all-address ranges, or numeric hop counts.
 
 ## Dependencies
 

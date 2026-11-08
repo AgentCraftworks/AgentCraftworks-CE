@@ -374,6 +374,7 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 | `GH_CE_WEBHOOK_SECRET` | Webhook validation secret (generate: `openssl rand -hex 32`) | Runtime only (not CI/CD) |
 | `GH_CE_API_TOKEN` | Bearer token for the REST API (`/api/handoffs`, `/api/dial`). Generate: `openssl rand -hex 32`. **Required in production** — routes return `503` until set. | Runtime only (not CI/CD) |
 | `API_RATE_LIMIT` | Optional. Per-IP requests/minute allowed on `/api/handoffs` and `/api/dial` (default `60`) | Runtime only (not CI/CD) |
+| `GH_CE_TRUST_PROXY` | Optional comma-separated trusted ingress proxy IP addresses or CIDRs. Unset means forwarded headers are ignored. Configure verified ingress addresses so clients have separate rate-limit buckets. Never trust all proxies or use numeric hop counts. | Runtime only (not CI/CD) |
 | `POSTGRES_PASSWORD` | PostgreSQL admin password (generate: `openssl rand -base64 32`) | `deploy-azd.yml` |
 
 > **REST API token on Azure Container Apps:** the Bicep templates run the container with
@@ -389,6 +390,8 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 > ```
 >
 > Callers then send `Authorization: Bearer <token>` on every REST request.
+
+Only explicit `NODE_ENV=development` or `NODE_ENV=test` permits an unset API token. An unset, unknown, or staging environment fails closed with `503`. For Azure ingress, set `GH_CE_TRUST_PROXY` to the verified proxy addresses/ranges in your deployment. The ingress must replace untrusted forwarding headers; Express walks the address chain from the socket and stops at the first untrusted hop.
 
 > **Managing the PostgreSQL password (`POSTGRES_PASSWORD`):**
 > Setting `POSTGRES_PASSWORD` as a GitHub environment secret (in `production`, `staging`, and `dev`)
