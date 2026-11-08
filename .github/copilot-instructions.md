@@ -1,17 +1,23 @@
-# GitHub Copilot Instructions – AgentCraftworks-CE
+# GitHub Copilot Instructions — AgentCraftworks-CE
 
-> Repository-specific Copilot instructions.
+> Repository-specific Copilot instructions for this public Community Edition repository.
 
-## Document Routing & SharePoint Taxonomy
+## Documentation taxonomy
 
-When generating, saving, or referencing documents across AgentCraftworks:
+- Use `docs/` for documentation about implemented, shipping capabilities.
+- Use `docs/futures/` for proposals and plans that are not yet implemented; follow the
+  status and placement rules in the root `AGENTS.md`.
+- Keep public documentation and examples self-contained in this repository. Do not route
+  contributors to private SharePoint sites, personal sync folders, or internal repositories.
 
-### 1. AgentCraftworks Product Documents (Primary)
-* **Scope**: Architecture specs, PRDs, engineering roadmaps, north-star documents, design documents, and product team deliverables.
-* **SharePoint Destination**: [AgentCraftworksProductTeam](https://agentcraftworks.sharepoint.com/sites/AgentCraftworksProductTeam)
-* **Local Sync Folder**: `C:\Users\jenp\OneDrive - AI Craft Works, LLC\AgentCraftworks\`
+## Capability language
 
-### 2. AICraftworks Consulting Proposals (Cross-Org Reference)
-* **Scope**: Client proposals, Statements of Work (SOWs), bids, pitch estimates, and RFP responses under AICraftworks Consulting.
-* **SharePoint Destination**: [AI Craftworks Site - Consulting/Proposals](https://agentcraftworks.sharepoint.com/Shared%20Documents/Forms/AllItems.aspx?id=%2FShared%20Documents%2FConsulting%2FProposals&viewid=026cf57a%2D52b6%2D4242%2Db292%2D4d2eda001ac7)
-* **Local Sync Folder**: `C:\Users\jenp\OneDrive\AI Craft Works\Proposals\` and `C:\Users\jenp\OneDrive\AI Craft Works\Consulting\Proposals\`
+- Describe deterministic automation as automation. Call a job AI-powered only when it
+  actually invokes an AI model.
+- A recorded handoff is a stateful record; it does not dispatch an agent or prove that
+  requested work was executed.
+- Community Edition's engagement model spans levels 1–5, with a default repository level
+  of 1 — Observer. Levels 4–5 can be configured but are not yet enforced on all job paths.
+- Enterprise differentiation is organizational scale, including organization-wide policy,
+  centralized ceilings, durable multi-replica state, compliance evidence, and multi-squad
+  coordination. Do not describe Enterprise as the only edition with engagement levels 4–5.
