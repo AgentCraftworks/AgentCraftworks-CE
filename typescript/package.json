@@ -12,7 +12,8 @@
     "start": "node dist/index.js",
     "start:env": "node --env-file=../.env dist/index.js",
     "mcp": "node --import tsx src/mcp/server.ts",
-    "mcp:env": "node --env-file=../.env --import tsx src/mcp/server.ts"
+    "mcp:env": "node --env-file=../.env --import tsx src/mcp/server.ts",
+    "mcp:smoke": "node scripts/mcp-stdio-smoke.mjs"
   },
   "keywords": [
     "ai-agents",
