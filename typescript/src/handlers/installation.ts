@@ -158,6 +158,9 @@ Dockerfile        @human-leads/platform
 
 # Catch-all → code reviewer agent + team leads
 *                 @agents/code-reviewer @human-leads/team
+
+# AgentCraftworks governance config → humans-only
+agentcraftworks.config.yml @human-leads/platform
 `;
 
 const PR_TITLE = "🤖 AgentCraftworks: Add default CODEOWNERS routing";
@@ -180,6 +183,7 @@ The \`CODEOWNERS\` file is the **routing layer** for AgentCraftworks. It determi
 | \`README.md\` | \`@agents/docs-reviewer\` + \`@human-leads/docs\` | Primary docs with human oversight |
 | \`.github/**\`, \`infra/**\`, \`Dockerfile\` | \`@human-leads/platform\` | Infrastructure — humans only |
 | \`*\` (catch-all) | \`@agents/code-reviewer\` + \`@human-leads/team\` | All other files |
+| \`agentcraftworks.config.yml\` | \`@human-leads/platform\` | Governance configuration — humans only |
 
 ### Next steps
 
