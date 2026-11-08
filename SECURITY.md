@@ -35,9 +35,15 @@ All incoming GitHub webhooks are verified using HMAC-SHA256 signatures (`X-Hub-S
 
 The 5-tier engagement level system enforces least-privilege access for AI agents:
 
-- **Production** environments are capped at Level 3 (Collaborator)
-- **Staging** environments are capped at Level 4 (Delegated)
-- Only **local/dev** environments allow Level 5 (Autonomous)
+- The default repository level is 1 (Observer); the default repository ceiling is 3
+- Default environment ceilings are local=5, dev=5, staging=4, production=3; operators
+  can explicitly configure these ceilings
+- Levels 4–5 require independent operator, maintainer, and authenticated-principal
+  opt-ins; pausing agents forces level 1
+- Protected actions remain denied unless both repository and operator allow-lists
+  authorize them
+
+> Levels 4–5 can be configured but are not yet enforced on all job paths.
 
 ### Action Classification
 

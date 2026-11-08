@@ -106,23 +106,24 @@ Docker Compose local run · Azure deploy via `azd` + Bicep · Accessibility agen
 CodeQL · SDLC lifecycle stages · Branch promotion policy `feature/* → staging → main` ·
 MIT licence, forking, CLA.
 
-### 3.2 ❌ NOT documentable in CE (Enterprise-only)
+### 3.2 ❌ Enterprise-scale capabilities (not included in CE)
 
-Rate Governor (6-pattern adaptive rate limiting) · Squad Coordinator / squads / S2S
-coordination / `.squad/` team-config · Aspire integration · Governance Gates middleware ·
-Promotion Engine (staging → canary → production) · Rate-limiting Audit Trail ·
-Quarantine Bridge · Microsoft Entra Agent ID · Conditional Access · Microsoft Sentinel
-SIEM / `sentinel.bicep` · NIST SP 800-53 / ISO 42001 compliance packs · nuSquad SDK ·
+CE includes a single-squad Coordinator and process-local action budgets. The following
+organizational-scale capabilities remain Enterprise-only: distributed Rate Governor
+(shared token pools and predictive circuit breakers) · multi-squad S2S coordination /
+`.squad/` team-config · Aspire integration · org-wide Governance Gates · Promotion
+Engine (staging → canary → production) · durable compliance evidence · Quarantine
+Bridge · Microsoft Entra Agent ID · Conditional Access · Microsoft Sentinel SIEM /
+`sentinel.bicep` · NIST SP 800-53 / ISO 42001 compliance packs · nuSquad SDK ·
 Three-layer Squad Engagement Dial · AEU cost model / wave planning · Risk-tier
-compliance scaffolding (Tier 2/3 governance files) · Dashboard / canvas ·
-Copilot Studio eval loop · Marketplace / billing / Stripe.
+compliance scaffolding (Tier 2/3 governance files) · Dashboard / canvas · Copilot
+Studio eval loop · Marketplace / billing / Stripe.
 
-> ⚠️ **Conflict to resolve.** The research pass over the paid repo suggested Rate
-> Governor, Squad Coordinator, Aspire, Governance Gates, Promotion Engine and
-> Quarantine Bridge were "core to both editions." That contradicts CE's own
-> `README.md` (lines 137–147), which lists all six as Enterprise-only, and the CE
-> codebase, which contains none of them. **This plan treats CE `README.md` as
-> authoritative.** See decision D-2 (§7).
+> ⚠️ **Boundary note.** Decision D-2 remains in effect for organizational-scale
+> Rate Governor, multi-squad coordination, Aspire, Promotion Engine and
+> Quarantine Bridge. It is partially superseded by D-13: CE includes a
+> single-squad Coordinator and local action budgets, but not the Enterprise
+> distributed Rate Governor, multi-squad S2S, or compliance evidence.
 
 ### 3.3 Cross-reference pattern
 
@@ -191,7 +192,9 @@ Install CE GitHub App
   - branch protection on the default branch (`GET /repos/{o}/{r}/branches/{b}/protection`,
     tolerate 403/404)
 - Produce a **readiness summary** and a **recommended engagement level (1–3)**.
-  Recommendation must never exceed 3 by default — CE's production cap is 3.
+  Keep the default recommendation at or below 3 because the default repository
+  ceiling is 3; higher levels require explicit operator, maintainer, and API
+  principal opt-ins.
 - Make the CODEOWNERS template **language-aware** (extend `DEFAULT_CODEOWNERS_TEMPLATE`
   with Python / Go / Rust / C# patterns when detected).
 - Render the detection summary as a table in the existing `PR_BODY`.
@@ -468,13 +471,14 @@ tool names exported by `mcp/server.ts`. Prevents DEF-1 recurring.
 
 | ID | Decision | Resolution |
 |---|---|---|
-| **D-1** | Engagement level names | **RESOLVED — align CE to the paid naming.** CE adopts Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous**. The old CE names were superseded by later improvements in the paid product that were never pushed back down to CE. CE has no released users, so the old names are **removed outright** — no alias layer, no deprecation window. `resolveEngagementLevel` rejects them with an error naming the valid set. |
-| **D-2** | Are Rate Governor / Squad Coordinator / Aspire / Governance Gates / Promotion Engine / Quarantine Bridge CE or Enterprise? | **RESOLVED — Enterprise-only.** The product direction shifted away from CE-as-core; these six exist only in the paid product. The research pass that called them "core to both editions" was wrong. §3.2 stands. |
+| **D-1** | Engagement level names | **RESOLVED — align CE to the paid naming.** CE adopts Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous**. D-15 now governs alias removal: retain compatibility aliases until the upstream rename is complete, then remove them. |
+| **D-2** | Are Rate Governor / Squad Coordinator / Aspire / Governance Gates / Promotion Engine / Quarantine Bridge CE or Enterprise? | **PARTIALLY SUPERSEDED BY D-13.** Enterprise retains organizational-scale Rate Governor, multi-squad Coordinator/S2S, Aspire, Promotion Engine, Quarantine Bridge, and compliance evidence. CE supports single-squad coordination and process-local action budgets; §3.2 must distinguish scale rather than reserve these concepts wholesale for Enterprise. |
 | **D-3** | Ship 7-day auto-merge of the setup PR in CE? | **No.** 48-hour reminder comment only. |
 | **D-4** | Add `detect_repo` as a 7th MCP tool? | **No.** Preserve the 6-tool contract; expose via REST. |
 | **D-5** | Does CE need `mode: workflow \| agent \| both`? | **Ship the field** for forward-compatibility, defaulting to `workflow`. |
 | **D-6** | Publish docs to a site? | **Not in this scope.** |
 | **D-7** | Where do product standards get authored? | Upstream in `AgentCraftworks`, consumed here via ORG-STANDARD sync. |
+| **D-13** | Which governance capabilities belong in CE? | **PROPOSED — pending G0.** CE includes a single-squad Coordinator and process-local action budgets; Enterprise retains multi-squad S2S, distributed Rate Governor, Promotion Engine, Governance Gates, Aspire, Quarantine Bridge, Entra ID, and compliance evidence. This partially supersedes D-2's broad Enterprise-only wording. |
 
 ### 7.1 ⚠️ Upstream dependency created by D-1
 
