@@ -128,7 +128,7 @@ Full instructions, including Docker Compose and Azure deployment, are in **[DEPL
 ## How It Works
 
 ### 1. Agent Engagement Levels
-Every repo gets an engagement level (1–5). The level determines what the agent is permitted to do:
+Every repo gets an engagement level (1–5). CE supports all five levels without an edition cap; a new repo defaults to Observer (level 1), and each increase requires explicit authorization:
 
 | Level | Name | Action Tier | Permitted Actions |
 |-------|------|-------------|-------------------|
@@ -138,7 +138,13 @@ Every repo gets an engagement level (1–5). The level determines what the agent
 | 4 | Delegated | T4 | Merge, close, create branch, push commit |
 | 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents |
 
-Environment caps: local=5, dev=5, staging=4, production=3
+Default environment ceilings are local=5, dev=5, staging=4, production=3. The
+effective level is bounded by the repository dial, repository ceiling (default 3),
+operator environment ceiling, and global ceiling. A pause forces level 1. Levels
+4–5 require independent operator, maintainer, and API-principal opt-ins; protected
+actions remain denied unless both operator and repository allow-lists permit them.
+
+> **Current enforcement status:** Levels 4–5 can be configured but are not yet enforced on all job paths. See [ADR-CE-001](docs/adr/ADR-CE-001-engagement-levels-1-to-5.md).
 
 ### 2. Handoff Finite State Machine
 Every agent handoff follows a deterministic state machine:
@@ -169,19 +175,19 @@ AgentCraftworks Community Edition ships a fully compliant Model Context Protocol
 
 ## Enterprise Edition
 
-The paid [AgentCraftworks Enterprise](https://agentcraftworks.com) extends CE with advanced orchestration and governance capabilities. **None of the following are included in Community Edition:**
+The paid [AgentCraftworks Enterprise](https://agentcraftworks.com) extends CE with organizational-scale orchestration and governance capabilities:
 
 | Enterprise Feature | What It Adds Over CE |
 |---|---|
-| **Rate Governor** | 6-pattern adaptive rate limiting — traffic light throttling, shared token pool, predictive circuit breaker, cascade detection, lease cleanup, and priority retry windows |
-| **Squad Coordinator** | Multi-agent orchestration — MCP capability detection, CLI fallback chains (`MCP → CLI → filesystem`), team configuration, and response mode selection |
+| **Rate Governor** | Distributed, organization-wide adaptive rate limiting — shared token pools, predictive circuit breakers, cascade detection, lease cleanup, and priority retry windows |
+| **Squad Coordinator** | Multi-squad orchestration — MCP capability detection, CLI fallback chains (`MCP → CLI → filesystem`), team configuration, and response mode selection |
 | **Aspire Integration** | .NET Aspire CLI bridge for distributed tracing, health checks, and observability dashboards across agent squads |
-| **Governance Gates** | Pre/post-execution policy enforcement middleware — validates trust scores, action tiers, and environment caps before every agent action |
+| **Governance Gates** | Organization-wide pre/post-execution policy enforcement beyond CE's per-repository action gate |
 | **Promotion Engine** | Graduated rollout (staging → canary → production) with automatic rollback on gate failures |
-| **Audit Trail** | Full rate-limiting audit log — 429 events, circuit breaker transitions, zone changes, and lease reclaims |
+| **Audit Trail** | Durable, organization-wide compliance evidence and rate-limiting audit data |
 | **Quarantine Bridge** | Abuse detection and automatic quarantine for agents exceeding rate thresholds |
 
-All Enterprise features build on the same finite state machine (FSM), CODEOWNERS routing, and MCP tool interface that CE provides — they add the orchestration and governance layers needed for production-scale multi-agent workflows.
+Enterprise extends CE's five-level engagement model with the organizational scale, durable state, and compliance capabilities needed for multi-agent operations.
 
 Learn more at [AgentCraftworks.com](https://agentcraftworks.com).
 

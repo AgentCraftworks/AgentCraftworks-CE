@@ -107,4 +107,9 @@ stateDiagram-v2
 | 4 | Delegated | T4 | Merge, close, create branch, push commit | Escalation only |
 | 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents | Never |
 
-Environment caps: local=5, dev=5, staging=4, production=3
+Default environment ceilings: local=5, dev=5, staging=4, production=3. The
+effective level is bounded by the repository dial, repository ceiling, operator
+environment ceiling, and global ceiling. Levels 4–5 require independent opt-ins;
+protected actions remain denied unless separately allowed.
+
+> Levels 4–5 can be configured but are not yet enforced on all job paths.

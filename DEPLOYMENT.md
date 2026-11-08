@@ -635,7 +635,7 @@ services:
 
 - **Graduated Autonomy**: Each workflow operates at a specific engagement level, from Observer (T1) to Collaborator (T3)
 - **Advisory by Default**: Most GH-AW workflows assist and suggest only; designated enforcement workflows such as `ghaw-branch-policy-guard` and `ghaw-azd-service-tag-check` may block PRs or fail checks in the default Community Edition configuration
-- **Production-Safe**: All workflows in AgentCraftworks Community Edition cap at T3 (Collaborator) — no autonomous merges or deployments in production
+- **Policy-governed agents**: CE supports engagement levels 1–5 with independent operator, maintainer, and API-principal safeguards; levels 4–5 are not yet enforced on all job paths
 
 #### Complete Workflow Reference
 
@@ -659,7 +659,11 @@ GH-AW workflows demonstrate the **Agent Engagement Levels** model in production:
 - **T2 (Advisor)**: Most workflows — post comments, create issues, add labels, but never edit code
 - **T3 (Collaborator)**: `ghaw-changeset` — creates branches and edits files, but only on explicit trigger (push to `main`)
 
-Production environments cap at T3. The full T4 (Delegated) and T5 (Autonomous) levels are reserved for development and staging environments.
+Agent engagement levels are not restricted by edition. The default environment
+ceilings are local=5, dev=5, staging=4, production=3; operators can explicitly
+raise them. The default repository ceiling is 3, and levels 4–5 require independent
+operator, maintainer, and authenticated-principal opt-ins. Levels 4–5 can be
+configured but are not yet enforced on all job paths.
 
 #### Customizing GH-AW Workflows
 
