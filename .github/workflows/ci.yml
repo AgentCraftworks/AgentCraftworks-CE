@@ -1,3 +1,4 @@
+# Engagement Level: T1 (Observer) — build, test, and audit only; no writes.
 name: TypeScript CI
 
 on:
@@ -25,6 +26,14 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # Audit the standalone typescript/ lockfile — the one the Dockerfile ships with.
+      # Run outside the workspace root so npm resolves typescript/package-lock.json, not the root lock.
+      - name: Audit production dependencies (typescript/)
+        run: |
+          tmp="$(mktemp -d)"
+          cp typescript/package.json typescript/package-lock.json "$tmp/"
+          cd "$tmp"
+          npm audit --omit=dev --audit-level=high
       - run: npm -w typescript run typecheck
       - run: npm -w typescript run build
       - run: npm -w typescript test
