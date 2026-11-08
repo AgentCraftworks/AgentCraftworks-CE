@@ -18,6 +18,7 @@ This folder contains forward-looking strategy documents, roadmaps, and proposals
 | Document | Status | Summary |
 |---|---|---|
 | [CE_GETTING_STARTED_IMPLEMENTATION_PLAN.md](CE_GETTING_STARTED_IMPLEMENTATION_PLAN.md) | APPROVED | Getting Started experience and product documentation for Community Edition — tracked by epic [#238](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/238) |
+| [CE_PROMOTE_YOUR_AGENT.md](CE_PROMOTE_YOUR_AGENT.md) | DRAFT | Five-rung sandbox promotion and kill-switch exercise, pending C-8, C-12, and G3 |
 | [PLAYWRIGHT_CLI_INTEGRATION.md](PLAYWRIGHT_CLI_INTEGRATION.md) | DRAFT | Browser automation via Playwright CLI for Agent Teams |
 
 ## Why this folder exists
