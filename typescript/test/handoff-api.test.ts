@@ -99,7 +99,9 @@ describe("POST /api/handoffs", () => {
     assert.equal(res.status, 201);
     assert.equal(res.body["task"], "Review PR #10");
     assert.equal(res.body["to_agent"], "@code-reviewer");
-    assert.equal(res.body["status"], "pending");
+    assert.equal(res.body["status"], "recorded");
+    assert.equal(res.body["handoff_status"], "pending");
+    assert.equal(res.body["message"], "Handoff recorded; no agent was dispatched.");
     assert.ok(res.body["handoff_id"]);
   });
 

@@ -59,7 +59,9 @@ describe("MCP create_handoff", () => {
     const data = parseResult(result) as Record<string, unknown>;
     assert.equal(data["success"], true);
     assert.ok(data["handoff_id"]);
-    assert.equal(data["status"], "pending");
+    assert.equal(data["status"], "recorded");
+    assert.equal(data["handoff_status"], "pending");
+    assert.equal(data["message"], "Handoff recorded; no agent was dispatched.");
     assert.equal(data["to_agent"], "@code-reviewer");
     assert.equal(data["task"], "Review PR #42");
     assert.equal(data["priority"], "medium");
@@ -79,6 +81,8 @@ describe("MCP create_handoff", () => {
 
     const data = parseResult(result) as Record<string, unknown>;
     assert.equal(data["success"], true);
+    assert.equal(data["status"], "recorded");
+    assert.equal(data["handoff_status"], "pending");
     assert.equal(data["priority"], "critical");
     assert.ok(data["sla_deadline"]);
     assert.equal(data["to_agent"], "@security-specialist");
