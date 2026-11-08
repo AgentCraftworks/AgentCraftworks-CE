@@ -9,9 +9,15 @@
   "scripts": {
     "build": "cd typescript && npm run build",
     "typecheck": "cd typescript && npm run typecheck",
-    "test": "cd typescript && npm test"
+    "test": "cd typescript && npm test",
+    "changeset:version": "changeset version && node scripts/sync-package-version.mjs"
   },
-  "keywords": ["ai-agents", "governance", "mcp", "github-app"],
+  "keywords": [
+    "ai-agents",
+    "governance",
+    "mcp",
+    "github-app"
+  ],
   "author": "AICraftworks LLC",
   "license": "MIT",
   "overrides": {
@@ -20,5 +26,8 @@
     "express-rate-limit": "^8.3.1",
     "fast-uri": "^3.1.2",
     "qs": "^6.15.2"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^3.0.3"
   }
 }
