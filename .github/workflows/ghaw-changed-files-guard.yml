@@ -1,3 +1,4 @@
+# Engagement Level: T2 (Advisor) - validates pull request scope; no writes.
 name: "GHAW: Changed Files Guard"
 
 on:
