@@ -16,7 +16,13 @@ const READ_ONLY_METHODS: Readonly<Record<string, ReadonlySet<string>>> = {
   checks: new Set(["listForRef"]),
   issues: new Set(["get", "listForRepo"]),
   pulls: new Set(["get", "list", "listFiles"]),
-  repos: new Set(["getCommit", "getContent", "getLatestRelease", "listCommits"]),
+  repos: new Set([
+    "get",
+    "getCommit",
+    "getContent",
+    "getLatestRelease",
+    "listCommits",
+  ]),
   git: new Set(["getRef", "getTree"]),
 };
 

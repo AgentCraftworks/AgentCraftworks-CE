@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:express --external:@octokit/rest --external:@octokit/webhooks --external:dotenv --external:ajv --external:jsonwebtoken --external:express-rate-limit",
+    "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:express --external:@octokit/rest --external:@octokit/webhooks --external:dotenv --external:ajv --external:jsonwebtoken --external:express-rate-limit --external:yaml",
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/**/*.test.ts",
@@ -37,6 +37,7 @@
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "yaml": "^2.9.1"
   }
 }
