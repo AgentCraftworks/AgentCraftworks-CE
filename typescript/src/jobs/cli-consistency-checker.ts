@@ -14,6 +14,7 @@
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -160,7 +161,11 @@ async function main(): Promise<void> {
   if (token && prNumber && repository) {
     const [owner, repo] = repository.split("/");
     if (owner && repo) {
-      const octokit = new Octokit({ auth: token });
+      const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+        owner,
+        repo,
+        job: "cli-consistency-checker",
+      });
       await octokit.issues.createComment({
         owner,
         repo,

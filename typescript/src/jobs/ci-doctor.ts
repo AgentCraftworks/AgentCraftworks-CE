@@ -10,10 +10,11 @@
  *   WORKFLOW_RUN_ID  — ID of the failed workflow run
  *   REPOSITORY       — owner/repo string
  *
- * Engagement Level: T2 (Advisor) — creates diagnostic issues, no code modifications.
+ * Engagement Level: T3 (Collaborator) — creates diagnostic issues.
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 
 interface FailureCategory {
   name: string;
@@ -183,7 +184,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "ci-doctor",
+  });
   const runIdNum = parseInt(runId, 10);
 
   // Fetch workflow run

@@ -8,10 +8,11 @@
  *   GITHUB_TOKEN  — GitHub token for API access
  *   REPOSITORY    — owner/repo string
  *
- * Engagement Level: T2 (Advisor) — creates issues with health reports, no modifications.
+ * Engagement Level: T3 (Collaborator) — creates health report issues.
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 
 interface WorkflowHealth {
   name: string;
@@ -39,7 +40,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "workflow-health-manager",
+  });
 
   // Get all workflows
   const { data: workflows } = await octokit.actions.listRepoWorkflows({
