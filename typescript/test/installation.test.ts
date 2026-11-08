@@ -23,6 +23,10 @@ import {
   type ListReposFn,
   type InstallationPayload,
 } from "../src/handlers/installation.js";
+import {
+  matchFileToTeams,
+  parseCodeowners,
+} from "../src/utils/codeowners.js";
 
 // ─── Mock Octokit Builder ────────────────────────────────────────────────────
 
@@ -456,8 +460,26 @@ describe("handleInstallationEvent", () => {
 // ─── DEFAULT_CODEOWNERS_TEMPLATE ─────────────────────────────────────────────
 
 describe("DEFAULT_CODEOWNERS_TEMPLATE", () => {
-  it("contains a catch-all pattern", () => {
-    assert.ok(DEFAULT_CODEOWNERS_TEMPLATE.includes("*"));
+  it("places the catch-all before more specific patterns", () => {
+    const lines = DEFAULT_CODEOWNERS_TEMPLATE.split(/\r?\n/);
+    const catchAll = lines.findIndex((line) => /^\*\s/.test(line));
+    const typescript = lines.findIndex((line) => /^\*\.ts\s/.test(line));
+    const docs = lines.findIndex((line) => /^docs\/\*\*\s/.test(line));
+    assert.ok(catchAll >= 0);
+    assert.ok(catchAll < typescript);
+    assert.ok(catchAll < docs);
+  });
+
+  it("routes representative workflow and TypeScript paths to their specific owners", () => {
+    const rules = parseCodeowners(DEFAULT_CODEOWNERS_TEMPLATE);
+    assert.deepEqual(
+      matchFileToTeams(".github/workflows/ci.yml", rules),
+      ["platform"],
+    );
+    assert.deepEqual(
+      matchFileToTeams("typescript/src/index.ts", rules),
+      ["security-scanner", "security"],
+    );
   });
 
   it("contains security scanner routing", () => {
