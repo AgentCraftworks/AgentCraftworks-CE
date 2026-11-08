@@ -16,3 +16,25 @@ export interface LoadedRepositoryConfig extends ParsedRepositoryConfig {
   readonly defaultBranch: string;
   readonly etag: string | null;
 }
+
+export interface RepositoryConfigClient {
+  repos: {
+    get(parameters: {
+      owner: string;
+      repo: string;
+    }): Promise<{
+      data: { default_branch: string };
+    }>;
+    getContent(parameters: {
+      owner: string;
+      repo: string;
+      path: string;
+      ref: string;
+      headers?: Record<string, string>;
+    }): Promise<{
+      data: unknown;
+      headers?: { etag?: string };
+      status?: number;
+    }>;
+  };
+}

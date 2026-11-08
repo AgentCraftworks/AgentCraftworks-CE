@@ -132,11 +132,18 @@ describe("engagement policy matrix", () => {
   for (const testCase of cases) {
     it(testCase.name, () => {
       setDialLevel(OWNER, REPO, testCase.dialLevel, "test");
+      const repoCeiling =
+        "policy" in testCase && "repoCeiling" in testCase.policy
+          ? testCase.policy.repoCeiling
+          : undefined;
       const decision = actionGate.check(
         {
           owner: OWNER,
           repo: REPO,
           action: testCase.action,
+          ...(repoCeiling !== undefined
+            ? { repoCeiling }
+            : {}),
           ...(testCase.branchName ? { branchName: testCase.branchName } : {}),
           ...("repoProtectedActions" in testCase
             ? { repoProtectedActions: testCase.repoProtectedActions }

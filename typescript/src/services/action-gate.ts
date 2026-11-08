@@ -27,8 +27,10 @@ export interface ActionGateRequest {
   repo: string;
   action: string;
   branchName?: string;
+  repoCeiling?: DialLevel;
   repoProtectedActions?: readonly string[];
   repoBudgets?: Partial<ActionBudgetLimits>;
+  repoConfigUnavailable?: boolean;
 }
 
 export interface ActionGateDecision {
@@ -38,6 +40,7 @@ export interface ActionGateDecision {
     | "PROTECTED_ACTION_DENIED"
     | "INSUFFICIENT_LEVEL"
     | "AGENT_BRANCH_REQUIRED"
+    | "REPO_CONFIG_UNAVAILABLE"
     | "BUDGET_EXHAUSTED";
   action: string;
   tier: ActionTier;
@@ -105,6 +108,7 @@ export const actionGate = {
       request.repo,
       request.action,
       policy,
+      request.repoCeiling,
     );
 
     if (!classification.isKnownAction) {
@@ -120,6 +124,24 @@ export const actionGate = {
           effectiveLevel: permission.effectiveLevel,
           bounds: permission.bounds,
           reason: `Unknown action "${classification.actionType}" is denied (UNKNOWN_ACTION).`,
+        },
+        options,
+      );
+    }
+
+    if (request.repoConfigUnavailable) {
+      return deny(
+        request,
+        {
+          allowed: false,
+          code: "REPO_CONFIG_UNAVAILABLE",
+          action: classification.actionType,
+          tier: classification.tier,
+          dialLevel: permission.dialLevel,
+          requiredLevel: permission.requiredLevel,
+          effectiveLevel: permission.effectiveLevel,
+          bounds: permission.bounds,
+          reason: `Repository policy for ${request.owner}/${request.repo} could not be loaded; the action is denied.`,
         },
         options,
       );
@@ -255,13 +277,22 @@ export interface GateDecision extends ActionGateDecision {
 
 export type ActionType = string;
 
+export type ActionGateRepositoryPolicy = Pick<
+  ActionGateRequest,
+  "repoCeiling" | "repoProtectedActions" | "repoBudgets" | "repoConfigUnavailable"
+>;
+
 export function gateAction(
   owner: string,
   repo: string,
   action: ActionType,
   policy: RuntimePolicy = getRuntimePolicy(),
+  repositoryPolicy: ActionGateRepositoryPolicy = {},
 ): GateDecision {
-  const decision = actionGate.check({ owner, repo, action }, policy);
+  const decision = actionGate.check(
+    { owner, repo, action, ...repositoryPolicy },
+    policy,
+  );
   return {
     ...decision,
     level: decision.dialLevel,

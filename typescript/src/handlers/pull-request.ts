@@ -27,10 +27,10 @@ import {
   type RoutingDecision,
 } from "../services/codeowners-router.js";
 import {
-  canComment,
+  actionGate,
   describeDenial,
-  gateAction,
   type ActionType,
+  type ActionGateDecision,
   type GateDecision,
 } from "../services/action-gate.js";
 import {
@@ -38,6 +38,16 @@ import {
   type RuntimePolicy,
 } from "../config/runtime.js";
 import { getInstallationOctokit } from "../utils/auth.js";
+import {
+  getRepositoryConfig,
+  invalidateRepositoryConfig,
+  isRepositoryConfigClient,
+} from "../services/repo-config.js";
+import type {
+  LoadedRepositoryConfig,
+  RepositoryConfigClient,
+} from "../types/repo-config.js";
+import { ENGAGEMENT_LEVEL_NAMES } from "../types/autonomy.js";
 import { isTerminalState } from "../utils/handoff-state-machine.js";
 import {
   handleInstallationEvent,
@@ -76,6 +86,8 @@ const ACTIONABLE_EVENTS = new Set([
 export interface PullRequestHandlerDeps {
   /** Octokit for the installation; `null` disables GitHub reads/writes. */
   octokit?: OctokitLike | null;
+  /** Test seam; production derives this client from the installation Octokit. */
+  repositoryConfigClient?: RepositoryConfigClient;
   /** Test seam; webhook callers always use the server-configured runtime policy. */
   policy?: RuntimePolicy;
   log?: (entry: Record<string, unknown>) => void;
@@ -168,6 +180,9 @@ export async function handlePullRequestEvent(
   const owner = repo.owner.login;
 
   const octokit = await resolveOctokit(deps, installationId, log, repo.full_name);
+  const repositoryConfigClient =
+    deps.repositoryConfigClient ??
+    (isRepositoryConfigClient(octokit) ? octokit : undefined);
 
   // Routing precedence: CODEOWNERS → labels → none
   let routing: RoutingDecision;
@@ -247,6 +262,7 @@ export async function handlePullRequestEvent(
     routing,
     handoffId: handoff.handoff_id,
     policy,
+    repositoryConfigClient,
     log,
   });
 
@@ -304,6 +320,7 @@ interface GatedWriteContext {
   routing: RoutingDecision;
   handoffId: string;
   policy: RuntimePolicy;
+  repositoryConfigClient?: RepositoryConfigClient;
   log: (entry: Record<string, unknown>) => void;
 }
 
@@ -327,9 +344,51 @@ async function performGatedWrites(
   if (!octokit) return results;
 
   const writes = buildWrites(ctx);
+  let repositoryConfig: LoadedRepositoryConfig | undefined;
+  if (ctx.repositoryConfigClient) {
+    try {
+      repositoryConfig = await getRepositoryConfig(
+        ctx.repositoryConfigClient,
+        owner,
+        repo,
+      );
+    } catch {
+      log({
+        msg: "repository policy unavailable",
+        repo: ctx.repoFullName,
+        pr: pr.number,
+      });
+    }
+  }
 
   for (const write of writes) {
-    const decision = gateAction(owner, repo, write.action, ctx.policy);
+    const rawDecision: ActionGateDecision = repositoryConfig
+      ? actionGate.check(
+          {
+            owner,
+            repo,
+            action: write.action,
+            repoCeiling: repositoryConfig.agents.ceiling,
+            repoProtectedActions: repositoryConfig.agents.protectedActions,
+            repoBudgets: repositoryConfig.agents.budgets,
+          },
+          ctx.policy,
+        )
+      : actionGate.check(
+          {
+            owner,
+            repo,
+            action: write.action,
+            repoConfigUnavailable: true,
+          },
+          ctx.policy,
+        );
+    const decision: GateDecision = {
+      ...rawDecision,
+      level: rawDecision.dialLevel,
+      levelName: ENGAGEMENT_LEVEL_NAMES[rawDecision.effectiveLevel],
+      env: ctx.policy.environment,
+    };
 
     if (!decision.allowed) {
       denied.push(decision);
@@ -379,7 +438,21 @@ async function performGatedWrites(
     });
   }
 
-  if (denied.length > 0 && canComment(owner, repo, ctx.policy)) {
+  const commentDecision =
+    denied.length > 0 && repositoryConfig
+      ? actionGate.check(
+          {
+            owner,
+            repo,
+            action: "post_comment",
+            repoCeiling: repositoryConfig.agents.ceiling,
+            repoProtectedActions: repositoryConfig.agents.protectedActions,
+            repoBudgets: repositoryConfig.agents.budgets,
+          },
+          ctx.policy,
+        )
+      : undefined;
+  if (denied.length > 0 && commentDecision?.allowed) {
     try {
       await octokit.request(
         "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
@@ -518,6 +591,38 @@ export async function webhookHandler(
         req.body as PullRequestPayload,
       );
       res.status(200).json(result);
+      return;
+    }
+
+    if (event === "push") {
+      const payload = req.body as {
+        ref?: unknown;
+        repository?: {
+          full_name?: unknown;
+          default_branch?: unknown;
+        };
+      };
+      const fullName = payload.repository?.full_name;
+      const ref = payload.ref;
+      const defaultBranch = payload.repository?.default_branch;
+      let configInvalidated = false;
+      if (
+        typeof fullName === "string" &&
+        typeof ref === "string" &&
+        (typeof defaultBranch !== "string" ||
+          ref === `refs/heads/${defaultBranch}`)
+      ) {
+        const [owner, repo, ...extra] = fullName.split("/");
+        if (owner && repo && extra.length === 0) {
+          invalidateRepositoryConfig(owner, repo);
+          configInvalidated = true;
+        }
+      }
+      res.status(200).json({
+        event: "push",
+        handled: true,
+        configInvalidated,
+      });
       return;
     }
 

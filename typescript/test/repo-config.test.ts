@@ -6,8 +6,12 @@ import {
   invalidateRepositoryConfig,
   parseRepositoryConfig,
   repositoryConfigCacheTtlMs,
-  type RepositoryConfigClient,
 } from "../src/services/repo-config.js";
+import type { RepositoryConfigClient } from "../src/types/repo-config.js";
+import {
+  clearAuditEvents,
+  listAuditEvents,
+} from "../src/services/audit-log.js";
 
 function encodedConfig(source: string): unknown {
   return {
@@ -52,7 +56,10 @@ function createClient(options: {
 }
 
 describe("repository configuration", () => {
-  beforeEach(clearRepositoryConfigCache);
+  beforeEach(() => {
+    clearRepositoryConfigCache();
+    clearAuditEvents();
+  });
 
   it("uses the default repository ceiling when agents.ceiling is absent", () => {
     const config = parseRepositoryConfig('version: "1"\nagents: {}\n');
@@ -168,5 +175,34 @@ describe("repository configuration", () => {
     );
     assert.equal(refreshed.agents.ceiling, 2);
     assert.deepEqual(secondClient.calls, ["repo", "content:main:"]);
+  });
+
+  it("audits an observed repository ceiling change", async () => {
+    await getRepositoryConfig(
+      createClient({
+        content: encodedConfig('version: "1"\nagents:\n  ceiling: 3\n'),
+      }),
+      "owner",
+      "repo",
+      { now: 0 },
+    );
+    await getRepositoryConfig(
+      createClient({
+        content: encodedConfig('version: "1"\nagents:\n  ceiling: 4\n'),
+      }),
+      "owner",
+      "repo",
+      { now: 60_000 },
+    );
+
+    const event = listAuditEvents("owner/repo").find(
+      (entry) => entry.event === "ceiling.changed",
+    );
+    assert.ok(event);
+    assert.equal(event.actor, "operator");
+    assert.deepEqual(event.details, {
+      previousCeiling: 3,
+      newCeiling: 4,
+    });
   });
 });

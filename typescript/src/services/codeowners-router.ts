@@ -18,6 +18,7 @@ import {
   type CodeownersRule,
 } from "../utils/codeowners.js";
 import { routeToAgentByLabel } from "./label-router.js";
+import type { RepositoryConfigClient } from "../types/repo-config.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ export interface OctokitLike {
   request: (route: string, params?: Record<string, unknown>) => Promise<{
     data: unknown;
   }>;
+  repos?: RepositoryConfigClient["repos"];
 }
 
 export type RoutingSource = "codeowners" | "labels" | "none";

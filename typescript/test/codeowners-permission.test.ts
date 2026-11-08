@@ -275,7 +275,7 @@ describe("checkActionPermission", () => {
     assert.equal(result.requiredLevel, 5);
   });
 
-  it("should permit T5 action with high dial level", () => {
+  it("should deny T5 action without a reviewed repository ceiling", () => {
     setDialLevel("owner", "repo", 5, "admin");
     const result = checkActionPermission({
       repoOwner: "owner",
@@ -283,7 +283,7 @@ describe("checkActionPermission", () => {
       agentSlug: "@bot",
       actionType: "merge_pr",
     });
-    assert.equal(result.permitted, true);
+    assert.equal(result.permitted, false);
   });
 
   it("should throw on missing required fields", () => {

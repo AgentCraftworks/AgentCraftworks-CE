@@ -200,6 +200,24 @@ export async function getInstallationOctokit(
   });
 }
 
+/**
+ * Resolve a repository's GitHub App installation and return its installation token.
+ */
+export async function getRepositoryInstallationOctokit(
+  owner: string,
+  repo: string,
+): Promise<Octokit> {
+  const appOctokit = new Octokit({
+    auth: generateAppJwt(),
+    userAgent: "AgentCraftworks-CE/1.0",
+  });
+  const { data: installation } = await appOctokit.request(
+    "GET /repos/{owner}/{repo}/installation",
+    { owner, repo },
+  );
+  return getInstallationOctokit(installation.id);
+}
+
 
 /** Get cache statistics for monitoring. */
 export function getCacheStats(): {

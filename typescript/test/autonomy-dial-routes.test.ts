@@ -13,9 +13,13 @@ import assert from "node:assert/strict";
 import express from "express";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import dialRouter from "../src/handlers/autonomy-dial-routes.js";
+import {
+  createAutonomyDialRouter,
+  type RepositoryConfigLoader,
+} from "../src/handlers/autonomy-dial-routes.js";
 import {
   clearAllDials,
+  getDialLevel,
   setDialLevel,
 } from "../src/services/autonomy-dial.js";
 import { configureRuntimePolicy } from "../src/config/runtime.js";
@@ -25,12 +29,32 @@ import {
   clearAuditEvents,
   listAuditEvents,
 } from "../src/services/audit-log.js";
+import type { LoadedRepositoryConfig } from "../src/types/repo-config.js";
+import type { DialLevel } from "../src/types/autonomy.js";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
+function repositoryConfig(
+  ceiling: DialLevel = 5,
+): LoadedRepositoryConfig {
+  return {
+    agents: {
+      ceiling,
+      protectedActions: [],
+      budgets: {},
+    },
+    defaultBranch: "main",
+    etag: null,
+  };
+}
+
+let repoConfig = repositoryConfig();
+let configLoader: RepositoryConfigLoader = async () => repoConfig;
 const app = express();
 app.use(express.json());
-app.use("/api/dial", dialRouter);
+app.use("/api/dial", createAutonomyDialRouter((owner, repo) =>
+  configLoader(owner, repo),
+));
 
 let server: http.Server;
 let baseUrl: string;
@@ -83,6 +107,8 @@ async function request(
 await startServer();
 
 beforeEach(() => {
+  repoConfig = repositoryConfig();
+  configLoader = async () => repoConfig;
   clearAllDials();
   clearActionBudgets();
   clearAuditEvents();
@@ -141,6 +167,20 @@ describe("POST /api/dial/:owner/:repo", () => {
     assert.equal(res.status, 200);
     assert.equal(res.body["dialLevel"], 5);
     assert.equal(res.body["updatedBy"], "user2");
+  });
+
+  it("returns REPO_CEILING with a config link when a dial exceeds the repository ceiling", async () => {
+    repoConfig = repositoryConfig(3);
+    const res = await request("POST", "/api/dial/org/repo", {
+      dialLevel: 4,
+      updatedBy: "admin",
+    });
+
+    assert.equal(res.status, 409);
+    assert.equal(res.body["code"], "REPO_CEILING");
+    assert.equal(res.body["repoCeiling"], 3);
+    assert.match(res.body["configUrl"] as string, /agentcraftworks\.config\.yml$/);
+    assert.equal(getDialLevel("org", "repo").dialLevel, 1);
   });
 
   it("audits dial changes with the server actor and effective bounds", async () => {
@@ -267,6 +307,38 @@ describe("POST /api/dial/check", () => {
     assert.equal(res.body["permitted"], true);
   });
 
+  it("applies the repository ceiling to action checks", async () => {
+    setDialLevel("org", "repo", 5, "admin");
+    repoConfig = repositoryConfig(2);
+    const res = await request("POST", "/api/dial/check", {
+      action: "edit_file",
+      owner: "org",
+      repo: "repo",
+      branchName: "agent/test",
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body["permitted"], false);
+    assert.equal(res.body["effectiveLevel"], 2);
+    assert.equal(
+      (res.body["bounds"] as Record<string, unknown>)["repoCeiling"],
+      2,
+    );
+  });
+
+  it("fails closed when the repository policy cannot be loaded", async () => {
+    configLoader = async () => {
+      throw new Error("unavailable");
+    };
+    const res = await request("POST", "/api/dial/check", {
+      action: "view_file",
+      owner: "org",
+      repo: "repo",
+    });
+    assert.equal(res.status, 503);
+    assert.equal(res.body["code"], "REPO_CONFIG_UNAVAILABLE");
+  });
+
   it("should deny T5 action when dial level is insufficient", async () => {
     setDialLevel("org", "repo", 4, "admin");
     const res = await request("POST", "/api/dial/check", {
@@ -329,7 +401,12 @@ describe("POST /api/dial/check", () => {
       assert.equal(preview.body["permitted"], true);
     }
 
-    const action = { owner: "org", repo: "repo", action: "close_issue" };
+    const action = {
+      owner: "org",
+      repo: "repo",
+      action: "close_issue",
+      repoCeiling: 5 as DialLevel,
+    };
     assert.equal(
       actionGate.check(action, policy, { now: 0, audit: () => {} }).allowed,
       true,
