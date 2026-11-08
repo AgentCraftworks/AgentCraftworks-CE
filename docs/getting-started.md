@@ -18,6 +18,15 @@ Both tracks end at the same place: [your first handoff](#your-first-handoff), th
 Commands and examples are being added to CI smoke coverage. If one fails for you, see
 [Troubleshooting](#troubleshooting).
 
+## Local quickstart and doctor (planned)
+
+The `quickstart` and `doctor` commands are part of the E-1 CLI work and are not available
+yet. The planned experience creates a local sample repository with deterministic handoff
+fixtures, then checks the developer environment and reports actionable fixes. Until E-1
+lands, follow [Track 2](#track-2--run-your-own-instance) to install and run the current
+server. The [Codespaces environment](../.devcontainer/devcontainer.json) installs the
+repository dependencies and builds the server; it does not configure GitHub credentials.
+
 ---
 
 ## Track 1 — Install the GitHub App

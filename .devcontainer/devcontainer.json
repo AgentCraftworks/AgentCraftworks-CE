@@ -1,0 +1,12 @@
+{
+  "name": "AgentCraftworks Community Edition",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  "postCreateCommand": "npm ci && npm run build",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "AgentCraftworks CE API",
+      "onAutoForward": "notify"
+    }
+  }
+}

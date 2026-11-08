@@ -18,6 +18,7 @@ This folder contains forward-looking strategy documents, roadmaps, and proposals
 | Document | Status | Summary |
 |---|---|---|
 | [CE_GETTING_STARTED_IMPLEMENTATION_PLAN.md](CE_GETTING_STARTED_IMPLEMENTATION_PLAN.md) | APPROVED | Getting Started experience and product documentation for Community Edition — tracked by epic [#238](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/238) |
+| [CE_QUICKSTART_DOCTOR_UX.md](CE_QUICKSTART_DOCTOR_UX.md) | DRAFT | Local quickstart and environment doctor UX; CLI implementation depends on E-1 |
 | [PLAYWRIGHT_CLI_INTEGRATION.md](PLAYWRIGHT_CLI_INTEGRATION.md) | DRAFT | Browser automation via Playwright CLI for Agent Teams |
 
 ## Why this folder exists
