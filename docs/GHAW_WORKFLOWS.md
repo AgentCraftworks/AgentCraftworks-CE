@@ -26,7 +26,7 @@ AgentCraftworks uses **GitHub Agentic Workflows (GH-AW)** to automate developmen
 | **Daily Doc Updater** | `schedule` (daily) | Updates documentation based on recent code changes |
 | **Sub-Issue Closer** | `schedule` (daily) | Closes parent issues when all sub-issues complete |
 | **Grumpy Reviewer** | `/grumpy` comment | On-demand thorough code review with attitude |
-| **Code Simplifier** | `schedule` (daily) | Simplifies recently modified code while preserving functionality |
+| **Code Simplifier** | `schedule` (daily) | Suggests code modernizations in a draft PR for human review |
 
 ### Existing Workflows
 

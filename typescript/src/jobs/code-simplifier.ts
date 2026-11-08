@@ -1,9 +1,8 @@
 /**
  * Code Simplifier — Applies simplification rules to recently modified code.
  *
- * Analyzes code changes and suggests modernization patterns: optional chaining,
- * nullish coalescing, template literals, array methods, etc. Creates a draft
- * PR with the simplifications applied.
+ * Analyzes code changes and suggests modernization patterns. Creates a draft
+ * PR with the simplifications applied for human review.
  *
  * Environment variables:
  *   GITHUB_TOKEN   — GitHub token for API access
@@ -15,130 +14,11 @@
  */
 
 import { Octokit } from "@octokit/rest";
-
-interface SimplificationRule {
-  name: string;
-  description: string;
-  pattern: RegExp;
-  replacement: string | ((match: string, ...groups: string[]) => string);
-  testBefore: string;
-  testAfter: string;
-}
-
-const SIMPLIFICATION_RULES: SimplificationRule[] = [
-  {
-    name: "Optional Chaining",
-    description: "Replace manual null checks with optional chaining (?.).",
-    pattern: /(\w+)\s*&&\s*\1\.(\w+)/g,
-    replacement: "$1?.$2",
-    testBefore: "user && user.name",
-    testAfter: "user?.name",
-  },
-  {
-    name: "Nullish Coalescing",
-    description: "Replace || with ?? for null/undefined checks.",
-    pattern: /(\w+(?:\.\w+)*)\s*\|\|\s*(['"`][^'"`]*['"`]|\d+|true|false|null|\[\]|\{\})/g,
-    replacement: "$1 ?? $2",
-    testBefore: "value || 'default'",
-    testAfter: "value ?? 'default'",
-  },
-  {
-    name: "Template Literals",
-    description: "Replace string concatenation with template literals.",
-    pattern: /(['"])([^'"]*)\1\s*\+\s*(\w+)\s*\+\s*(['"])([^'"]*)\4/g,
-    replacement: "`$2${$3}$5`",
-    testBefore: "'Hello ' + name + '!'",
-    testAfter: "`Hello ${name}!`",
-  },
-  {
-    name: "Object Property Shorthand",
-    description: "Use shorthand when property name matches variable name.",
-    pattern: /\{\s*(\w+):\s*\1\s*\}/g,
-    replacement: "{ $1 }",
-    testBefore: "{ name: name }",
-    testAfter: "{ name }",
-  },
-  {
-    name: "Array.includes",
-    description: "Replace indexOf !== -1 with includes().",
-    pattern: /(\w+(?:\.\w+)*)\.indexOf\(([^)]+)\)\s*!==?\s*-1/g,
-    replacement: "$1.includes($2)",
-    testBefore: "arr.indexOf(x) !== -1",
-    testAfter: "arr.includes(x)",
-  },
-  {
-    name: "Array.includes (negative)",
-    description: "Replace indexOf === -1 with !includes().",
-    pattern: /(\w+(?:\.\w+)*)\.indexOf\(([^)]+)\)\s*===?\s*-1/g,
-    replacement: "!$1.includes($2)",
-    testBefore: "arr.indexOf(x) === -1",
-    testAfter: "!arr.includes(x)",
-  },
-  {
-    name: "Exponentiation Operator",
-    description: "Replace Math.pow with ** operator.",
-    pattern: /Math\.pow\(([^,]+),\s*([^)]+)\)/g,
-    replacement: "($1 ** $2)",
-    testBefore: "Math.pow(2, 3)",
-    testAfter: "(2 ** 3)",
-  },
-  {
-    name: "Object.keys().length",
-    description: "Clarify empty object check.",
-    pattern: /Object\.keys\((\w+)\)\.length\s*===?\s*0/g,
-    replacement: "Object.keys($1).length === 0 /* isEmpty */",
-    testBefore: "Object.keys(obj).length === 0",
-    testAfter: "Object.keys(obj).length === 0 /* isEmpty */",
-  },
-  {
-    name: "Arrow Function Implicit Return",
-    description: "Simplify single-expression arrow functions.",
-    pattern: /=>\s*\{\s*return\s+([^;{}]+);\s*\}/g,
-    replacement: "=> $1",
-    testBefore: "() => { return x + 1; }",
-    testAfter: "() => x + 1",
-  },
-  {
-    name: "Destructuring Assignment",
-    description: "Use destructuring for multiple property access.",
-    pattern: /const\s+(\w+)\s*=\s*(\w+)\.(\w+);\s*const\s+(\w+)\s*=\s*\2\.(\w+);/g,
-    replacement: "const { $3: $1, $5: $4 } = $2;",
-    testBefore: "const name = user.name; const age = user.age;",
-    testAfter: "const { name, age } = user;",
-  },
-  {
-    name: "String.startsWith",
-    description: "Replace indexOf === 0 with startsWith().",
-    pattern: /(\w+(?:\.\w+)*)\.indexOf\(([^)]+)\)\s*===?\s*0/g,
-    replacement: "$1.startsWith($2)",
-    testBefore: "str.indexOf('prefix') === 0",
-    testAfter: "str.startsWith('prefix')",
-  },
-  {
-    name: "Boolean Conversion",
-    description: "Simplify double negation to Boolean().",
-    pattern: /!!\s*(\w+(?:\.\w+)*)/g,
-    replacement: "Boolean($1)",
-    testBefore: "!!value",
-    testAfter: "Boolean(value)",
-  },
-  {
-    name: "Number Conversion",
-    description: "Replace parseInt without radix with Number().",
-    pattern: /parseInt\((\w+(?:\.\w+)*)\)(?!\s*,)/g,
-    replacement: "Number($1)",
-    testBefore: "parseInt(str)",
-    testAfter: "Number(str)",
-  },
-];
-
-interface Simplification {
-  file: string;
-  line: number;
-  rule: string;
-  before: string;
-  after: string;
-}
+import {
+  applySimplifications,
+  SIMPLIFICATION_RULES,
+  type Simplification,
+} from "../utils/code-simplifier-rules.js";
 
 interface FileChange {
   path: string;
@@ -146,50 +26,6 @@ interface FileChange {
   originalSha: string;
   simplifications: Simplification[];
   newContent: string;
-}
-
-function applySimplifications(content: string, filePath: string): { newContent: string; simplifications: Simplification[] } {
-  let newContent = content;
-  const simplifications: Simplification[] = [];
-  const lines = content.split("\n");
-
-  for (const rule of SIMPLIFICATION_RULES) {
-    const matches = content.matchAll(new RegExp(rule.pattern.source, rule.pattern.flags));
-
-    for (const match of matches) {
-      if (match.index == null) continue;
-
-      // Find line number
-      const beforeMatch = content.slice(0, match.index);
-      const lineNumber = beforeMatch.split("\n").length;
-
-      // Skip if in a comment
-      const line = lines[lineNumber - 1] ?? "";
-      if (line.trim().startsWith("//") || line.trim().startsWith("*")) continue;
-
-      const before = match[0];
-      const after = typeof rule.replacement === "function"
-        ? rule.replacement(match[0], ...(match.slice(1) as string[]))
-        : match[0].replace(rule.pattern, rule.replacement);
-
-      if (before !== after) {
-        simplifications.push({
-          file: filePath,
-          line: lineNumber,
-          rule: rule.name,
-          before: before.trim(),
-          after: after.trim(),
-        });
-      }
-    }
-
-    // Apply the rule globally
-    if (typeof rule.replacement === "string") {
-      newContent = newContent.replace(rule.pattern, rule.replacement);
-    }
-  }
-
-  return { newContent, simplifications };
 }
 
 async function main(): Promise<void> {
@@ -371,7 +207,7 @@ async function main(): Promise<void> {
     "",
     "⚠️ **This is a draft PR** — please review the changes carefully:",
     "",
-    "- Some transformations may change behavior (e.g., `||` vs `??` for falsy values)",
+    "- These changes are not guaranteed behavior-preserving; human review required.",
     "- Test thoroughly before merging",
     "- Feel free to cherry-pick individual changes",
     "",
