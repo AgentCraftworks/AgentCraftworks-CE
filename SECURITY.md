@@ -61,6 +61,10 @@ Invalid credentials return `401`; authenticated callers with a wrong scope or re
 
 We regularly review and update dependencies. Key security-relevant dependencies:
 
+The root `package-lock.json` is the only dependency lockfile. `typescript` is an npm workspace; install from the repository root with `npm ci`. Root dependency overrides apply to CI and both Docker stages.
+
+CI runs `npm run audit:production`, which fails on high or critical production dependency advisories. It uses `npm audit --omit=dev --audit-level=high`. Dependabot groups security and version updates at the root. The dependencies installed in production have no remaining reported advisories in the security baseline. New advisories must be fixed or explicitly evaluated, not bypassed.
+
 - `express` — HTTP server
 - `jsonwebtoken` — GitHub App JWT authentication
 - `@octokit/rest` — GitHub API client

@@ -1,9 +1,9 @@
-# Dependabot configuration — keeps the shipped typescript/ lockfile patched.
+# Dependabot configuration - keeps the root workspace lockfile patched.
 # See https://docs.github.com/code-security/dependabot/dependabot-version-updates
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /typescript
+    directory: /
     schedule:
       interval: weekly
     target-branch: staging
@@ -14,5 +14,9 @@ updates:
     groups:
       security-patches:
         applies-to: security-updates
+        patterns:
+          - "*"
+      version-updates:
+        applies-to: version-updates
         patterns:
           - "*"

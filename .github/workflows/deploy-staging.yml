@@ -53,7 +53,7 @@ jobs:
               --image ${{ env.TYPESCRIPT_IMAGE_NAME }}:staging \
               --image ${{ env.TYPESCRIPT_IMAGE_NAME }}:sha-$(echo "${{ github.sha }}" | cut -c1-7) \
               --file ./typescript/Dockerfile \
-              ./typescript
+              .
 
       - name: Deploy to Azure Container Apps (Staging)
         uses: azure/CLI@v2

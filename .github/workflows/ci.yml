@@ -28,19 +28,30 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      # Audit the standalone typescript/ lockfile — the one the Dockerfile ships with.
-      # Run outside the workspace root so npm resolves typescript/package-lock.json, not the root lock.
-      - name: Audit production dependencies (typescript/)
-        run: |
-          tmp="$(mktemp -d)"
-          cp typescript/package.json typescript/package-lock.json "$tmp/"
-          cd "$tmp"
-          npm audit --omit=dev --audit-level=high
+      - name: Audit production dependencies
+        run: npm run audit:production
       - name: Check workflow ORG-STANDARD compliance
         run: node scripts/check-workflow-standards.mjs
       - run: npm -w typescript run typecheck
       - run: npm -w typescript run build
       - run: npm -w typescript test
+
+  container-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build production workspace image
+        run: docker build --file typescript/Dockerfile --tag ce-lockfile-test .
+      - name: Check image health and authentication
+        run: |
+          container="$(docker run --detach --publish 127.0.0.1::3000 \
+            --env GH_CE_API_TOKEN=ci-test-token ce-lockfile-test)"
+          trap 'docker logs "$container"; docker rm --force "$container" >/dev/null' EXIT
+          port="$(docker port "$container" 3000/tcp | cut -d: -f2)"
+          base="http://127.0.0.1:$port"
+          curl --fail --retry 20 --retry-all-errors --retry-delay 1 --retry-max-time 30 "$base/health"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base/api/handoffs")" = 401
+          curl --fail --header 'Authorization: Bearer ci-test-token' "$base/api/handoffs"
 
   link-check:
     # Non-blocking for now (fail: false); offline mode validates only local file links and anchors.

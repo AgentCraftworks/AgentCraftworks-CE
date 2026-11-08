@@ -34,8 +34,8 @@ services:
   # TypeScript service
   typescript-api:
     build:
-      context: ./typescript
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: typescript/Dockerfile
     environment:
       PORT: 3000
       GH_CE_APP_ID: ${GH_CE_APP_ID}
