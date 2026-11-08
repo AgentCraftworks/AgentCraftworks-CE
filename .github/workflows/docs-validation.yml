@@ -1,0 +1,83 @@
+# T1 (Observer) — validate public documentation and documented local commands; no writes.
+name: Documentation validation
+
+on:
+  pull_request:
+    paths:
+      - "**.md"
+      - "docs/**"
+      - "scripts/check-doc-links.mjs"
+      - "scripts/mcp-docs-smoke.mjs"
+      - ".github/workflows/docs-validation.yml"
+  push:
+    branches: [staging]
+    paths:
+      - "**.md"
+      - "docs/**"
+      - "scripts/check-doc-links.mjs"
+      - "scripts/mcp-docs-smoke.mjs"
+      - ".github/workflows/docs-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Docs links and command smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check local documentation links
+        run: node scripts/check-doc-links.mjs
+
+      - name: Build the documented server
+        run: npm -w typescript run build
+
+      - name: Smoke-test documented MCP command and tool list
+        run: node scripts/mcp-docs-smoke.mjs
+
+      - name: Smoke-test documented HTTP health and webhook commands
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'GH_CE_WEBHOOK_SECRET=docs-smoke-secret\nPORT=3000\n' > .env
+          npm -w typescript run start:env > server.log 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+            rm -f .env server.log health.json
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/health > health.json; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat server.log
+            echo "Test server did not become ready" >&2
+            exit 1
+          fi
+          node -e 'const health = require("./health.json"); if (health.status !== "ok") process.exit(1)'
+          GH_CE_WEBHOOK_SECRET=docs-smoke-secret \
+            node docs/demos/04-docker-compose/send-webhook.mjs ping
+
+      - name: Report pending E-1 doctor command smoke test
+        run: |
+          echo "::notice title=E-1 dependency::The doctor command smoke test is deferred until E-1 defines and ships the CLI command."
