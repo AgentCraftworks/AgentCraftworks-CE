@@ -5,11 +5,16 @@ import type {
 } from "../types/autonomy.js";
 import { ENGAGEMENT_LEVEL_NAMES } from "../types/autonomy.js";
 import {
+  type ActionBudgetLimits,
   getRuntimePolicy,
   type RuntimePolicy,
 } from "../config/runtime.js";
 import { isProtectedAction } from "../config/protected-actions.js";
 import { classifyAction } from "./action-classifier.js";
+import {
+  actionBudgetTracker,
+  getEffectiveActionBudgetLimit,
+} from "./action-budgets.js";
 import { isActionPermitted } from "./autonomy-dial.js";
 
 export interface ActionGateRequest {
@@ -18,6 +23,7 @@ export interface ActionGateRequest {
   action: string;
   branchName?: string;
   repoProtectedActions?: readonly string[];
+  repoBudgets?: Partial<ActionBudgetLimits>;
 }
 
 export interface ActionGateDecision {
@@ -26,7 +32,8 @@ export interface ActionGateDecision {
     | "UNKNOWN_ACTION"
     | "PROTECTED_ACTION_DENIED"
     | "INSUFFICIENT_LEVEL"
-    | "AGENT_BRANCH_REQUIRED";
+    | "AGENT_BRANCH_REQUIRED"
+    | "BUDGET_EXHAUSTED";
   action: string;
   tier: ActionTier;
   dialLevel: DialLevel;
@@ -34,12 +41,20 @@ export interface ActionGateDecision {
   effectiveLevel: DialLevel;
   bounds: ReturnType<typeof isActionPermitted>["bounds"];
   reason: string;
+  retryAfterSeconds?: number;
+}
+
+export interface ActionGateCheckOptions {
+  consumeBudget?: boolean;
+  now?: number;
+  audit?: (event: Record<string, unknown>) => void;
 }
 
 export const actionGate = {
   check(
     request: ActionGateRequest,
     policy: RuntimePolicy = getRuntimePolicy(),
+    options: ActionGateCheckOptions = {},
   ): ActionGateDecision {
     const classification = classifyAction(request.action);
     const permission = isActionPermitted(
@@ -117,6 +132,54 @@ export const actionGate = {
         bounds: permission.bounds,
         reason: permission.reason,
       };
+    }
+
+    if (
+      options.consumeBudget !== false &&
+      (classification.tier === "T4" || classification.tier === "T5")
+    ) {
+      const tier = classification.tier;
+      const limit = getEffectiveActionBudgetLimit(
+        tier,
+        policy.actionBudgets,
+        request.repoBudgets,
+      );
+      const budget = actionBudgetTracker.consume(
+        request.owner,
+        request.repo,
+        tier,
+        limit,
+        options.now,
+      );
+      if (!budget.allowed) {
+        const retryAfterSeconds = budget.retryAfterSeconds ?? 1;
+        const event = {
+          msg: "action budget exhausted",
+          event: "budget.exhausted",
+          actor: "operator",
+          owner: request.owner,
+          repo: request.repo,
+          action: classification.actionType,
+          tier,
+          limit,
+          retryAfterSeconds,
+          timestamp: new Date(options.now ?? Date.now()).toISOString(),
+          bounds: permission.bounds,
+        };
+        (options.audit ?? ((entry) => console.log(JSON.stringify(entry))))(event);
+        return {
+          allowed: false,
+          code: "BUDGET_EXHAUSTED",
+          action: classification.actionType,
+          tier: classification.tier,
+          dialLevel: permission.dialLevel,
+          requiredLevel: permission.requiredLevel,
+          effectiveLevel: permission.effectiveLevel,
+          bounds: permission.bounds,
+          retryAfterSeconds,
+          reason: `Action budget exhausted for ${tier}; retry after ${retryAfterSeconds} seconds.`,
+        };
+      }
     }
 
     return {

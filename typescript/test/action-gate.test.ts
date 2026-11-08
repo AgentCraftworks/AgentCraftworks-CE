@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import { loadRuntimePolicy } from "../src/config/runtime.js";
 import { clearAllDials, setDialLevel } from "../src/services/autonomy-dial.js";
 import { actionGate } from "../src/services/action-gate.js";
+import { clearActionBudgets } from "../src/services/action-budgets.js";
 import { PROTECTED_ACTIONS } from "../src/config/protected-actions.js";
 
 describe("actionGate", () => {
   beforeEach(() => {
     clearAllDials();
+    clearActionBudgets();
   });
 
   it("denies unknown actions with UNKNOWN_ACTION at every level", () => {
@@ -118,5 +120,69 @@ describe("actionGate", () => {
     );
     assert.equal(blocked.code, "AGENT_BRANCH_REQUIRED");
     assert.equal(allowed.allowed, true);
+  });
+
+  it("denies exhausted T4/T5 budgets with retry timing and audit context", () => {
+    setDialLevel("owner", "repo", 5, "admin");
+    const policy = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "local",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+        GH_CE_ACTION_BUDGETS: "T4=1/h,T5=1/h",
+      },
+      () => {},
+    );
+    const auditEvents: Array<Record<string, unknown>> = [];
+    const request = { owner: "owner", repo: "repo", action: "close_issue" };
+
+    assert.equal(
+      actionGate.check(request, policy, {
+        now: 0,
+        audit: (event) => auditEvents.push(event),
+      }).allowed,
+      true,
+    );
+    const denied = actionGate.check(request, policy, {
+      now: 0,
+      audit: (event) => auditEvents.push(event),
+    });
+
+    assert.equal(denied.allowed, false);
+    assert.equal(denied.code, "BUDGET_EXHAUSTED");
+    assert.equal(denied.retryAfterSeconds, 3600);
+    assert.equal(auditEvents[0]?.["event"], "budget.exhausted");
+    assert.equal(auditEvents[0]?.["actor"], "operator");
+    assert.equal(auditEvents[0]?.["action"], "close_issue");
+    assert.equal(auditEvents[0]?.["tier"], "T4");
+    assert.equal(auditEvents[0]?.["timestamp"], "1970-01-01T00:00:00.000Z");
+  });
+
+  it("does not consume action budgets for permission previews", () => {
+    setDialLevel("owner", "repo", 5, "admin");
+    const policy = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "local",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+        GH_CE_ACTION_BUDGETS: "T4=1/h",
+      },
+      () => {},
+    );
+    const request = { owner: "owner", repo: "repo", action: "close_issue" };
+
+    for (let index = 0; index < 3; index++) {
+      assert.equal(
+        actionGate.check(request, policy, {
+          consumeBudget: false,
+          now: 0,
+        }).allowed,
+        true,
+      );
+    }
+
+    assert.equal(actionGate.check(request, policy, { now: 0 }).allowed, true);
+    assert.equal(
+      actionGate.check(request, policy, { now: 0 }).code,
+      "BUDGET_EXHAUSTED",
+    );
   });
 });

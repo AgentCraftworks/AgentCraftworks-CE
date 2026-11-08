@@ -90,12 +90,11 @@ router.post("/check", (req: Request, res: Response): void => {
 
     // Classify the action and check permission
     const classification = classifyAction(action);
-    const permissionResult = actionGate.check({
-      owner,
-      repo,
-      action,
-      branchName,
-    });
+    const permissionResult = actionGate.check(
+      { owner, repo, action, branchName },
+      undefined,
+      { consumeBudget: false },
+    );
 
     res.json({
       action: classification.actionType,
@@ -107,6 +106,7 @@ router.post("/check", (req: Request, res: Response): void => {
       dialLevel: permissionResult.dialLevel,
       effectiveLevel: permissionResult.effectiveLevel,
       requiredLevel: permissionResult.requiredLevel,
+      retryAfterSeconds: permissionResult.retryAfterSeconds,
       reason: permissionResult.reason,
       bounds: permissionResult.bounds,
       environment: getRuntimePolicy().environment,

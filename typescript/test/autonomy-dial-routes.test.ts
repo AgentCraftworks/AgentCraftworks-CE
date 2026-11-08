@@ -19,6 +19,8 @@ import {
   setDialLevel,
 } from "../src/services/autonomy-dial.js";
 import { configureRuntimePolicy } from "../src/config/runtime.js";
+import { clearActionBudgets } from "../src/services/action-budgets.js";
+import { actionGate } from "../src/services/action-gate.js";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
@@ -78,6 +80,7 @@ await startServer();
 
 beforeEach(() => {
   clearAllDials();
+  clearActionBudgets();
   configureRuntimePolicy({
     GH_CE_ENVIRONMENT: "local",
     GH_CE_REPO_CEILINGS: "org/repo=5",
@@ -278,6 +281,34 @@ describe("POST /api/dial/check", () => {
     assert.equal(res.body["isKnownAction"], false);
     assert.equal(res.body["permitted"], false);
     assert.equal(res.body["code"], "UNKNOWN_ACTION");
+  });
+
+  it("does not consume action budgets for permission-check previews", async () => {
+    setDialLevel("org", "repo", 5, "admin");
+    const policy = configureRuntimePolicy({
+      GH_CE_ENVIRONMENT: "local",
+      GH_CE_REPO_CEILINGS: "org/repo=5",
+      GH_CE_ACTION_BUDGETS: "T4=1/h",
+    });
+
+    for (let index = 0; index < 3; index++) {
+      const preview = await request("POST", "/api/dial/check", {
+        action: "close_issue",
+        owner: "org",
+        repo: "repo",
+      });
+      assert.equal(preview.body["permitted"], true);
+    }
+
+    const action = { owner: "org", repo: "repo", action: "close_issue" };
+    assert.equal(
+      actionGate.check(action, policy, { now: 0, audit: () => {} }).allowed,
+      true,
+    );
+    assert.equal(
+      actionGate.check(action, policy, { now: 0, audit: () => {} }).code,
+      "BUDGET_EXHAUSTED",
+    );
   });
 
   it("should return 400 when action is missing", async () => {
