@@ -45,7 +45,13 @@ All agent actions are classified into tiers (T1-T5) and validated against the cu
 
 ### Rate Limiting
 
-Webhook endpoints include rate limiting to prevent abuse.
+Webhook endpoints include rate limiting to prevent abuse, keyed by GitHub App installation ID (falling back to client IP). The REST API (`/api/handoffs`, `/api/dial`) has a separate per-IP limiter (`API_RATE_LIMIT`, default 60 requests/minute).
+
+### REST API Authentication
+
+The REST API (`/api/handoffs`, `/api/dial`) requires the shared bearer token configured in `GH_CE_API_TOKEN`, compared using equally sized, length-encoded buffers and timing-safe equality. The webhook endpoint (`/api/webhook`) instead requires an HMAC-SHA256 signature. Without a token, only explicit `NODE_ENV=development` or `NODE_ENV=test` allows requests and logs a warning; every other value, including unset and staging, returns `503`. `/health` remains unauthenticated.
+
+Forwarded client addresses are ignored unless `GH_CE_TRUST_PROXY` contains operator-verified ingress IP addresses or CIDRs. Configure these behind Azure ingress to isolate client rate-limit buckets. Never trust arbitrary forwarding headers, all-address ranges, or numeric hop counts.
 
 ## Dependencies
 

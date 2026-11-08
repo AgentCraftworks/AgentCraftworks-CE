@@ -10,11 +10,13 @@ import dialRouter from "./handlers/autonomy-dial-routes.js";
 import handoffRouter from "./handlers/handoff-api.js";
 import { webhookHandler } from "./handlers/pull-request.js";
 import { verifyWebhookSignatureMiddleware } from "./middleware/webhook-signature.js";
+import { apiAuth, apiRateLimiter, configureApiProxy } from "./middleware/api-auth.js";
 import { initHandoffService } from "./services/handoff-service.js";
 import { initContextService } from "./services/context-service.js";
 
 const PORT = parseInt(process.env["PORT"] ?? "3000", 10);
 const app = express();
+configureApiProxy(app);
 
 export const DEFAULT_IP_RATE_LIMIT = 2000;
 
@@ -110,8 +112,9 @@ app.post(
   },
 );
 
-app.use("/api/handoffs", handoffRouter);
-app.use("/api/dial", dialRouter);
+// Non-webhook REST surface: per-IP rate limit first (cheap rejection), then bearer auth.
+app.use("/api/handoffs", apiRateLimiter, apiAuth, handoffRouter);
+app.use("/api/dial", apiRateLimiter, apiAuth, dialRouter);
 
 app.listen(PORT, () => {
   console.log(`AgentCraftworks (TypeScript) listening on port ${PORT}`);

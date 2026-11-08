@@ -227,6 +227,7 @@ npm install
 export GH_CE_APP_ID=123456
 export GH_CE_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)"
 export GH_CE_WEBHOOK_SECRET=your_webhook_secret
+export GH_CE_API_TOKEN="$(openssl rand -hex 32)"   # bearer token for /api/handoffs and /api/dial
 export PORT=3000
 
 # Development mode (watch)
@@ -246,6 +247,7 @@ docker run -p 3000:3000 \
   -e GH_CE_WEBHOOK_SECRET="test-secret" \
   -e GH_CE_APP_ID="test-id" \
   -e GH_CE_APP_PRIVATE_KEY="test-key" \
+  -e GH_CE_API_TOKEN="test-api-token" \
   agentcraftworks-ts
 ```
 
@@ -370,7 +372,26 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 | `GH_CE_APP_ID` | GitHub App ID (from app settings page) | `cla.yml`, `ghaw-changeset.yml`, `sync-org-standards.yml`, `deploy-azd.yml` |
 | `GH_CE_APP_PRIVATE_KEY` | Full PEM file contents including headers | Same as above |
 | `GH_CE_WEBHOOK_SECRET` | Webhook validation secret (generate: `openssl rand -hex 32`) | Runtime only (not CI/CD) |
+| `GH_CE_API_TOKEN` | Bearer token for the REST API (`/api/handoffs`, `/api/dial`). Generate: `openssl rand -hex 32`. **Required in production** — routes return `503` until set. | Runtime only (not CI/CD) |
+| `API_RATE_LIMIT` | Optional. Per-IP requests/minute allowed on `/api/handoffs` and `/api/dial` (default `60`) | Runtime only (not CI/CD) |
+| `GH_CE_TRUST_PROXY` | Optional comma-separated trusted ingress proxy IP addresses or CIDRs. Unset means forwarded headers are ignored. Configure verified ingress addresses so clients have separate rate-limit buckets. Never trust all proxies or use numeric hop counts. | Runtime only (not CI/CD) |
 | `POSTGRES_PASSWORD` | PostgreSQL admin password (generate: `openssl rand -base64 32`) | `deploy-azd.yml` |
+
+> **REST API token on Azure Container Apps:** the Bicep templates run the container with
+> `NODE_ENV=production`, so `GH_CE_API_TOKEN` must be supplied or the REST routes fail closed
+> (webhook and `/health` are unaffected). Until the token is wired through Key Vault in
+> `infra/app-ts.bicep`, set it directly on the app after provisioning:
+>
+> ```bash
+> az containerapp secret set --name ca-ts-<token> --resource-group rg-<env> \
+>   --secrets gh-ce-api-token="$(openssl rand -hex 32)"
+> az containerapp update --name ca-ts-<token> --resource-group rg-<env> \
+>   --set-env-vars GH_CE_API_TOKEN=secretref:gh-ce-api-token
+> ```
+>
+> Callers then send `Authorization: Bearer <token>` on every REST request.
+
+Only explicit `NODE_ENV=development` or `NODE_ENV=test` permits an unset API token. An unset, unknown, or staging environment fails closed with `503`. For Azure ingress, set `GH_CE_TRUST_PROXY` to the verified proxy addresses/ranges in your deployment. The ingress must replace untrusted forwarding headers; Express walks the address chain from the socket and stops at the first untrusted hop.
 
 > **Managing the PostgreSQL password (`POSTGRES_PASSWORD`):**
 > Setting `POSTGRES_PASSWORD` as a GitHub environment secret (in `production`, `staging`, and `dev`)
