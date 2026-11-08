@@ -349,14 +349,14 @@ describe("Autonomy Dial", () => {
       },
       () => {},
     );
-    const effective = getEffectiveLevel("owner", "repo", repoOptIn);
+    const effective = getEffectiveLevel("owner", "repo", repoOptIn, 5);
     assert.equal(effective, 5);
 
     const productionDefault = loadRuntimePolicy(
       { GH_CE_ENVIRONMENT: "production", GH_CE_REPO_CEILINGS: "owner/repo=5" },
       () => {},
     );
-    assert.equal(getEffectiveLevel("owner", "repo", productionDefault), 3);
+    assert.equal(getEffectiveLevel("owner", "repo", productionDefault, 5), 3);
 
     const stagingPolicy = loadRuntimePolicy(
       {
@@ -365,14 +365,14 @@ describe("Autonomy Dial", () => {
       },
       () => {},
     );
-    const effectiveStaging = getEffectiveLevel("owner", "repo", stagingPolicy);
+    const effectiveStaging = getEffectiveLevel("owner", "repo", stagingPolicy, 5);
     assert.equal(effectiveStaging, 4);
 
     const localPolicy = loadRuntimePolicy(
       { GH_CE_ENVIRONMENT: "local", GH_CE_REPO_CEILINGS: "owner/repo=5" },
       () => {},
     );
-    const effectiveLocal = getEffectiveLevel("owner", "repo", localPolicy);
+    const effectiveLocal = getEffectiveLevel("owner", "repo", localPolicy, 5);
     assert.equal(effectiveLocal, 5);
   });
 
@@ -392,6 +392,7 @@ describe("Autonomy Dial", () => {
       "repo",
       "post_comment",
       policy,
+      5,
     );
     assert.equal(permission.permitted, false);
     assert.equal(permission.effectiveLevel, 1);
@@ -411,6 +412,7 @@ describe("Autonomy Dial", () => {
       "repo",
       "merge_pr",
       repoOptIn,
+      5,
     );
     assert.equal(allowed.permitted, true);
 
@@ -426,6 +428,7 @@ describe("Autonomy Dial", () => {
       "repo",
       "merge_pr",
       productionPolicy,
+      5,
     );
     assert.equal(denied.permitted, false);
     assert.equal(denied.effectiveLevel, 3);
@@ -450,7 +453,7 @@ describe("Autonomy Dial", () => {
       },
       () => {},
     );
-    assert.equal(getEffectiveLevel("owner", "repo", policy), 4);
+    assert.equal(getEffectiveLevel("owner", "repo", policy, 5), 4);
   });
 
   it("should clear all dials", () => {

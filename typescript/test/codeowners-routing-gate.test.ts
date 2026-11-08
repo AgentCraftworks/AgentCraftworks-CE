@@ -32,6 +32,7 @@ import {
   clearAllDials,
   setDialLevel,
 } from "../src/services/autonomy-dial.js";
+import { clearRepositoryConfigCache } from "../src/services/repo-config.js";
 import { handlePullRequestEvent } from "../src/handlers/pull-request.js";
 import {
   clearAllHandoffs,
@@ -67,6 +68,7 @@ interface MockOptions {
   files?: string[];
   /** Number of files to return per page (defaults to all in one page). */
   failWrites?: boolean;
+  repositoryCeiling?: number;
 }
 
 function makeOctokit(options: MockOptions = {}): {
@@ -76,8 +78,24 @@ function makeOctokit(options: MockOptions = {}): {
   const calls: RecordedCall[] = [];
   const codeownersPath = options.codeownersPath ?? ".github/CODEOWNERS";
   const files = options.files ?? [];
+  const repositoryPolicy = {
+    type: "file",
+    encoding: "base64",
+    content: Buffer.from(
+      `version: "1"\nagents:\n  ceiling: ${options.repositoryCeiling ?? 5}\n`,
+      "utf-8",
+    ).toString("base64"),
+  };
 
   const octokit: OctokitLike = {
+    repos: {
+      async get() {
+        return { data: { default_branch: "main" } };
+      },
+      async getContent() {
+        return { data: repositoryPolicy, headers: { etag: '"test-policy"' } };
+      },
+    },
     async request(route, params = {}) {
       calls.push({ route, params });
 
@@ -168,8 +186,22 @@ function policyFor(
   );
 }
 
+function gateAtConfiguredCeiling(
+  action: string,
+  environment: "dev" | "staging" | "production" | "local",
+) {
+  return gateAction(
+    OWNER,
+    REPO,
+    action,
+    policyFor(environment),
+    { repoCeiling: 5 },
+  );
+}
+
 beforeEach(() => {
   clearCodeownersCache();
+  clearRepositoryConfigCache();
   clearAllDials();
   clearAllHandoffs();
   initHandoffService({ forceInMemory: true });
@@ -379,7 +411,7 @@ describe("loadCodeowners cache", () => {
 describe("gateAction", () => {
   it("denies every write at the default observer level", () => {
     for (const action of ["add_label", "post_comment", "assign_user", "request_review"]) {
-      const decision = gateAction(OWNER, REPO, action, policyFor("dev"));
+      const decision = gateAtConfiguredCeiling(action, "dev");
       assert.equal(decision.allowed, false, action);
       assert.equal(decision.level, 1);
       assert.equal(decision.levelName, "observer");
@@ -388,45 +420,45 @@ describe("gateAction", () => {
 
   it("allows T2 writes at level 2 but denies T3+", () => {
     setDialLevel(OWNER, REPO, 2, "admin");
-    assert.equal(gateAction(OWNER, REPO, "add_label", policyFor("dev")).allowed, true);
-    assert.equal(gateAction(OWNER, REPO, "post_comment", policyFor("dev")).allowed, true);
-    assert.equal(gateAction(OWNER, REPO, "assign_user", policyFor("dev")).allowed, false);
-    assert.equal(gateAction(OWNER, REPO, "request_review", policyFor("dev")).allowed, false);
+    assert.equal(gateAtConfiguredCeiling("add_label", "dev").allowed, true);
+    assert.equal(gateAtConfiguredCeiling("post_comment", "dev").allowed, true);
+    assert.equal(gateAtConfiguredCeiling("assign_user", "dev").allowed, false);
+    assert.equal(gateAtConfiguredCeiling("request_review", "dev").allowed, false);
   });
 
   it("allows T3 writes at level 3 and T4 at level 4 in dev", () => {
     setDialLevel(OWNER, REPO, 3, "admin");
-    assert.equal(gateAction(OWNER, REPO, "assign_user", policyFor("dev")).allowed, true);
-    assert.equal(gateAction(OWNER, REPO, "request_review", policyFor("dev")).allowed, false);
+    assert.equal(gateAtConfiguredCeiling("assign_user", "dev").allowed, true);
+    assert.equal(gateAtConfiguredCeiling("request_review", "dev").allowed, false);
 
     setDialLevel(OWNER, REPO, 4, "admin");
-    const decision = gateAction(OWNER, REPO, "request_review", policyFor("dev"));
+    const decision = gateAtConfiguredCeiling("request_review", "dev");
     assert.equal(decision.allowed, true);
     assert.equal(decision.tier, "T4");
   });
 
   it("caps level 5 to 4 in staging", () => {
     setDialLevel(OWNER, REPO, 5, "admin");
-    const merge = gateAction(OWNER, REPO, "merge_pr", policyFor("staging"));
+    const merge = gateAtConfiguredCeiling("merge_pr", "staging");
     assert.equal(merge.allowed, false);
     assert.equal(merge.level, 5);
     assert.equal(merge.effectiveLevel, 4);
-    assert.equal(gateAction(OWNER, REPO, "request_review", policyFor("staging")).allowed, true);
+    assert.equal(gateAtConfiguredCeiling("request_review", "staging").allowed, true);
   });
 
   it("caps level 5 to 3 in production", () => {
     setDialLevel(OWNER, REPO, 5, "admin");
-    const review = gateAction(OWNER, REPO, "request_review", policyFor("production"));
+    const review = gateAtConfiguredCeiling("request_review", "production");
     assert.equal(review.allowed, false);
     assert.equal(review.effectiveLevel, 3);
     assert.equal(review.levelName, "collaborator");
-    assert.equal(gateAction(OWNER, REPO, "assign_user", policyFor("production")).allowed, true);
+    assert.equal(gateAtConfiguredCeiling("assign_user", "production").allowed, true);
     assert.ok(describeDenial(review).includes("capped from 5"));
   });
 
   it("does not cap in local", () => {
     setDialLevel(OWNER, REPO, 5, "admin");
-    assert.equal(gateAction(OWNER, REPO, "merge_pr", policyFor("local")).allowed, true);
+    assert.equal(gateAtConfiguredCeiling("merge_pr", "local").allowed, true);
   });
 
   it("canComment reflects the T2 threshold", () => {

@@ -145,6 +145,7 @@ export function isActionPermitted(
   repo: string,
   actionType: string,
   policy: RuntimePolicy = getRuntimePolicy(),
+  repoCeiling?: DialLevel,
 ): {
   permitted: boolean;
   code?: "UNKNOWN_ACTION";
@@ -161,12 +162,12 @@ export function isActionPermitted(
   };
 } {
   const config = getDialLevel(owner, repo);
-  const effectiveLevel = getEffectiveLevel(owner, repo, policy);
+  const effectiveLevel = getEffectiveLevel(owner, repo, policy, repoCeiling);
   const classification = classifyAction(actionType);
   const requiredLevel = classification.tierDetails.requiredDialLevel;
   const permitted =
     classification.isKnownAction && effectiveLevel >= requiredLevel;
-  const bounds = getEffectiveBounds(owner, repo, policy);
+  const bounds = getEffectiveBounds(owner, repo, policy, repoCeiling);
 
   const reason = !classification.isKnownAction
     ? `Unknown action "${classification.actionType}" is denied (UNKNOWN_ACTION).`
@@ -193,11 +194,12 @@ export function getEffectiveLevel(
   owner: string,
   repo: string,
   policy: RuntimePolicy = getRuntimePolicy(),
+  repoCeiling?: DialLevel,
 ): DialLevel {
   const config = getDialLevel(owner, repo);
   return Math.min(
     config.dialLevel,
-    getEffectiveBounds(owner, repo, policy).repoCeiling,
+    getEffectiveBounds(owner, repo, policy, repoCeiling).repoCeiling,
     policy.environmentMaxLevels[policy.environment],
     policy.globalMaxLevel,
     policy.agentsPaused ? 1 : 5,
@@ -208,16 +210,20 @@ export function getEffectiveBounds(
   owner: string,
   repo: string,
   policy: RuntimePolicy,
+  repoCeiling?: DialLevel,
 ): {
   repoCeiling: DialLevel;
   environmentCeiling: DialLevel;
   globalCeiling: DialLevel;
   agentsPaused: boolean;
 } {
+  const configuredCeiling = repoCeiling ?? DEFAULT_REPO_CEILING;
+  const operatorCeiling =
+    policy.repoCeilings.get(`${owner}/${repo}`.toLowerCase()) ??
+    configuredCeiling;
+
   return {
-    repoCeiling:
-      policy.repoCeilings.get(`${owner}/${repo}`.toLowerCase()) ??
-      DEFAULT_REPO_CEILING,
+    repoCeiling: Math.min(configuredCeiling, operatorCeiling) as DialLevel,
     environmentCeiling: policy.environmentMaxLevels[policy.environment],
     globalCeiling: policy.globalMaxLevel,
     agentsPaused: policy.agentsPaused,

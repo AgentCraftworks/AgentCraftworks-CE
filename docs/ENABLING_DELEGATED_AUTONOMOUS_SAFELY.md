@@ -16,8 +16,10 @@ been verified.
   `GH_CE_ENV_MAX_LEVELS=production=5`.
 - [ ] Keep the global ceiling (`GH_CE_MAX_LEVEL`, default 5) at or below the
   highest level approved for this deployment.
-- [ ] Wait for repository-config support before raising `agents.ceiling`; the
-  reviewed `agentcraftworks.config.yml` path is not yet implemented in this stack.
+- [ ] Set `agents.ceiling` in `agentcraftworks.config.yml` on the default branch
+  only after maintainers review the change; the file is loaded with a maximum
+  60-second cache, and default-branch pushes invalidate that cache. Missing
+  configuration keeps the ceiling at 3, and policy load failures deny requests.
 - [ ] Wait for scoped-principal enforcement before relying on `dial:elevate`.
   The current audit actor `operator` is not authenticated attribution.
 - [ ] Confirm that protected actions are denied by default. Allowing one requires
@@ -42,9 +44,9 @@ been verified.
 2. Confirm `/health` reports the paused policy before resuming any agent work.
 3. Lower repository dials to level 1 and remove any operator environment-ceiling
    override that raised the limit.
-4. Revert the reviewed repository ceiling change when repository-config support
-   is available; remove both protected-action allow-lists unless a specific
-   reviewed exception remains necessary.
+4. Revert the reviewed repository ceiling change from the default branch; remove
+   both protected-action allow-lists unless a specific reviewed exception
+   remains necessary.
 5. If token exposure or misuse is suspected, revoke or rotate the affected token
    and preserve the relevant audit output for incident review.
 6. Re-enable agents only after the cause is understood, the policy is restored,

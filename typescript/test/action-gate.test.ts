@@ -102,6 +102,7 @@ describe("actionGate", () => {
         owner: "owner",
         repo: "repo",
         action: "force_push",
+        repoCeiling: 5,
         repoProtectedActions: ["force_push"],
       },
       policy,
@@ -119,7 +120,13 @@ describe("actionGate", () => {
       () => {},
     );
     const blocked = actionGate.check(
-      { owner: "owner", repo: "repo", action: "edit_file", branchName: "main" },
+      {
+        owner: "owner",
+        repo: "repo",
+        action: "edit_file",
+        branchName: "main",
+        repoCeiling: 5,
+      },
       policy,
     );
     const allowed = actionGate.check(
@@ -128,11 +135,50 @@ describe("actionGate", () => {
         repo: "repo",
         action: "edit_file",
         branchName: "agent/fix",
+        repoCeiling: 5,
       },
       policy,
     );
     assert.equal(blocked.code, "AGENT_BRANCH_REQUIRED");
     assert.equal(allowed.allowed, true);
+  });
+
+  it("uses the reviewed repository ceiling and fails closed on missing policy", () => {
+    setDialLevel("owner", "repo", 5, "admin");
+    const policy = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "local",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+      },
+      () => {},
+    );
+    const capped = actionGate.check(
+      {
+        owner: "owner",
+        repo: "repo",
+        action: "close_issue",
+        repoCeiling: 3,
+      },
+      policy,
+    );
+    assert.equal(capped.allowed, false);
+    assert.equal(capped.effectiveLevel, 3);
+    assert.equal(capped.bounds.repoCeiling, 3);
+
+    const auditEvents: AuditEvent[] = [];
+    const unavailable = actionGate.check(
+      {
+        owner: "owner",
+        repo: "repo",
+        action: "post_comment",
+        repoConfigUnavailable: true,
+      },
+      policy,
+      { audit: (event) => auditEvents.push(event) },
+    );
+    assert.equal(unavailable.allowed, false);
+    assert.equal(unavailable.code, "REPO_CONFIG_UNAVAILABLE");
+    assert.equal(auditEvents.at(-1)?.event, "gate.denied");
   });
 
   it("denies exhausted T4/T5 budgets with retry timing and audit context", () => {
@@ -146,7 +192,12 @@ describe("actionGate", () => {
       () => {},
     );
     const auditEvents: AuditEvent[] = [];
-    const request = { owner: "owner", repo: "repo", action: "close_issue" };
+    const request = {
+      owner: "owner",
+      repo: "repo",
+      action: "close_issue",
+      repoCeiling: 5,
+    };
 
     assert.equal(
       actionGate.check(request, policy, {
@@ -192,7 +243,12 @@ describe("actionGate", () => {
       },
       () => {},
     );
-    const request = { owner: "owner", repo: "repo", action: "close_issue" };
+    const request = {
+      owner: "owner",
+      repo: "repo",
+      action: "close_issue",
+      repoCeiling: 5,
+    };
 
     for (let index = 0; index < 3; index++) {
       assert.equal(

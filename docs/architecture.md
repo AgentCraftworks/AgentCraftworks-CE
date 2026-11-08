@@ -100,6 +100,14 @@ with a startup warning, and request payloads cannot select the tier. The effecti
 by the repository dial, repository ceiling, environment ceiling, and global ceiling. Unknown actions
 are denied, and protected actions require both operator and repository allow-lists.
 
+Repository ceilings, protected actions, and budgets come from
+`agentcraftworks.config.yml` on the repository's default branch. The loader uses
+an ETag-aware cache capped at 60 seconds; default-branch pushes invalidate it.
+The deployed GitHub App must subscribe to `push` events for immediate
+invalidation; otherwise the maximum cache lifetime applies. Missing configuration
+uses the default repository ceiling of 3, and configuration load failures fail
+closed.
+
 Without an installation ID and app credentials (`GH_CE_APP_ID`, `GH_CE_APP_PRIVATE_KEY`) the handler
 cannot read CODEOWNERS or write to GitHub; it falls back to label routing and creates the handoff only.
 

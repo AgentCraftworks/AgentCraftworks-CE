@@ -13,6 +13,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import {
+  type DialLevel,
   type ActionTier,
   ENGAGEMENT_LEVEL_NAMES,
   VALID_ENGAGEMENT_LEVEL_NAMES,
@@ -31,8 +32,46 @@ import {
 } from "../services/action-classifier.js";
 import { actionGate } from "../services/action-gate.js";
 import { recordAuditEvent } from "../services/audit-log.js";
+import {
+  getRepositoryConfig,
+} from "../services/repo-config.js";
+import type {
+  LoadedRepositoryConfig,
+  RepositoryConfigClient,
+} from "../types/repo-config.js";
+import { getRepositoryInstallationOctokit } from "../utils/auth.js";
 
-const router = Router();
+export type RepositoryConfigLoader = (
+  owner: string,
+  repo: string,
+) => Promise<LoadedRepositoryConfig>;
+
+async function loadRepositoryConfigFromGitHub(
+  owner: string,
+  repo: string,
+): Promise<LoadedRepositoryConfig> {
+  const client: RepositoryConfigClient =
+    await getRepositoryInstallationOctokit(owner, repo);
+  return getRepositoryConfig(client, owner, repo);
+}
+
+function getRepositoryCeiling(
+  owner: string,
+  repo: string,
+  config: LoadedRepositoryConfig,
+  policy: ReturnType<typeof getRuntimePolicy>,
+): DialLevel {
+  const operatorCeiling =
+    policy.repoCeilings.get(`${owner}/${repo}`.toLowerCase()) ??
+    config.agents.ceiling;
+  return Math.min(config.agents.ceiling, operatorCeiling) as DialLevel;
+}
+
+export function createAutonomyDialRouter(
+  loadRepositoryConfig: RepositoryConfigLoader =
+    loadRepositoryConfigFromGitHub,
+) {
+  const router = Router();
 
 /** Extract a single string from an Express 5 param (which may be string | string[]) */
 function paramStr(val: string | string[] | undefined): string | undefined {
@@ -66,7 +105,7 @@ router.get("/actions", (_req: Request, res: Response): void => {
 // ─── POST /api/dial/check — Check action permission ────────────────────────
 // Note: This route must be registered BEFORE /:owner/:repo to avoid conflict.
 
-router.post("/check", (req: Request, res: Response): void => {
+router.post("/check", async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body as Record<string, unknown>;
 
@@ -91,11 +130,38 @@ router.post("/check", (req: Request, res: Response): void => {
       return;
     }
 
+    let repositoryConfig: LoadedRepositoryConfig;
+    try {
+      repositoryConfig = await loadRepositoryConfig(owner, repo);
+    } catch {
+      console.error(
+        JSON.stringify({
+          msg: "repository policy unavailable",
+          repo: `${owner}/${repo}`,
+        }),
+      );
+      res.status(503).json({
+        error: "Service Unavailable",
+        code: "REPO_CONFIG_UNAVAILABLE",
+        message: "Repository policy could not be loaded; retry the request.",
+      });
+      return;
+    }
+
     // Classify the action and check permission
     const classification = classifyAction(action);
+    const policy = getRuntimePolicy();
     const permissionResult = actionGate.check(
-      { owner, repo, action, branchName },
-      undefined,
+      {
+        owner,
+        repo,
+        action,
+        branchName,
+        repoCeiling: getRepositoryCeiling(owner, repo, repositoryConfig, policy),
+        repoProtectedActions: repositoryConfig.agents.protectedActions,
+        repoBudgets: repositoryConfig.agents.budgets,
+      },
+      policy,
       { consumeBudget: false },
     );
 
@@ -157,7 +223,9 @@ router.get("/:owner/:repo", (req: Request, res: Response): void => {
 
 // ─── POST /api/dial/:owner/:repo — Set dial level ──────────────────────────
 
-router.post("/:owner/:repo", (req: Request, res: Response): void => {
+router.post(
+  "/:owner/:repo",
+  async (req: Request, res: Response): Promise<void> => {
   try {
     const owner = paramStr(req.params["owner"]);
     const repo = paramStr(req.params["repo"]);
@@ -220,9 +288,49 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
       return;
     }
 
+    let repositoryConfig: LoadedRepositoryConfig;
+    try {
+      repositoryConfig = await loadRepositoryConfig(owner, repo);
+    } catch {
+      console.error(
+        JSON.stringify({
+          msg: "repository policy unavailable",
+          repo: `${owner}/${repo}`,
+        }),
+      );
+      res.status(503).json({
+        error: "Service Unavailable",
+        code: "REPO_CONFIG_UNAVAILABLE",
+        message: "Repository policy could not be loaded; the dial was not changed.",
+      });
+      return;
+    }
+
+    const policy = getRuntimePolicy();
+    const repoCeiling = getRepositoryCeiling(
+      owner,
+      repo,
+      repositoryConfig,
+      policy,
+    );
+    if (dialLevel > repoCeiling) {
+      const configUrl =
+        `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}` +
+        `/blob/${encodeURIComponent(repositoryConfig.defaultBranch)}/agentcraftworks.config.yml`;
+      res.status(409).json({
+        error: "Conflict",
+        code: "REPO_CEILING",
+        message:
+          `Requested level ${dialLevel} exceeds this repository's ceiling of ${repoCeiling}. ` +
+          `Update agents.ceiling in the default-branch config: ${configUrl}`,
+        repoCeiling,
+        configUrl,
+      });
+      return;
+    }
+
     const previousLevel = getDialLevel(owner, repo).dialLevel;
     const config = setDialLevel(owner, repo, dialLevel, updatedBy);
-    const policy = getRuntimePolicy();
 
     recordAuditEvent({
       event: "dial.changed",
@@ -230,7 +338,7 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
       repo: `${owner}/${repo}`,
       action: "set_dial_level",
       tier: `T${config.dialLevel}` as ActionTier,
-      bounds: getEffectiveBounds(owner, repo, policy),
+      bounds: getEffectiveBounds(owner, repo, policy, repoCeiling),
       timestamp: new Date().toISOString(),
       details: {
         previousLevel,
@@ -263,6 +371,10 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
       message,
     });
   }
-});
+  },
+);
 
-export default router;
+  return router;
+}
+
+export default createAutonomyDialRouter();

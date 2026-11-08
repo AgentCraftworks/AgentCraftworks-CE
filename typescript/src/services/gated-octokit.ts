@@ -3,6 +3,12 @@ import {
   getRuntimePolicy,
   type RuntimePolicy,
 } from "../config/runtime.js";
+import {
+  getRepositoryConfig,
+  isRepositoryConfigClient,
+} from "./repo-config.js";
+import type { RepositoryConfigClient } from "../types/repo-config.js";
+import { classifyAction } from "./action-classifier.js";
 
 const READ_ONLY_METHODS: Readonly<Record<string, ReadonlySet<string>>> = {
   actions: new Set([
@@ -32,6 +38,7 @@ export interface GatedOctokitContext {
   job: string;
   policy?: RuntimePolicy;
   log?: (entry: Record<string, unknown>) => void;
+  repositoryConfigClient?: RepositoryConfigClient;
 }
 
 export class ActionGateDeniedError extends Error {
@@ -132,6 +139,7 @@ function wrapNamespace<T extends object>(
   context: GatedOctokitContext,
   policy: RuntimePolicy,
   log: (entry: Record<string, unknown>) => void,
+  repositoryConfigClient: RepositoryConfigClient | undefined,
 ): T {
   return new Proxy(namespaceTarget, {
     get(target, property, receiver) {
@@ -143,16 +151,14 @@ function wrapNamespace<T extends object>(
       return (...args: unknown[]) => {
         if (!READ_ONLY_METHODS[namespace]?.has(property)) {
           const action = actionFor(namespace, property, args);
-          const decision = actionGate.check(
-            {
-              owner: context.owner,
-              repo: context.repo,
-              action: action.action,
-              ...(action.branchName ? { branchName: action.branchName } : {}),
-            },
-            policy,
-          );
-          if (!decision.allowed) {
+          const request = {
+            owner: context.owner,
+            repo: context.repo,
+            action: action.action,
+            ...(action.branchName ? { branchName: action.branchName } : {}),
+          };
+          if (!classifyAction(action.action).isKnownAction) {
+            const decision = actionGate.check(request, policy);
             log({
               msg: "action denied",
               job: context.job,
@@ -167,6 +173,54 @@ function wrapNamespace<T extends object>(
             });
             throw new ActionGateDeniedError(decision);
           }
+
+          return (async () => {
+            let decision: ActionGateDecision;
+            if (!repositoryConfigClient) {
+              decision = actionGate.check(
+                { ...request, repoConfigUnavailable: true },
+                policy,
+              );
+            } else {
+              try {
+                const config = await getRepositoryConfig(
+                  repositoryConfigClient,
+                  context.owner,
+                  context.repo,
+                );
+                decision = actionGate.check(
+                  {
+                    ...request,
+                    repoCeiling: config.agents.ceiling,
+                    repoProtectedActions: config.agents.protectedActions,
+                    repoBudgets: config.agents.budgets,
+                  },
+                  policy,
+                );
+              } catch {
+                decision = actionGate.check(
+                  { ...request, repoConfigUnavailable: true },
+                  policy,
+                );
+              }
+            }
+            if (!decision.allowed) {
+              log({
+                msg: "action denied",
+                job: context.job,
+                repo: `${context.owner}/${context.repo}`,
+                action: decision.action,
+                code: decision.code,
+                tier: decision.tier,
+                effectiveLevel: decision.effectiveLevel,
+                requiredLevel: decision.requiredLevel,
+                bounds: decision.bounds,
+                reason: decision.reason,
+              });
+              throw new ActionGateDeniedError(decision);
+            }
+            return Reflect.apply(methodValue, target, args);
+          })();
         }
         return Reflect.apply(methodValue, target, args);
       };
@@ -182,6 +236,9 @@ export function createGatedOctokit<T extends object>(
   const log =
     context.log ??
     ((entry: Record<string, unknown>) => console.log(JSON.stringify(entry)));
+  const repositoryConfigClient =
+    context.repositoryConfigClient ??
+    (isRepositoryConfigClient(octokit) ? octokit : undefined);
   return new Proxy(octokit, {
     get(target, property, receiver) {
       const value: unknown = Reflect.get(target, property, receiver);
@@ -228,6 +285,7 @@ export function createGatedOctokit<T extends object>(
         context,
         policy,
         log,
+        repositoryConfigClient,
       );
     },
   });

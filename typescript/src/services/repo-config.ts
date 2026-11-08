@@ -4,10 +4,13 @@ import {
   PROTECTED_ACTIONS,
   type ProtectedAction,
 } from "../config/protected-actions.js";
-import type { DialLevel } from "../types/autonomy.js";
+import { getRuntimePolicy } from "../config/runtime.js";
+import type { ActionTier, DialLevel } from "../types/autonomy.js";
+import { recordAuditEvent } from "./audit-log.js";
 import type {
   LoadedRepositoryConfig,
   ParsedRepositoryConfig,
+  RepositoryConfigClient,
   RepositoryAgentPolicy,
 } from "../types/repo-config.js";
 
@@ -23,30 +26,6 @@ const DEFAULT_CONFIG: ParsedRepositoryConfig = Object.freeze({
   agents: DEFAULT_AGENT_POLICY,
 });
 
-interface GitHubResponse<T> {
-  data: T;
-  headers?: {
-    etag?: string;
-  };
-  status?: number;
-}
-
-export interface RepositoryConfigClient {
-  repos: {
-    get(parameters: {
-      owner: string;
-      repo: string;
-    }): Promise<GitHubResponse<{ default_branch: string }>>;
-    getContent(parameters: {
-      owner: string;
-      repo: string;
-      path: string;
-      ref: string;
-      headers?: Record<string, string>;
-    }): Promise<GitHubResponse<unknown>>;
-  };
-}
-
 interface CacheEntry extends ParsedRepositoryConfig {
   defaultBranch: string;
   etag: string | null;
@@ -59,6 +38,16 @@ const cacheGenerations = new Map<string, number>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function isRepositoryConfigClient(
+  value: unknown,
+): value is RepositoryConfigClient {
+  if (!isRecord(value) || !isRecord(value["repos"])) return false;
+  return (
+    typeof value["repos"]["get"] === "function" &&
+    typeof value["repos"]["getContent"] === "function"
+  );
 }
 
 function warnUnknownKeys(
@@ -225,6 +214,10 @@ function cacheConfig(
   etag: string | null,
   now: number,
   generation: number,
+  owner: string,
+  repo: string,
+  previous?: CacheEntry,
+  recordChange = false,
 ): LoadedRepositoryConfig {
   const entry: CacheEntry = {
     ...config,
@@ -233,6 +226,38 @@ function cacheConfig(
     expiresAt: now + CONFIG_TTL_MS,
   };
   if ((cacheGenerations.get(key) ?? 0) === generation) {
+    if (
+      recordChange &&
+      previous &&
+      previous.agents.ceiling !== config.agents.ceiling
+    ) {
+      const policy = getRuntimePolicy();
+      const operatorCeiling =
+        policy.repoCeilings.get(`${owner}/${repo}`.toLowerCase()) ??
+        config.agents.ceiling;
+      recordAuditEvent({
+        event: "ceiling.changed",
+        actor: "operator",
+        repo: `${owner}/${repo}`,
+        action: "repository_ceiling",
+        tier: `T${config.agents.ceiling}` as ActionTier,
+        bounds: {
+          repoCeiling: Math.min(
+            config.agents.ceiling,
+            operatorCeiling,
+          ) as DialLevel,
+          environmentCeiling:
+            policy.environmentMaxLevels[policy.environment],
+          globalCeiling: policy.globalMaxLevel,
+          agentsPaused: policy.agentsPaused,
+        },
+        timestamp: new Date(now).toISOString(),
+        details: {
+          previousCeiling: previous.agents.ceiling,
+          newCeiling: config.agents.ceiling,
+        },
+      });
+    }
     configCache.set(key, entry);
   }
   return loadedConfig(entry);
@@ -259,7 +284,9 @@ async function loadRepositoryConfig(
     headers["If-None-Match"] = previous.etag;
   }
 
-  let response: GitHubResponse<unknown>;
+  let response: Awaited<
+    ReturnType<RepositoryConfigClient["repos"]["getContent"]>
+  >;
   try {
     response = await client.repos.getContent({
       owner,
@@ -277,6 +304,8 @@ async function loadRepositoryConfig(
         previous.etag,
         now,
         generation,
+        owner,
+        repo,
       );
     }
     if (getStatus(error) === 404) {
@@ -287,6 +316,10 @@ async function loadRepositoryConfig(
         null,
         now,
         generation,
+        owner,
+        repo,
+        previous,
+        true,
       );
     }
     throw error;
@@ -300,6 +333,8 @@ async function loadRepositoryConfig(
       previous.etag,
       now,
       generation,
+      owner,
+      repo,
     );
   }
 
@@ -325,6 +360,10 @@ async function loadRepositoryConfig(
     response.headers?.etag ?? null,
     now,
     generation,
+    owner,
+    repo,
+    previous,
+    true,
   );
 }
 
@@ -373,7 +412,8 @@ export async function getRepositoryConfig(
 
 export function invalidateRepositoryConfig(owner: string, repo: string): void {
   const key = repositoryKey(owner, repo);
-  configCache.delete(key);
+  const cached = configCache.get(key);
+  if (cached) configCache.set(key, { ...cached, expiresAt: 0 });
   cacheGenerations.set(key, (cacheGenerations.get(key) ?? 0) + 1);
 }
 

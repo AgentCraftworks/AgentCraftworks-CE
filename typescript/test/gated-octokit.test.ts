@@ -11,6 +11,8 @@ import {
   createGatedOctokit,
 } from "../src/services/gated-octokit.js";
 import { loadRuntimePolicy } from "../src/config/runtime.js";
+import { clearRepositoryConfigCache } from "../src/services/repo-config.js";
+import type { RepositoryConfigClient } from "../src/types/repo-config.js";
 
 type Params = Record<string, unknown>;
 
@@ -19,7 +21,7 @@ interface MockOctokit {
   checks: Record<string, (params: Params) => Promise<void>>;
   issues: Record<string, (params: Params) => Promise<void>>;
   pulls: Record<string, (params: Params) => Promise<void>>;
-  repos: Record<string, (params: Params) => Promise<void>>;
+  repos: Record<string, (params: Params) => Promise<unknown>>;
   git: Record<string, (params: Params) => Promise<void>>;
   request: (...args: unknown[]) => Promise<void>;
   graphql: (...args: unknown[]) => Promise<void>;
@@ -61,8 +63,29 @@ function makeOctokit(): { client: MockOctokit; calls: string[] } {
         createReview: method("pulls.createReview"),
       },
       repos: {
+        get: async () => {
+          calls.push("repo-config:metadata");
+          return { data: { default_branch: "main" } };
+        },
         getCommit: method("repos.getCommit"),
-        getContent: method("repos.getContent"),
+        getContent: async (params: Params) => {
+          if (params["path"] === "agentcraftworks.config.yml") {
+            calls.push("repo-config:content");
+            return {
+              data: {
+                type: "file",
+                encoding: "base64",
+                content: Buffer.from(
+                  'version: "1"\nagents:\n  ceiling: 5\n',
+                  "utf8",
+                ).toString("base64"),
+              },
+              headers: { etag: '"test-config"' },
+            };
+          }
+          calls.push("repos.getContent");
+          return undefined;
+        },
         getLatestRelease: method("repos.getLatestRelease"),
         listCommits: method("repos.listCommits"),
         createOrUpdateFileContents: method("repos.createOrUpdateFileContents"),
@@ -91,7 +114,10 @@ const policy = loadRuntimePolicy(
   () => {},
 );
 
-beforeEach(() => clearAllDials());
+beforeEach(() => {
+  clearAllDials();
+  clearRepositoryConfigCache();
+});
 
 describe("createGatedOctokit", () => {
   it("denies writes from every C-10a job before reaching Octokit", async () => {
@@ -142,7 +168,11 @@ describe("createGatedOctokit", () => {
         async () => job.invoke(gated),
         ActionGateDeniedError,
       );
-      assert.deepEqual(calls, [], `${job.name} must not reach Octokit`);
+      assert.deepEqual(
+        calls.filter((call) => !call.startsWith("repo-config:")),
+        [],
+        `${job.name} must not send a mutation to Octokit`,
+      );
     }
   });
 
@@ -240,7 +270,10 @@ describe("createGatedOctokit", () => {
           error.decision.tier === write.tier,
       );
     }
-    assert.deepEqual(calls, []);
+    assert.deepEqual(
+      calls.filter((call) => !call.startsWith("repo-config:")),
+      [],
+    );
   });
 
   it("fails closed for unknown endpoint methods and raw requests", async () => {
@@ -299,12 +332,30 @@ describe("createGatedOctokit", () => {
   });
 
   it("blocks an actual Octokit mutation before a request is sent", async () => {
+    const repositoryConfigClient: RepositoryConfigClient = {
+      repos: {
+        async get() {
+          return { data: { default_branch: "main" } };
+        },
+        async getContent() {
+          return {
+            data: {
+              type: "file",
+              encoding: "base64",
+              content: Buffer.from('version: "1"\n', "utf8").toString("base64"),
+            },
+            headers: {},
+          };
+        },
+      },
+    };
     const gated = createGatedOctokit(new Octokit(), {
       owner: "owner",
       repo: "repo",
       job: "real-octokit-test",
       policy,
       log: () => {},
+      repositoryConfigClient,
     });
 
     await assert.rejects(
@@ -332,7 +383,7 @@ describe("createGatedOctokit", () => {
     await gated.repos.createOrUpdateFileContents({ branch: "agent/update" });
     await gated.pulls.create({ draft: true });
 
-    assert.deepEqual(calls, [
+    assert.deepEqual(calls.filter((call) => !call.startsWith("repo-config:")), [
       "git.createRef",
       "repos.createOrUpdateFileContents",
       "pulls.create",

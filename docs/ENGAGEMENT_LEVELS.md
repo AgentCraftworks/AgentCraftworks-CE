@@ -51,10 +51,16 @@ The intended safety policy requires all three independent approvals:
    `agents.ceiling` to 4 or 5; CODEOWNERS must protect that file.
 3. The API caller authenticates as a principal with the `dial:elevate` scope.
 
-The repository-config and scoped-principal dependencies are not yet complete in
-this branch. Until they land and G3 is verified, keep the default repository
-ceiling at 3 and treat the operator-only `GH_CE_REPO_CEILINGS` override as an
-interim control, not a replacement for reviewed repository authorization.
+The repository policy loader now reads `agentcraftworks.config.yml` from the
+default branch, applies a maximum 60-second cache, and invalidates the cache on
+default-branch pushes. Missing configuration keeps the repository ceiling at 3;
+policy load failures deny the affected request. See
+[`agentcraftworks.config.example.yml`](../agentcraftworks.config.example.yml).
+
+Scoped-principal enforcement is still pending. Until it lands and G3 is
+verified, the `dial:elevate` opt-in is not enforced and audit events identify
+the actor as the placeholder `operator`; do not treat the three independent
+opt-ins as complete authorization.
 
 ## Request evaluation
 
