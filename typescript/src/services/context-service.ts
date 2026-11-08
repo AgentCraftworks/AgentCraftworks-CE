@@ -12,7 +12,7 @@
  * - In-memory storage (matching handoff-service pattern)
  */
 
-import Ajv, { type JSONSchemaType } from "ajv";
+import Ajv from "ajv";
 import crypto from "node:crypto";
 import type {
   Context,
@@ -63,7 +63,7 @@ export function registerSchema(input: RegisterSchemaInput): ContextSchema {
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : String(error);
-    throw new Error(`Invalid JSON Schema: ${message}`);
+    throw new Error(`Invalid JSON Schema: ${message}`, { cause: error });
   }
 
   const schema: ContextSchema = {

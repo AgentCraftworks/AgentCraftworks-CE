@@ -358,7 +358,7 @@ export async function handleInstallationEvent(
   const { action, installation } = payload;
 
   // Determine which repositories to process based on the action.
-  let repos: Repository[] = [];
+  let repos: Repository[];
   if (action === "created") {
     if (payload.repositories) {
       // Specific-repos installation: list is provided inline.

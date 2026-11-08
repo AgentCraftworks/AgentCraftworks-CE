@@ -26,5 +26,6 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm -w typescript run typecheck
+      - run: npm -w typescript run lint
       - run: npm -w typescript run build
       - run: npm -w typescript test

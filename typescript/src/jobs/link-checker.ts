@@ -67,7 +67,7 @@ const URL_REPLACEMENTS: UrlReplacement[] = [
   },
 ];
 
-const MARKDOWN_URL_REGEX = /\[([^\]]*)\]\(([^)]+)\)|<(https?:\/\/[^>]+)>|(https?:\/\/[^\s\)]+)/g;
+const MARKDOWN_URL_REGEX = /\[([^\]]*)\]\(([^)]+)\)|<(https?:\/\/[^>]+)>|(https?:\/\/[^\s)]+)/g;
 
 function extractUrls(content: string): Array<{ url: string; line: number }> {
   const results: Array<{ url: string; line: number }> = [];

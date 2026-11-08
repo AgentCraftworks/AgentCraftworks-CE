@@ -41,14 +41,17 @@ import type {
   GetContextToolInput,
 } from "./types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { APP_VERSION } from "../utils/version.js";
 
 // ─── Server instance ───────────────────────────────────────────────────────────────────
 
+export const MCP_SERVER_INFO = {
+  name: "agent-craftworks",
+  version: APP_VERSION,
+};
+
 const server = new Server(
-  {
-    name: "agent-craftworks",
-    version: "1.0.0-ts",
-  },
+  MCP_SERVER_INFO,
   {
     capabilities: {
       tools: {},
