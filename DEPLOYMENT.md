@@ -375,6 +375,7 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 | `GH_CE_API_TOKEN` | Bearer token for the REST API (`/api/handoffs`, `/api/dial`). Generate: `openssl rand -hex 32`. **Required in production** — routes return `503` until set. | Runtime only (not CI/CD) |
 | `API_RATE_LIMIT` | Optional. Per-IP requests/minute allowed on `/api/handoffs` and `/api/dial` (default `60`) | Runtime only (not CI/CD) |
 | `GH_CE_TRUST_PROXY` | Optional comma-separated trusted ingress proxy IP addresses or CIDRs. Unset means forwarded headers are ignored. Configure verified ingress addresses so clients have separate rate-limit buckets. Never trust all proxies or use numeric hop counts. | Runtime only (not CI/CD) |
+| `GH_CE_API_TOKENS_FILE` | Optional path to a mounted, operator-owned JSON array of named SHA-256 credentials, scopes, and repository patterns. Use instead of the unrestricted compatibility token for least privilege. | Runtime only (not CI/CD) |
 | `POSTGRES_PASSWORD` | PostgreSQL admin password (generate: `openssl rand -base64 32`) | `deploy-azd.yml` |
 
 > **REST API token on Azure Container Apps:** the Bicep templates run the container with
@@ -392,6 +393,25 @@ Configure these in **Settings → Secrets and variables → Actions → New repo
 > Callers then send `Authorization: Bearer <token>` on every REST request.
 
 Only explicit `NODE_ENV=development` or `NODE_ENV=test` permits an unset API token. An unset, unknown, or staging environment fails closed with `503`. For Azure ingress, set `GH_CE_TRUST_PROXY` to the verified proxy addresses/ranges in your deployment. The ingress must replace untrusted forwarding headers; Express walks the address chain from the socket and stops at the first untrusted hop.
+
+### Scoped REST credentials
+
+Mount an operator-owned token file outside the source checkout and set `GH_CE_API_TOKENS_FILE` to its path. Protect the file from untrusted writes. Store only the SHA-256 digest, never the raw credential:
+
+```json
+[
+  {
+    "name": "repo-reader",
+    "sha256": "<64 hexadecimal characters>",
+    "scopes": ["handoffs:read"],
+    "repos": ["your-org/*"]
+  }
+]
+```
+
+Generate a strong credential separately and hash its exact bytes with SHA-256 (do not include a trailing newline). Send the raw credential in the Authorization bearer header. The placeholder digest above is deliberately invalid and must be replaced. Scope names are `handoffs:read`, `handoffs:write`, `dial:write`, `dial:elevate`, and `audit:read`; repository patterns are exact names or `owner/*`. The compatibility `GH_CE_API_TOKEN` grants unrestricted operator access.
+
+Replace the complete file atomically to rotate or revoke credentials; the next request reloads it without restarting. Malformed, missing, oversized, or empty configured files fail closed. Removing both token settings opens the API only in explicit development/test mode. Request bodies cannot select the actor: dial updates and their structured log records use the principal's name. The elevation scope and audit-read scope are reserved for the subsequent governance layer; they do not themselves raise a dial or create an audit endpoint.
 
 > **Managing the PostgreSQL password (`POSTGRES_PASSWORD`):**
 > Setting `POSTGRES_PASSWORD` as a GitHub environment secret (in `production`, `staging`, and `dev`)

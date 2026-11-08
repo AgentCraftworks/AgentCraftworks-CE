@@ -28,6 +28,7 @@ import {
   tokensMatch,
 } from "../src/middleware/api-auth.js";
 import { clearAllDials } from "../src/services/autonomy-dial.js";
+import { authorizeApiRequest } from "../src/middleware/api-principal.js";
 import { clearAllHandoffs, initHandoffService } from "../src/services/handoff-service.js";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
@@ -50,8 +51,8 @@ async function startApp(env: Env): Promise<TestServer> {
   app.use(express.json());
   const limiter = createApiRateLimiter(env);
   const auth = createApiAuthMiddleware({ env, warn: (e) => warnings.push(e) });
-  app.use("/api/handoffs", limiter, auth, handoffRouter);
-  app.use("/api/dial", limiter, auth, dialRouter);
+  app.use("/api/handoffs", limiter, auth, authorizeApiRequest, handoffRouter);
+  app.use("/api/dial", limiter, auth, authorizeApiRequest, dialRouter);
 
   return new Promise((resolve) => {
     const server: http.Server = app.listen(0, () => {
