@@ -10,10 +10,13 @@
 
 import type {
   DialLevel,
-  EnvironmentTier,
   ActionTier,
 } from "../types/autonomy.js";
-import { ENV_MAX_LEVELS } from "../types/autonomy.js";
+import {
+  DEFAULT_REPO_CEILING,
+  getRuntimePolicy,
+  type RuntimePolicy,
+} from "../config/runtime.js";
 import { classifyAction } from "./action-classifier.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────────
@@ -141,7 +144,7 @@ export function isActionPermitted(
   owner: string,
   repo: string,
   actionType: string,
-  envTier?: EnvironmentTier,
+  policy: RuntimePolicy = getRuntimePolicy(),
 ): {
   permitted: boolean;
   dialLevel: DialLevel;
@@ -149,12 +152,19 @@ export function isActionPermitted(
   requiredLevel: DialLevel;
   tier: ActionTier;
   reason: string;
+  bounds: {
+    repoCeiling: DialLevel;
+    environmentCeiling: DialLevel;
+    globalCeiling: DialLevel;
+    agentsPaused: boolean;
+  };
 } {
   const config = getDialLevel(owner, repo);
-  const effectiveLevel = getEffectiveLevel(owner, repo, envTier);
+  const effectiveLevel = getEffectiveLevel(owner, repo, policy);
   const classification = classifyAction(actionType);
   const requiredLevel = classification.tierDetails.requiredDialLevel;
   const permitted = effectiveLevel >= requiredLevel;
+  const bounds = getEffectiveBounds(owner, repo, policy);
 
   const reason = permitted
     ? `Action permitted: effective level ${effectiveLevel} meets requirement ${requiredLevel} for ${classification.tier}`
@@ -167,22 +177,46 @@ export function isActionPermitted(
     requiredLevel,
     tier: classification.tier,
     reason,
+    bounds,
   };
 }
 
 /**
- * Get the effective dial level, applying environment tier cap.
+ * Get the effective dial level using only server-derived policy bounds.
  */
 export function getEffectiveLevel(
   owner: string,
   repo: string,
-  envTier?: EnvironmentTier,
+  policy: RuntimePolicy = getRuntimePolicy(),
 ): DialLevel {
   const config = getDialLevel(owner, repo);
-  if (!envTier) return config.dialLevel;
+  return Math.min(
+    config.dialLevel,
+    getEffectiveBounds(owner, repo, policy).repoCeiling,
+    policy.environmentMaxLevels[policy.environment],
+    policy.globalMaxLevel,
+    policy.agentsPaused ? 1 : 5,
+  ) as DialLevel;
+}
 
-  const envCap = ENV_MAX_LEVELS[envTier];
-  return Math.min(config.dialLevel, envCap) as DialLevel;
+function getEffectiveBounds(
+  owner: string,
+  repo: string,
+  policy: RuntimePolicy,
+): {
+  repoCeiling: DialLevel;
+  environmentCeiling: DialLevel;
+  globalCeiling: DialLevel;
+  agentsPaused: boolean;
+} {
+  return {
+    repoCeiling:
+      policy.repoCeilings.get(`${owner}/${repo}`.toLowerCase()) ??
+      DEFAULT_REPO_CEILING,
+    environmentCeiling: policy.environmentMaxLevels[policy.environment],
+    globalCeiling: policy.globalMaxLevel,
+    agentsPaused: policy.agentsPaused,
+  };
 }
 
 /**

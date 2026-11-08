@@ -12,7 +12,6 @@
 
 import { Router } from "express";
 import type { Request, Response } from "express";
-import type { EnvironmentTier } from "../types/autonomy.js";
 import {
   ENGAGEMENT_LEVEL_NAMES,
   VALID_ENGAGEMENT_LEVEL_NAMES,
@@ -23,6 +22,7 @@ import {
   setDialLevel,
   isActionPermitted,
 } from "../services/autonomy-dial.js";
+import { getRuntimePolicy } from "../config/runtime.js";
 import {
   getAllActions,
   classifyAction,
@@ -70,8 +70,6 @@ router.post("/check", (req: Request, res: Response): void => {
     const action = body["action"] as string | undefined;
     const owner = body["owner"] as string | undefined;
     const repo = body["repo"] as string | undefined;
-    const environment = body["environment"] as EnvironmentTier | undefined;
-
     // Validate required fields
     if (!action) {
       res.status(400).json({
@@ -91,12 +89,7 @@ router.post("/check", (req: Request, res: Response): void => {
 
     // Classify the action and check permission
     const classification = classifyAction(action);
-    const permissionResult = isActionPermitted(
-      owner,
-      repo,
-      action,
-      environment,
-    );
+    const permissionResult = isActionPermitted(owner, repo, action);
 
     res.json({
       action: classification.actionType,
@@ -108,7 +101,8 @@ router.post("/check", (req: Request, res: Response): void => {
       effectiveLevel: permissionResult.effectiveLevel,
       requiredLevel: permissionResult.requiredLevel,
       reason: permissionResult.reason,
-      environment: environment ?? null,
+      bounds: permissionResult.bounds,
+      environment: getRuntimePolicy().environment,
     });
   } catch (error: unknown) {
     const message =
