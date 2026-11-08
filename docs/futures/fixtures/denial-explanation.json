@@ -1,0 +1,28 @@
+{
+  "status": "DRAFT",
+  "scenario": "collaborator-merge-denied-by-repository-dial",
+  "request": {
+    "agent": "Collaborator",
+    "environment": "local",
+    "action": "merge_pr",
+    "dialLevel": 3,
+    "repositoryCeiling": 5,
+    "environmentCeiling": 5,
+    "globalCeiling": 5,
+    "agentsPaused": false
+  },
+  "expected": {
+    "decision": "denied",
+    "requiredTier": "T5",
+    "limitingBound": {
+      "kind": "repository-dial",
+      "value": 3
+    },
+    "policyReference": "../../architecture.md#agent-engagement-levels-reference",
+    "humanAction": "A repository owner requests a dial increase through the dial API with an authorized dial:elevate token after CODEOWNERS review.",
+    "independentPrerequisites": [
+      "The operator and repository both allow-list the protected merge_pr action."
+    ],
+    "requiredDisclosure": "Levels 4–5 can be configured but are not yet enforced on all job paths."
+  }
+}
