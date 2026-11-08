@@ -13,7 +13,12 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { randomUUID } from "node:crypto";
-import { getApiPrincipal } from "../middleware/api-principal.js";
+import {
+  API_SCOPES,
+  getApiPrincipal,
+  type ApiPrincipal,
+  type ApiScope,
+} from "../middleware/api-principal.js";
 import type { EnvironmentTier } from "../types/autonomy.js";
 import {
   ENGAGEMENT_LEVEL_NAMES,
@@ -32,6 +37,16 @@ import {
 } from "../services/action-classifier.js";
 
 const router = Router();
+
+export function requireScope(
+  principal: ApiPrincipal | undefined,
+  scope: ApiScope,
+): boolean {
+  return (
+    API_SCOPES.some((knownScope) => knownScope === scope) &&
+    principal?.scopes.includes(scope) === true
+  );
+}
 
 /** Extract a single string from an Express 5 param (which may be string | string[]) */
 function paramStr(val: string | string[] | undefined): string | undefined {
@@ -171,7 +186,8 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
     const body = req.body as Record<string, unknown>;
     const rawDialLevel = body["dialLevel"] as number | undefined;
     const engagement = body["engagement"] as string | undefined;
-    const updatedBy = getApiPrincipal(res)?.name;
+    const principal = getApiPrincipal(res);
+    const updatedBy = principal?.name;
 
     // Resolve dial level from either dialLevel or engagement name
     let dialLevel: number | undefined;
@@ -219,6 +235,20 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
     }
 
     const previousLevel = getDialLevel(owner, repo).dialLevel;
+    const requiredScope: ApiScope =
+      dialLevel > previousLevel && dialLevel >= 4
+        ? "dial:elevate"
+        : "dial:write";
+    if (!requireScope(principal, requiredScope)) {
+      res.status(403).json({
+        error: "Forbidden",
+        code: "insufficient_scope",
+        requiredScope,
+        message: `The ${requiredScope} scope is required to change this repository's dial.`,
+      });
+      return;
+    }
+
     const config = setDialLevel(owner, repo, dialLevel, updatedBy);
     console.log(JSON.stringify({
       msg: "dial.changed", actor: updatedBy, repository: `${owner}/${repo}`,
