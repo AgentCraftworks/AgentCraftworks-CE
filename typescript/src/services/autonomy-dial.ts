@@ -147,6 +147,7 @@ export function isActionPermitted(
   policy: RuntimePolicy = getRuntimePolicy(),
 ): {
   permitted: boolean;
+  code?: "UNKNOWN_ACTION";
   dialLevel: DialLevel;
   effectiveLevel: DialLevel;
   requiredLevel: DialLevel;
@@ -163,15 +164,19 @@ export function isActionPermitted(
   const effectiveLevel = getEffectiveLevel(owner, repo, policy);
   const classification = classifyAction(actionType);
   const requiredLevel = classification.tierDetails.requiredDialLevel;
-  const permitted = effectiveLevel >= requiredLevel;
+  const permitted =
+    classification.isKnownAction && effectiveLevel >= requiredLevel;
   const bounds = getEffectiveBounds(owner, repo, policy);
 
-  const reason = permitted
-    ? `Action permitted: effective level ${effectiveLevel} meets requirement ${requiredLevel} for ${classification.tier}`
-    : `Action blocked: effective level ${effectiveLevel} insufficient for ${classification.tier}, requires ${requiredLevel}`;
+  const reason = !classification.isKnownAction
+    ? `Unknown action "${classification.actionType}" is denied (UNKNOWN_ACTION).`
+    : permitted
+      ? `Action permitted: effective level ${effectiveLevel} meets requirement ${requiredLevel} for ${classification.tier}`
+      : `Action blocked: effective level ${effectiveLevel} insufficient for ${classification.tier}, requires ${requiredLevel}`;
 
   return {
     permitted,
+    ...(classification.isKnownAction ? {} : { code: "UNKNOWN_ACTION" as const }),
     dialLevel: config.dialLevel,
     effectiveLevel,
     requiredLevel,
