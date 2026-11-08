@@ -97,14 +97,21 @@ working on CE docs must apply it.
 ### 3.1 ✅ Documentable in CE
 
 Webhook-driven GitHub App · HMAC-SHA256 webhook verification · IP + installation rate
-limiting (`express-rate-limit`) · Agent Engagement Levels 1–5 with environment caps
-(local 5 / dev 5 / staging 4 / production 3) · Action tiers T1–T5 · Action classifier ·
+limiting (`express-rate-limit`) · Agent Engagement Levels 1–5 without an edition cap,
+with default environment ceilings (local 5 / dev 5 / staging 4 / production 3) ·
+Action tiers T1–T5 · Action classifier ·
 Permission checker middleware · Handoff FSM (`pending`/`active`/`completed`/`failed`) ·
 Handoff REST API · Context attach/get · CODEOWNERS routing · Label routing · 6 MCP tools ·
 CODEOWNERS setup PR on install · GH-AW workflow catalogue + toggle script ·
 Docker Compose local run · Azure deploy via `azd` + Bicep · Accessibility agent team ·
 CodeQL · SDLC lifecycle stages · Branch promotion policy `feature/* → staging → main` ·
 MIT licence, forking, CLA.
+
+The default repository level is 1 and its ceiling is 3. Higher levels require
+independent operator, reviewed-repository, and authenticated-principal opt-ins;
+protected actions remain denied by default, T4/T5 writes are budgeted, and the
+pause control forces effective level 1. These controls are not yet enforced on all
+job paths.
 
 ### 3.2 ❌ Enterprise-scale capabilities (not included in CE)
 
@@ -119,9 +126,8 @@ Three-layer Squad Engagement Dial · AEU cost model / wave planning · Risk-tier
 compliance scaffolding (Tier 2/3 governance files) · Dashboard / canvas · Copilot
 Studio eval loop · Marketplace / billing / Stripe.
 
-> ⚠️ **Boundary note.** Decision D-2 remains in effect for organizational-scale
-> Rate Governor, multi-squad coordination, Aspire, Promotion Engine and
-> Quarantine Bridge. It is partially superseded by D-13: CE includes a
+> ⚠️ **Boundary note.** Decision D-2 is partially superseded by D-13. The
+> Enterprise boundary remains organizational scale: CE includes a
 > single-squad Coordinator and local action budgets, but not the Enterprise
 > distributed Rate Governor, multi-squad S2S, or compliance evidence.
 
@@ -191,10 +197,10 @@ Install CE GitHub App
     `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.clinerules`, `.gemini/styleguide.md`, `.mcp.json`
   - branch protection on the default branch (`GET /repos/{o}/{r}/branches/{b}/protection`,
     tolerate 403/404)
-- Produce a **readiness summary** and a **recommended engagement level (1–3)**.
-  Keep the default recommendation at or below 3 because the default repository
-  ceiling is 3; higher levels require explicit operator, maintainer, and API
-  principal opt-ins.
+- Produce a **readiness summary** and a **recommended engagement level (1–5)**.
+  Recommend level 1 for a fresh repo and keep recommendations within the effective
+  policy bounds. Levels 4–5 need independent operator, reviewed-repository, and
+  authenticated-principal opt-ins; they are not yet enforced on all job paths.
 - Make the CODEOWNERS template **language-aware** (extend `DEFAULT_CODEOWNERS_TEMPLATE`
   with Python / Go / Rust / C# patterns when detected).
 - Render the detection summary as a table in the existing `PR_BODY`.
@@ -315,7 +321,7 @@ test compares timestamps — sub-millisecond timing bites here.
 | Excluded | Why |
 |---|---|
 | `detect_repo` as a **7th MCP tool** | `README.md`, `AGENTS.md` and the org standard all state a **6-tool** MCP interface. Adding a 7th forces a doc change across every repo consuming the ORG-STANDARD block. Expose detection via `/api/onboarding/...` REST instead. |
-| 7-day unattended auto-merge | Contradicts CE's human-in-the-loop positioning; production engagement cap is 3. |
+| 7-day unattended auto-merge | Contradicts CE's human-in-the-loop positioning; merge remains a separately gated T5 action, not an automatic level grant. |
 | Maturity score (0–100) | Paid-edition analytics surface. |
 | Risk-tier compliance scaffolding (Tier 2/3 governance files) | Enterprise compliance pack. |
 | `squad.config.ts` / `.squad/` scaffolding | Squad Coordinator + nuSquad SDK are Enterprise. |
@@ -349,7 +355,7 @@ AgentCraftworks-CE/
     ├── getting-started.md          B1  ⭐ primary user journey, ≤15 min
     ├── ONBOARDING_GUIDE.md         B3  what the App does on install, step by step
     ├── PRODUCT_GUIDE.md            B4  CE feature reference
-    ├── ENGAGEMENT_LEVELS.md        B5  levels 1–5, action tiers, env caps
+    ├── ENGAGEMENT_LEVELS.md        B5  levels 1–5, tier policy, safe enablement and rollback
     ├── ENVIRONMENTS_GUIDE.md       B6  local/dev/staging/production
     ├── GITHUB_APP_DEV_SETUP.md     B7  create your own GitHub App (extracted)
     ├── MCP_TOOLS.md                B8  the 6 tools, schemas, client wiring
@@ -410,7 +416,7 @@ Governance & Compliance packs, Wave planning with AEUs.
 
 | Doc | Source of truth in code | Key content |
 |---|---|---|
-| B5 `ENGAGEMENT_LEVELS.md` | `services/autonomy-dial.ts`, `services/action-classifier.ts`, `middleware/permission-checker.ts` | Levels 1–5 + action tiers T1–T5 + env caps + how a request is evaluated + `/api/dial` |
+| B5 `ENGAGEMENT_LEVELS.md` | `services/autonomy-dial.ts`, `services/action-classifier.ts`, `services/action-gate.ts`, `config/runtime.ts`, `services/action-budgets.ts` | Levels 1–5 without an edition cap; default dial/ceilings; three opt-ins; T1–T5 canonical actions; protected-action defaults; budgets, pause, `/api/dial`, enforcement status, and safe enablement/rollback checklist |
 | B6 `ENVIRONMENTS_GUIDE.md` | `.github/workflows/deploy-*.yml`, `infra/` | local/dev/staging/production, caps per env, promotion `feature/* → staging → main` |
 | B7 `GITHUB_APP_DEV_SETUP.md` | `DEPLOYMENT.md` §GitHub App Setup | Create App, permissions matrix (incl. `issues: write` for A1, `checks: write` for A7), private key, webhook URL, install |
 | B8 `MCP_TOOLS.md` | `mcp/server.ts` | All 6 tools with input/output schemas + client config for Copilot / Claude / VS Code. **Fixes DEF-1.** |
@@ -472,13 +478,13 @@ tool names exported by `mcp/server.ts`. Prevents DEF-1 recurring.
 | ID | Decision | Resolution |
 |---|---|---|
 | **D-1** | Engagement level names | **RESOLVED — align CE to the paid naming.** CE adopts Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous**. D-15 now governs alias removal: retain compatibility aliases until the upstream rename is complete, then remove them. |
-| **D-2** | Are Rate Governor / Squad Coordinator / Aspire / Governance Gates / Promotion Engine / Quarantine Bridge CE or Enterprise? | **PARTIALLY SUPERSEDED BY D-13.** Enterprise retains organizational-scale Rate Governor, multi-squad Coordinator/S2S, Aspire, Promotion Engine, Quarantine Bridge, and compliance evidence. CE supports single-squad coordination and process-local action budgets; §3.2 must distinguish scale rather than reserve these concepts wholesale for Enterprise. |
+| **D-2** | Are Rate Governor / Squad Coordinator / Aspire / Governance Gates / Promotion Engine / Quarantine Bridge CE or Enterprise? | **PARTIALLY SUPERSEDED BY D-13.** CE supports engagement levels 1–5 without an edition cap, a single-squad Coordinator, and process-local action budgets. Enterprise retains organizational-scale Rate Governor, multi-squad Coordinator/S2S, Aspire, Promotion Engine, Quarantine Bridge, and compliance evidence; §3.2 distinguishes scale rather than reserving these concepts wholesale for Enterprise. |
 | **D-3** | Ship 7-day auto-merge of the setup PR in CE? | **No.** 48-hour reminder comment only. |
 | **D-4** | Add `detect_repo` as a 7th MCP tool? | **No.** Preserve the 6-tool contract; expose via REST. |
 | **D-5** | Does CE need `mode: workflow \| agent \| both`? | **Ship the field** for forward-compatibility, defaulting to `workflow`. |
 | **D-6** | Publish docs to a site? | **Not in this scope.** |
 | **D-7** | Where do product standards get authored? | Upstream in `AgentCraftworks`, consumed here via ORG-STANDARD sync. |
-| **D-13** | Which governance capabilities belong in CE? | **PROPOSED — pending G0.** CE includes a single-squad Coordinator and process-local action budgets; Enterprise retains multi-squad S2S, distributed Rate Governor, Promotion Engine, Governance Gates, Aspire, Quarantine Bridge, Entra ID, and compliance evidence. This partially supersedes D-2's broad Enterprise-only wording. |
+| **D-13** | Which governance capabilities belong in CE? | **PROPOSED — pending G0.** CE includes engagement levels 1–5 without an edition cap, a single-squad Coordinator, and process-local action budgets; Enterprise retains multi-squad S2S, distributed Rate Governor, Promotion Engine, Governance Gates, Aspire, Quarantine Bridge, Entra ID, and compliance evidence. This partially supersedes D-2's broad Enterprise-only wording. |
 
 ### 7.1 ⚠️ Upstream dependency created by D-1
 

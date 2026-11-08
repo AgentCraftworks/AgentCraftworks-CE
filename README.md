@@ -133,18 +133,23 @@ Every repo gets an engagement level (1–5). CE supports all five levels without
 | Level | Name | Action Tier | Permitted Actions |
 |-------|------|-------------|-------------------|
 | 1 | Observer | T1 | Read, view, list |
-| 2 | Advisor | T2 | Comment, suggest |
-| 3 | Collaborator | T3 | Label, assign, approve, edit file |
-| 4 | Delegated | T4 | Merge, close, create branch, push commit |
-| 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents |
+| 2 | Advisor | T2 | Comment, review comments, suggestions, labels, reactions |
+| 3 | Collaborator | T3 | Create agent branches, propose edits, create draft PRs/issues, request changes |
+| 4 | Delegated | T4 | Approve, request reviews, close/reopen issues, mark PRs ready, create tags |
+| 5 | Autonomous | T5 | Merge, deploy, publish releases, revert/cherry-pick, modify CI, orchestrate agents |
 
 Default environment ceilings are local=5, dev=5, staging=4, production=3. The
 effective level is bounded by the repository dial, repository ceiling (default 3),
-operator environment ceiling, and global ceiling. A pause forces level 1. Levels
-4–5 require independent operator, maintainer, and API-principal opt-ins; protected
-actions remain denied unless both operator and repository allow-lists permit them.
+operator environment ceiling, and global ceiling. A pause forces level 1. The
+intended safeguards require independent operator, reviewed repository, and
+`dial:elevate` principal opt-ins; protected actions remain denied unless both
+operator and repository allow-lists permit them.
 
 > **Current enforcement status:** Levels 4–5 can be configured but are not yet enforced on all job paths. See [ADR-CE-001](docs/adr/ADR-CE-001-engagement-levels-1-to-5.md).
+> Read the [engagement-level guide](docs/ENGAGEMENT_LEVELS.md) and [safe enablement checklist](docs/ENABLING_DELEGATED_AUTONOMOUS_SAFELY.md) before considering higher levels.
+
+Force-push, force-merge, branch-protection bypass, ruleset changes, and secret
+management are protected actions, not permissions granted by level 5.
 
 ### 2. Handoff Finite State Machine
 Every agent handoff follows a deterministic state machine:
@@ -187,7 +192,8 @@ The paid [AgentCraftworks Enterprise](https://agentcraftworks.com) extends CE wi
 | **Audit Trail** | Durable, organization-wide compliance evidence and rate-limiting audit data |
 | **Quarantine Bridge** | Abuse detection and automatic quarantine for agents exceeding rate thresholds |
 
-Enterprise extends CE's five-level engagement model with the organizational scale, durable state, and compliance capabilities needed for multi-agent operations.
+Enterprise uses the same five-level engagement model and adds organizational
+scale, durable state, and compliance capabilities for multi-agent operations.
 
 Learn more at [AgentCraftworks.com](https://agentcraftworks.com).
 
@@ -206,6 +212,8 @@ See the **[Fork & Rename Guide](FORKING.md)** for the workflows to disable on a 
 - [Deployment Guide](DEPLOYMENT.md)
 - [Fork & Rename Guide](FORKING.md)
 - [Agent Engagement Levels Reference](docs/architecture.md#agent-engagement-levels-reference)
+- [Engagement Levels Guide](docs/ENGAGEMENT_LEVELS.md)
+- [Safe Delegated and Autonomous Enablement](docs/ENABLING_DELEGATED_AUTONOMOUS_SAFELY.md)
 - [MCP Tool Reference](#3-mcp-compatible)
 - [Architecture Overview](docs/architecture.md)
 - [SDLC Lifecycle Strategy](docs/SDLC_LIFECYCLE_STRATEGY.md)
