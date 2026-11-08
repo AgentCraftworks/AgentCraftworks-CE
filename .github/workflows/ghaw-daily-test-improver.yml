@@ -3,7 +3,7 @@ name: "GH-AW: Daily Test Improver"
 # Daily Test Improver — Identifies test coverage gaps and suggests new tests.
 # Runs daily, analyzes source files without corresponding tests, and opens an issue
 # with specific test suggestions.
-# Engagement Level: T2 (Advisor) — creates issues with suggestions, no code edits.
+# Engagement Level: T3 (Collaborator) — creates issues with suggestions.
 
 on:
   schedule:

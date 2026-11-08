@@ -3,7 +3,7 @@ name: "GH-AW: CI Doctor"
 # CI Doctor — Investigates CI failures and creates detailed diagnostic issues.
 # Triggered when monitored workflows fail. Analyzes logs, identifies root causes,
 # and provides actionable remediation steps.
-# Engagement Level: T2 (Advisor) — creates issues with analysis, no code modifications.
+# Engagement Level: T3 (Collaborator) — creates diagnostic issues.
 # Source: githubnext/agentics/workflows/ci-doctor.md
 
 on:

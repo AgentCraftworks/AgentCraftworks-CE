@@ -3,7 +3,7 @@ name: "GH-AW: Workflow Health Manager"
 # Workflow Health Manager — Monitors workflow health and reports issues.
 # Checks all GH-AW workflows for failures, stale runs, and performance regressions.
 # Posts a health summary as a GitHub issue when problems are detected.
-# Engagement Level: T2 (Advisor) — creates issues with health reports, no modifications.
+# Engagement Level: T3 (Collaborator) — creates health report issues.
 
 on:
   schedule:

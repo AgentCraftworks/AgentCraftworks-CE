@@ -9,10 +9,11 @@
  *   REPOSITORY    — owner/repo string
  *   TARGET_DIR    — Directory to analyze (default: typescript/src)
  *
- * Engagement Level: T2 (Advisor) — creates issues with suggestions, no code edits.
+ * Engagement Level: T3 (Collaborator) — creates issues with suggestions.
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 import { readdir, stat } from "node:fs/promises";
 import { join, basename, dirname, relative } from "node:path";
 
@@ -82,7 +83,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "daily-test-improver",
+  });
 
   // Find all source files
   const sourceFiles = await findSourceFiles(targetDir);

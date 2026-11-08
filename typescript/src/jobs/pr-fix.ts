@@ -14,6 +14,7 @@
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 
 async function main(): Promise<void> {
   const token = process.env["GITHUB_TOKEN"];
@@ -31,7 +32,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "pr-fix",
+  });
   const prNum = parseInt(prNumber, 10);
 
   // Get the PR's check runs
