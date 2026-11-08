@@ -1,0 +1,14 @@
+title = "AgentCraftworks security scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Exact toolkit prose in the accessibility-agent table is not a credential."
+condition = "AND"
+paths = ['''^(AGENTS\.md|docs/accessibility\.md)$''']
+regexTarget = "match"
+regexes = ['''^tokens, Tailwind/MUI/Chakra/shadcn[ \t]*$''']
