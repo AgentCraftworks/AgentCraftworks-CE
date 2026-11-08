@@ -12,7 +12,7 @@ services:
     docker:
       path: ./Dockerfile
       # Context is relative to the service project directory.
-      context: .
+      context: ..
     env:
       PORT: 3000
       NODE_ENV: production

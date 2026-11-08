@@ -240,9 +240,10 @@ npm start
 
 ### Building the Docker Image Directly
 
+Run from the repository root. CI, Docker, Compose, and Azure Developer CLI use the root `package-lock.json` and the `typescript` npm workspace.
+
 ```bash
-cd typescript
-docker build -t agentcraftworks-ts .
+docker build -f typescript/Dockerfile -t agentcraftworks-ts .
 docker run -p 3000:3000 \
   -e GH_CE_WEBHOOK_SECRET="test-secret" \
   -e GH_CE_APP_ID="test-id" \
@@ -324,8 +325,7 @@ az group create --name agentcraftworks-rg --location eastus
 az acr create --resource-group agentcraftworks-rg --name agentcraftworks --sku Basic
 
 # 3. Build and push image
-cd typescript
-az acr build --registry agentcraftworks --image typescript-api:latest --file Dockerfile .
+az acr build --registry agentcraftworks --image typescript-api:latest --file typescript/Dockerfile .
 
 # 4. Create Container Apps environment
 az containerapp env create --name agentcraftworks-env --resource-group agentcraftworks-rg --location eastus

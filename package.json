@@ -9,7 +9,8 @@
   "scripts": {
     "build": "cd typescript && npm run build",
     "typecheck": "cd typescript && npm run typecheck",
-    "test": "cd typescript && npm test"
+    "test": "cd typescript && npm test",
+    "audit:production": "npm audit --omit=dev --audit-level=high"
   },
   "keywords": ["ai-agents", "governance", "mcp", "github-app"],
   "author": "AICraftworks LLC",
