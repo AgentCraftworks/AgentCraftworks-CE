@@ -19,6 +19,7 @@ import {
   handleAcceptHandoff,
   handleCompleteHandoff,
   handleQueryWorkflowState,
+  MCP_SERVER_INFO,
 } from "../src/mcp/server.js";
 import {
   initHandoffService,
@@ -27,6 +28,18 @@ import {
   acceptHandoff,
   completeHandoff,
 } from "../src/services/handoff-service.js";
+import { APP_VERSION, APP_USER_AGENT } from "../src/utils/version.js";
+import rootPackage from "../../package.json" with { type: "json" };
+import workspacePackage from "../package.json" with { type: "json" };
+
+describe("runtime version metadata", () => {
+  it("uses the root package version in MCP serverInfo and User-Agent", () => {
+    assert.equal(APP_VERSION, rootPackage.version);
+    assert.equal(workspacePackage.version, rootPackage.version);
+    assert.equal(MCP_SERVER_INFO.version, rootPackage.version);
+    assert.equal(APP_USER_AGENT, `AgentCraftworks-CE/${rootPackage.version}`);
+  });
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

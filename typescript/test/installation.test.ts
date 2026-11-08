@@ -50,7 +50,7 @@ function makeMockOctokit(handlers: Record<string, RequestFn>): Octokit {
 /** Return a mock Octokit pre-wired for the "happy path" scaffold flow. */
 function makeHappyPathOctokit(overrides: Record<string, RequestFn> = {}): Octokit {
   return makeMockOctokit({
-    "GET /repos/{owner}/{repo}/contents/{path}": async (_r, p) => {
+    "GET /repos/{owner}/{repo}/contents/{path}": async () => {
       // Any CODEOWNERS location → 404 (file does not exist yet)
       throw Object.assign(new Error("Not Found"), { status: 404 });
     },

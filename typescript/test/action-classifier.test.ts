@@ -145,7 +145,7 @@ describe("getActionsByTier", () => {
 
   it("should throw on invalid tier", () => {
     assert.throws(
-      () => getActionsByTier("T99" as any),
+      () => getActionsByTier("T99" as Parameters<typeof getActionsByTier>[0]),
       /Invalid tier/,
     );
   });

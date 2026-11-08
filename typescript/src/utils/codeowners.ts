@@ -141,7 +141,7 @@ export function matchFilesToTeams(
 function buildMatcher(pattern: string): (filePath: string) => boolean {
   // Normalize: strip leading /
   const hasLeadingSlash = pattern.startsWith("/");
-  let normalized = hasLeadingSlash ? pattern.slice(1) : pattern;
+  const normalized = hasLeadingSlash ? pattern.slice(1) : pattern;
 
   // Directory pattern: "dir/" matches anything under dir/
   if (normalized.endsWith("/")) {

@@ -12,6 +12,7 @@ import { webhookHandler } from "./handlers/pull-request.js";
 import { verifyWebhookSignatureMiddleware } from "./middleware/webhook-signature.js";
 import { initHandoffService } from "./services/handoff-service.js";
 import { initContextService } from "./services/context-service.js";
+import { APP_VERSION } from "./utils/version.js";
 
 const PORT = parseInt(process.env["PORT"] ?? "3000", 10);
 const app = express();
@@ -95,7 +96,7 @@ initContextService();
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
-    version: "1.0.0-ts",
+    version: APP_VERSION,
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });

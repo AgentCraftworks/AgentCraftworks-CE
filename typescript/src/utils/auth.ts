@@ -17,6 +17,7 @@
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { Octokit } from "@octokit/rest";
+import { APP_USER_AGENT } from "./version.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────────────
 
@@ -102,7 +103,7 @@ export async function getInstallationToken(
         Authorization: `Bearer ${appJwt}`,
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
-        "User-Agent": "AgentCraftworks-CE/1.0",
+        "User-Agent": APP_USER_AGENT,
         "X-GitHub-Api-Version": "2022-11-28",
       },
     },
@@ -196,7 +197,7 @@ export async function getInstallationOctokit(
   
   return new Octokit({
     auth: token,
-    userAgent: "AgentCraftworks-CE/1.0",
+    userAgent: APP_USER_AGENT,
   });
 }
 
@@ -240,8 +241,8 @@ export function getCacheStats(): {
  * but is sufficient for reading public repository data.
  */
 export async function getOctokit(
-  owner: string,
-  repo: string,
+  _owner: string,
+  _repo: string,
 ): Promise<Octokit> {
   // If we don't have app credentials, use unauthenticated access
   const appId = process.env["GH_CE_APP_ID"];
@@ -250,7 +251,7 @@ export async function getOctokit(
   if (!appId || !privateKey) {
     // Unauthenticated Octokit for public repos
     return new Octokit({
-      userAgent: "AgentCraftworks-CE/1.0",
+      userAgent: APP_USER_AGENT,
     });
   }
 
@@ -260,6 +261,6 @@ export async function getOctokit(
   
   return new Octokit({
     auth: appJwt,
-    userAgent: "AgentCraftworks-CE/1.0",
+    userAgent: APP_USER_AGENT,
   });
 }

@@ -92,7 +92,7 @@ There are two ways to get started, depending on whether you want to **use** Agen
 
 ### Track 1 — Install the GitHub App (fastest)
 
-1. Install the AgentCraftworks CE GitHub App on your organisation or repository.
+1. [Install the AgentCraftworks GitHub App](https://github.com/apps/agentcraftworks/installations/new) on your organisation or repository.
 2. CE opens a **setup pull request** adding a default `.github/CODEOWNERS` — this is the routing layer that decides which agents and humans review which paths.
 3. Review and customise the routing patterns, replacing the placeholder team handles with your real GitHub teams.
 4. Merge the PR to activate agent routing.
@@ -123,7 +123,7 @@ Full instructions, including Docker Compose and Azure deployment, are in **[DEPL
 
 **Webhook endpoint:** `POST /api/webhook`  
 **Health check:** `GET /health`  
-**MCP tools:** `GET /mcp/tools`
+
 
 ## How It Works
 

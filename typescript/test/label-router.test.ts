@@ -21,12 +21,11 @@ describe("routeToAgentByLabel", () => {
   });
 
   it("returns @code-reviewer for undefined labels", () => {
-    const labels: any = undefined;
-    assert.equal(routeToAgentByLabel(labels), "@code-reviewer");
+    assert.equal(routeToAgentByLabel(undefined), "@code-reviewer");
   });
 
   it("returns @code-reviewer for null labels", () => {
-    const labels: any = null;
+    const labels = null as unknown as Array<{ name: string }>;
     assert.equal(routeToAgentByLabel(labels), "@code-reviewer");
   });
 
