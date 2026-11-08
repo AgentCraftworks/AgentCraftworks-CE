@@ -130,7 +130,10 @@ checked against the repository dial before it runs:
 |---|---|---|
 | `add_label` | T2 | 2 — Advisor |
 | `post_comment` | T2 | 2 — Advisor |
-| `request_review` (CODEOWNERS owners) | T4 | Enterprise (CE caps at 3) |
+| `request_review` (CODEOWNERS owners) | T4 | 4 — Delegated |
+
+Levels 4–5 can be configured but are not yet enforced on all job paths. This demo exercises
+the default Observer dial and explains the gate; it does not verify higher-level enforcement.
 
 Denied writes are **skipped**, logged as `{ msg: "action denied", … }`, and — if the
 level allows commenting — CE posts one PR comment beginning
@@ -142,5 +145,5 @@ out of the box CE routes and records handoffs but writes nothing to GitHub. Use
 ## What to read next
 
 - [Getting Started — Track 1](../../getting-started.md#track-1--install-the-github-app)
-- [Architecture — Pull request routing and gating](../../architecture.md#pull-request-routing-and-gating)
+- [Architecture — Community Edition routing and gating](../../architecture.md#community-edition-architecture)
 - [Demo 04 — Docker Compose](../04-docker-compose/README.md)

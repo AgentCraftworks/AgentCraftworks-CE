@@ -13,7 +13,7 @@ that answers your question.
 | # | Demo | Proves | Prerequisites | Time |
 |---|---|---|---|---|
 | 01 | [Your first handoff over MCP](01-first-handoff/README.md) | The 6-tool MCP server drives `pending → active → completed`, with schema-validated context | Node 22+, `npm install` | 2 min |
-| 02 | [Engagement levels](02-engagement-levels/README.md) | A T4 action is blocked at level 3; level 4 returns `422 ENTERPRISE_REQUIRED` | Node 22+, CE running locally (`npm run start:env`) | 3 min |
+| 02 | [Engagement levels](02-engagement-levels/README.md) | A T4 action is denied by a repository configured at level 3. Levels 4–5 can be configured but are not yet enforced on all job paths. | Node 22+, CE running locally (`npm run start:env`) | 3 min |
 | 03 | [CODEOWNERS routing](03-codeowners-routing/README.md) | The setup PR, CODEOWNERS → labels → none routing precedence, and the action gate | Node 22+, CE running locally | 5 min |
 | 04 | [Docker Compose + signed webhook](04-docker-compose/README.md) | One container, `/health`, HMAC-SHA256-verified webhooks (200 vs 401) | Docker Compose v2, Node 22+ | 5 min |
 | — | [Two-minute architecture walkthrough](ce-architecture.html) | How webhooks, CODEOWNERS, engagement levels, the handoff FSM and MCP fit together | A browser | 2 min |
@@ -23,7 +23,7 @@ that answers your question.
 | Demo | You should see |
 |---|---|
 | 01 | `tools/list → 6 tools`, then `pending → active → completed`, exit code `0` |
-| 02 | `permitted: true` for `add_label`, `permitted: false … requires 4` for `push_commit`, `HTTP 422` with `"code":"ENTERPRISE_REQUIRED"` |
+| 02 | `permitted: true` for `add_label` and `permitted: false … requires 4` for `push_commit` |
 | 03 | Three handoffs routed to `@security-scanner`, `@accessibility-lead`, `@code-reviewer`; a CODEOWNERS preview table |
 | 04 | `{"status":"ok",…}`, `HTTP 200 {"event":"ping","message":"pong"}`, `HTTP 401 … Invalid webhook signature` |
 

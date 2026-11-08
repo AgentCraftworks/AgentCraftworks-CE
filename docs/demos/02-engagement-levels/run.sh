@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Demo 02 — Engagement levels: watch a T4 action get blocked and a level-4 request rejected.
+# Demo 02 — Engagement levels: watch a T4 action get denied at level 3.
 # Usage: ./docs/demos/02-engagement-levels/run.sh [base-url]
 #
 # Requires a running CE instance (see README.md in this folder) started with the same
@@ -29,16 +29,13 @@ curl -sS -w '\nHTTP %{http_code}\n' "${BASE}/health"
 step "1. Read the current level for ${REPO} (default is 1 = observer)"
 call GET "/api/dial/${REPO}"
 
-step "2. Set the level to 3 (collaborator) — the CE maximum"
+step "2. Set the level to 3 (collaborator)"
 call POST "/api/dial/${REPO}" '{"engagement":"collaborator","updatedBy":"demo-user"}'
 
 step "3. Ask whether a T2 action (add_label) is permitted in production → permitted"
 call POST "/api/dial/check" "{\"action\":\"add_label\",\"owner\":\"octo\",\"repo\":\"demo\",\"environment\":\"production\"}"
 
-step "4. Ask whether a T4 action (push_commit) is permitted in production → BLOCKED"
+step "4. Ask whether a T4 action (push_commit) is permitted in production → DENIED"
 call POST "/api/dial/check" "{\"action\":\"push_commit\",\"owner\":\"octo\",\"repo\":\"demo\",\"environment\":\"production\"}"
-
-step "5. Try to raise the dial to 4 (delegated) → rejected: levels 4–5 require Enterprise"
-call POST "/api/dial/${REPO}" '{"dialLevel":4,"updatedBy":"demo-user"}'
 
 printf '\nDone. Compare with expected-output.txt in this folder.\n'

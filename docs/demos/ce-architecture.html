@@ -119,7 +119,7 @@
   th { background: var(--surface); }
   .ok { color: var(--ok); font-weight: 600; }
   .warn { color: var(--warn); font-weight: 600; }
-  .callout { border-left: 4px solid var(--accent); background: var(--surface); padding: .75rem 1rem; border-radius: 0 .5rem .5rem 0; }
+  .callout { border: 1px solid var(--accent); background: var(--surface); padding: .75rem 1rem; border-radius: .5rem; }
   footer { color: var(--muted); font-size: .95rem; padding-bottom: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; }
   .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(1px,1px,1px,1px); white-space: nowrap; }
 </style>
@@ -132,7 +132,7 @@
   <h1>Two-minute architecture walkthrough</h1>
   <p class="lede">How a GitHub webhook becomes a governed, reviewable handoff — through CODEOWNERS routing,
     engagement levels, a four-state machine and a six-tool MCP server. Community Edition is the
-    <strong>open protocol layer for agentic DevOps</strong>: a MIT-licensed subset that Enterprise is compatible with.</p>
+    Community Edition is a separate MIT-licensed offering; Enterprise adds organizational-scale capabilities.</p>
 </header>
 
 <nav class="stepper" aria-label="Walkthrough steps">
@@ -220,12 +220,12 @@ anything else                 →  401 Invalid webhook signature</code></pre>
     <p class="step-meta">~25 seconds · <code>services/action-gate.ts</code>, <code>services/action-classifier.ts</code></p>
     <div class="grid">
       <div>
-        <p>Each repository has a <strong>dial</strong> (default <strong>1 — Observer</strong>). Every action is classified
-          into a tier, and an action is permitted only when the effective level reaches the tier's requirement.
-          Denied writes are skipped and logged; at level 2+ a single PR comment explains what was withheld.</p>
-        <p class="callout"><strong>Community Edition supports levels 1–3.</strong> Requesting level 4 or 5 on
-          <code>POST /api/dial/:owner/:repo</code> returns <span class="warn">422 ENTERPRISE_REQUIRED</span>
-          (ADR-CE-001).</p>
+        <p>Each repository has a <strong>dial</strong> (default <strong>1 — Observer</strong>). Actions are classified
+        into tiers and checked against configured policy. A recorded denial describes an action the service
+        withheld; it does not dispatch an agent.</p>
+        <p class="callout"><strong>The Community Edition model spans levels 1–5.</strong> Levels 4–5 can be
+        configured but are not yet enforced on all job paths. Protected actions are denied by default and
+        require both repository and operator allow-lists.</p>
       </div>
       <figure>
         <table>
@@ -235,8 +235,8 @@ anything else                 →  401 Invalid webhook signature</code></pre>
             <tr><td>1</td><td>Observer</td><td>T1 read, view, list</td><td class="ok">Community</td></tr>
             <tr><td>2</td><td>Advisor</td><td>T2 comment, label</td><td class="ok">Community</td></tr>
             <tr><td>3</td><td>Collaborator</td><td>T3 edit file, create branch, assign</td><td class="ok">Community</td></tr>
-            <tr><td>4</td><td>Delegated</td><td>T4 push commit, request review</td><td class="warn">Enterprise</td></tr>
-            <tr><td>5</td><td>Autonomous</td><td>T5 merge, deploy</td><td class="warn">Enterprise</td></tr>
+            <tr><td>4</td><td>Delegated</td><td>Configured actions</td><td class="ok">Community</td></tr>
+            <tr><td>5</td><td>Autonomous</td><td>Configured actions</td><td class="ok">Community</td></tr>
           </tbody>
         </table>
         <figcaption><code>effective level = min(dial, environment cap)</code></figcaption>
@@ -280,8 +280,8 @@ anything else                 →  401 Invalid webhook signature</code></pre>
     <div class="grid">
       <div>
         <p>The MCP server is a <strong>stdio</strong> process (<code>npm run mcp</code>) that GitHub Copilot, Claude and
-          other MCP clients launch from <code>.mcp.json</code>. It exposes exactly six tools — the protocol contract
-          that Enterprise is compatible with.</p>
+          other MCP clients launch from <code>.mcp.json</code>. Its six tools create and manage handoff and
+          context records; a handoff call does not dispatch an agent.</p>
         <pre><code>create_handoff      accept_handoff      complete_handoff
 query_workflow_state attach_context      get_context</code></pre>
       </div>
@@ -295,7 +295,7 @@ query_workflow_state attach_context      get_context</code></pre>
           <path class="edge" d="M160 65 H213"/><text class="edge-label" x="150" y="30">JSON-RPC / stdio</text>
           <path class="edge" d="M345 65 H398"/><text class="edge-label" x="352" y="30">6 tools</text>
         </svg>
-        <figcaption>Same store, same states — whether driven by webhook, REST or MCP.</figcaption>
+        <figcaption>MCP clients operate the handoff record and its state transitions.</figcaption>
       </figure>
     </div>
   </section>
@@ -308,7 +308,7 @@ query_workflow_state attach_context      get_context</code></pre>
         <ul>
           <li>Webhook server with HMAC-SHA256 verification and per-IP rate limiting</li>
           <li>CODEOWNERS routing with label fallback, and the setup pull request</li>
-          <li>Engagement levels 1–3 with the action gate and REST dial API</li>
+          <li>Engagement levels 1–5. Levels 4–5 can be configured but are not yet enforced on all job paths.</li>
           <li>Four-state handoff machine with schema-validated context</li>
           <li>Six-tool MCP server over stdio</li>
           <li>In-memory storage — single replica, state resets on restart</li>
@@ -316,10 +316,11 @@ query_workflow_state attach_context      get_context</code></pre>
         </ul>
       </div>
       <div class="callout">
-        <p><strong>CE is</strong> the MIT-licensed protocol layer — the handoff FSM, the engagement-level model and the
-          six-tool MCP subset that Enterprise is compatible with.</p>
-        <p><strong>CE isn't</strong> the core Enterprise is built on, nor a stripped-down Enterprise. Levels 4–5,
-          durable multi-replica storage and the full tool catalogue are Enterprise features.</p>
+        <p><strong>CE is</strong> the MIT-licensed Community Edition, with webhook handling, routing, engagement
+          levels, handoff state and six MCP tools.</p>
+        <p><strong>CE isn't</strong> a prerequisite for Enterprise or a feature-trimmed Enterprise release.
+          Enterprise adds organizational scale, durable multi-replica state, compliance evidence and
+          multi-squad coordination.</p>
         <p>Next: <a href="../getting-started.md">Getting Started</a> · <a href="README.md">Run the demos</a> ·
           <a href="../EDITIONS.md">Editions</a></p>
       </div>

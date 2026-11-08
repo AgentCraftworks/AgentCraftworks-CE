@@ -1,6 +1,9 @@
 # Getting Started with AgentCraftworks Community Edition
 
-> **Status:** Shipped · **Edition:** Community · **Last updated:** 2026-09-18
+> **Status:** DRAFT · **Edition:** Community · **Last updated:** 2026-11-07
+>
+> This draft reflects decisions D-9 and D-13 and depends on the levels and runtime workstreams.
+> Levels 4–5 can be configured but are not yet enforced on all job paths.
 
 Community Edition serves two different people. Pick your track:
 
@@ -12,8 +15,8 @@ Community Edition serves two different people. Pick your track:
 Both tracks end at the same place: [your first handoff](#your-first-handoff), then
 [choosing how much agents may do](#choose-an-engagement-level).
 
-Every command below was run on Windows 11 (PowerShell 7) and macOS before this page
-was published. If one fails for you, see [Troubleshooting](#troubleshooting).
+Commands and examples are being added to CI smoke coverage. If one fails for you, see
+[Troubleshooting](#troubleshooting).
 
 ---
 
@@ -73,15 +76,17 @@ curl -X POST https://<your-ce-host>/api/dial/<owner>/<repo> \
   -d '{"engagement":"advisor","updatedBy":"you@example.com"}'
 ```
 
-Community Edition supports levels **1–3** — watch only, advise, or edit files. See
-[Choose an engagement level](#choose-an-engagement-level).
+Community Edition's engagement model spans levels **1–5**. Levels 4–5 can be configured but
+are not yet enforced on all job paths. Protected actions are denied by default and require both
+repository and operator allow-lists. See [Choose an engagement level](#choose-an-engagement-level).
 
 ### 5. Open a test pull request
 
 Open a pull request that touches a path in your ownership file. Community Edition creates
-a hand-off routed to the matching owners (falling back to labels such as `security` or
+a hand-off record routed to the matching owners (falling back to labels such as `security` or
 `documentation`). At level 2 or higher it labels or comments on the pull request; at
-level 1 it only records the hand-off. Your administrator can list hand-offs with
+level 1 it only records the hand-off. A handoff record does not dispatch an agent or prove that
+the requested work ran. Your administrator can list hand-offs with
 `GET /api/handoffs` — see [Demo 03](demos/03-codeowners-routing/README.md).
 
 ### 6. Where next
@@ -203,8 +208,8 @@ is your call), then continue with Track 1 steps 4–5 against `http://localhost:
 
 ## Your first handoff
 
-A hand-off moves `pending → active → completed`. AI clients drive it through six tools
-over the Model Context Protocol (MCP); GitHub Copilot and Claude launch the tool server from [`.mcp.json`](../.mcp.json)
+A hand-off record moves `pending → active → completed`. MCP clients can call six tools
+to create and update that record; these calls do not dispatch an agent. GitHub Copilot and Claude launch the tool server from [`.mcp.json`](../.mcp.json)
 (`npm run mcp`); the scripted version is [Demo 01](demos/01-first-handoff/README.md):
 
 ```bash
@@ -239,21 +244,27 @@ listed in [Architecture → MCP tool reference](architecture.md#mcp-tool-referen
 | 1 | Observer | read, list, record hand-offs | Community (default) |
 | 2 | Advisor | comment, label | Community |
 | 3 | Collaborator | edit files, create branches, assign | Community |
-| 4 | Delegated | push commits, approve, request reviews | Enterprise — declined with `422 ENTERPRISE_REQUIRED` |
-| 5 | Autonomous | merge, deploy | Enterprise — declined with `422 ENTERPRISE_REQUIRED` |
+| 4 | Delegated | actions subject to operator and repository policy | Community; see enforcement note below |
+| 5 | Autonomous | actions subject to operator and repository policy | Community; see enforcement note below |
 
-Start at **1**, watch the hand-offs Community Edition records, and raise to **2** when you
-want it to comment. [Demo 02](demos/02-engagement-levels/README.md) shows an over-level
-action being blocked and the `422` response; the reasoning is in the
-[decision record](adr/ADR-CE-001-engagement-level-cap.md).
+Start at **1** and raise the level only after reviewing the operator and repository policy.
+Levels 4–5 can be configured but are not yet enforced on all job paths. Protected actions are
+denied by default and require both repository and operator allow-lists. Until the G3 enforcement
+work is complete, do not treat these levels as a safety guarantee. [Demo 02](demos/02-engagement-levels/README.md)
+shows a T4 action denied at level 3.
 
 ## What Community Edition does not do
 
-Community Edition is a **subset**: agents may edit files but not push commits, approve,
-merge or deploy (levels 4–5); state does not survive restarts or span instances; and it
-ships 6 of the 46 agent tools. The full,
-honest list — and what carries over unchanged when you upgrade — is in
-[Editions](EDITIONS.md).
+Community Edition keeps state in a single-node store and does not provide organization-wide
+policy, durable multi-replica state, or compliance evidence. It does provide levels 1–5 in its
+engagement model, local action budgets, and a single-squad Coordinator; see the draft
+[Editions](EDITIONS.md) comparison. Levels 4–5 can be configured but are not yet enforced on all
+job paths.
+
+## Learn
+
+Community Edition Academy tracks will be linked here after the Academy publishes them.
+The links will point only to public learning material.
 
 ## Troubleshooting
 
@@ -262,7 +273,7 @@ honest list — and what carries over unchanged when you upgrade — is in
 | `401 Invalid webhook signature` | Secret mismatch, or a proxy rewrote the body | Use the same `GH_CE_WEBHOOK_SECRET` in the App and `.env`; forward raw bodies |
 | `401` on `/api/handoffs` or `/api/dial` | `GH_CE_API_TOKEN` is set but the request lacks `Authorization: Bearer …` | Send the header |
 | `503` on `/api/handoffs` in production | `GH_CE_API_TOKEN` is not set | Set it — it is mandatory when `NODE_ENV=production` |
-| `422 ENTERPRISE_REQUIRED` from `/api/dial` | You requested level 4 or 5 | Community Edition supports 1–3; see [Editions](EDITIONS.md) |
+| A level 4–5 action is handled inconsistently | Levels 4–5 can be configured but are not yet enforced on all job paths | Keep protected actions disabled and rely only on reviewed policy; do not treat a configured level as an enforcement guarantee |
 | `429 Too Many Requests` | Per-IP rate limit (default 60/min on the API) | Raise `API_RATE_LIMIT` or slow down |
 | Tool server starts but a client sees no tools | It was launched over HTTP | The tool server speaks **stdio** — launch it with `npm run mcp` from `.mcp.json` |
 | Handoffs vanished | Process restarted | Expected — storage is in-memory |

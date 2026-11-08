@@ -131,7 +131,7 @@ use exactly one pattern — a short callout, never a feature description:
 
 ```markdown
 > **Enterprise:** Adaptive rate governing and multi-agent squad coordination are part
-> of AgentCraftworks Enterprise. See [Editions](EDITIONS.md).
+> of AgentCraftworks Enterprise. See [Editions](../EDITIONS.md).
 ```
 
 ---

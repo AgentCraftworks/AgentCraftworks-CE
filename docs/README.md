@@ -2,9 +2,10 @@
 
 > **Status:** Shipped · **Edition:** Community · **Last updated:** 2026-09-18
 
-Everything in `docs/` describes features that are **implemented and shipping** in
-Community Edition. Plans and proposals live in [`docs/futures/`](futures/README.md) and
-are labelled `DRAFT` — implementation agents should ignore them.
+Shipped documents describe capabilities that are implemented in Community Edition.
+Documents labelled `DRAFT` describe decisions or capabilities that are still in progress;
+they are not promises of shipped behavior. Other plans and proposals live in
+[`docs/futures/`](futures/README.md).
 
 ## Start here
 
@@ -12,14 +13,13 @@ are labelled `DRAFT` — implementation agents should ignore them.
 |---|---|
 | [Getting Started](getting-started.md) | You are new. Two tracks: install the GitHub App (5 min) or run your own instance (30 min). |
 | [Demos](demos/README.md) | You want proof in minutes — four scripted demos plus a [two-minute architecture walkthrough](demos/ce-architecture.html). |
-| [Editions — Community vs Enterprise](EDITIONS.md) | You need to know exactly what CE does and does not do. The only page that names Enterprise features. |
+| [Editions — Community and Enterprise](EDITIONS.md) | Draft comparison reflecting decisions D-9 and D-13. Levels 4–5 can be configured but are not yet enforced on all job paths. |
 
 ## Reference
 
 | Document | Covers |
 |---|---|
 | [Architecture](architecture.md) | Request flow, handoff state machine, storage, pull request routing and gating, MCP tool reference, engagement levels |
-| [ADR-CE-001 — Engagement level cap](adr/ADR-CE-001-engagement-level-cap.md) | Why CE supports levels 1–3 and returns `422 ENTERPRISE_REQUIRED` for 4–5 |
 | [GH-AW workflows](GHAW_WORKFLOWS.md) | The `ghaw-*` agentic workflow catalogue and `ACW PR Readiness` gate |
 | [Accessibility](accessibility.md) | WCAG 2.2 AA requirements and the accessibility agent team |
 | [`.mcp.json`](../.mcp.json) | MCP client configuration for GitHub Copilot and Claude (`npm run mcp`, stdio) |
@@ -56,7 +56,7 @@ are labelled `DRAFT` — implementation agents should ignore them.
 
 - Every shipped document starts with a status line:
   `> **Status:** Shipped · **Edition:** Community · **Last updated:** YYYY-MM-DD`.
-- Enterprise features are named **only** in [EDITIONS.md](EDITIONS.md); elsewhere use
-  the callout "CE is / isn't" pattern and link there.
+- Enterprise capabilities are compared in [EDITIONS.md](EDITIONS.md); elsewhere use a short
+  factual reference rather than duplicating the feature list.
 - Markdown must pass the accessibility checklist in [AGENTS.md](../AGENTS.md):
   meaningful link text, heading order, alt text, tables with header rows.
