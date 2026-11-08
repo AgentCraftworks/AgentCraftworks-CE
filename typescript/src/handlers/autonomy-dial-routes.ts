@@ -13,11 +13,13 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import {
+  type ActionTier,
   ENGAGEMENT_LEVEL_NAMES,
   VALID_ENGAGEMENT_LEVEL_NAMES,
   resolveEngagementLevel,
 } from "../types/autonomy.js";
 import {
+  getEffectiveBounds,
   getDialLevel,
   setDialLevel,
 } from "../services/autonomy-dial.js";
@@ -28,6 +30,7 @@ import {
   getTierSummary,
 } from "../services/action-classifier.js";
 import { actionGate } from "../services/action-gate.js";
+import { recordAuditEvent } from "../services/audit-log.js";
 
 const router = Router();
 
@@ -217,7 +220,23 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
       return;
     }
 
+    const previousLevel = getDialLevel(owner, repo).dialLevel;
     const config = setDialLevel(owner, repo, dialLevel, updatedBy);
+    const policy = getRuntimePolicy();
+
+    recordAuditEvent({
+      event: "dial.changed",
+      actor: "operator",
+      repo: `${owner}/${repo}`,
+      action: "set_dial_level",
+      tier: `T${config.dialLevel}` as ActionTier,
+      bounds: getEffectiveBounds(owner, repo, policy),
+      timestamp: new Date().toISOString(),
+      details: {
+        previousLevel,
+        newLevel: config.dialLevel,
+      },
+    });
 
     res.json({
       ...config,

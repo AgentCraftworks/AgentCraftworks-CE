@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { loadRuntimePolicy } from "../src/config/runtime.js";
 import { clearAllDials, setDialLevel } from "../src/services/autonomy-dial.js";
 import { actionGate } from "../src/services/action-gate.js";
+import type { AuditEvent } from "../src/services/audit-log.js";
 import { clearActionBudgets } from "../src/services/action-budgets.js";
 import { PROTECTED_ACTIONS } from "../src/config/protected-actions.js";
 
@@ -21,12 +22,18 @@ describe("actionGate", () => {
       },
       () => {},
     );
+    const auditEvents: AuditEvent[] = [];
     const decision = actionGate.check(
       { owner: "owner", repo: "repo", action: "unknown_write" },
       policy,
+      { audit: (event) => auditEvents.push(event) },
     );
     assert.equal(decision.allowed, false);
     assert.equal(decision.code, "UNKNOWN_ACTION");
+    assert.deepEqual(
+      auditEvents.map(({ event, action, actor }) => ({ event, action, actor })),
+      [{ event: "gate.denied", action: "UNKNOWN_ACTION", actor: "operator" }],
+    );
   });
 
   it("denies protected actions unless both allow-lists include them", () => {
@@ -40,6 +47,7 @@ describe("actionGate", () => {
       () => {},
     );
 
+    const auditEvents: AuditEvent[] = [];
     const decision = actionGate.check(
       {
         owner: "owner",
@@ -48,9 +56,14 @@ describe("actionGate", () => {
         repoProtectedActions: [],
       },
       operatorOnly,
+      { audit: (event) => auditEvents.push(event) },
     );
     assert.equal(decision.allowed, false);
     assert.equal(decision.code, "PROTECTED_ACTION_DENIED");
+    assert.deepEqual(
+      auditEvents.map((event) => event.event),
+      ["protected.denied", "gate.denied"],
+    );
   });
 
   it("denies every protected action by default, even at level 5", () => {
@@ -132,7 +145,7 @@ describe("actionGate", () => {
       },
       () => {},
     );
-    const auditEvents: Array<Record<string, unknown>> = [];
+    const auditEvents: AuditEvent[] = [];
     const request = { owner: "owner", repo: "repo", action: "close_issue" };
 
     assert.equal(
@@ -150,11 +163,23 @@ describe("actionGate", () => {
     assert.equal(denied.allowed, false);
     assert.equal(denied.code, "BUDGET_EXHAUSTED");
     assert.equal(denied.retryAfterSeconds, 3600);
-    assert.equal(auditEvents[0]?.["event"], "budget.exhausted");
-    assert.equal(auditEvents[0]?.["actor"], "operator");
-    assert.equal(auditEvents[0]?.["action"], "close_issue");
-    assert.equal(auditEvents[0]?.["tier"], "T4");
-    assert.equal(auditEvents[0]?.["timestamp"], "1970-01-01T00:00:00.000Z");
+    assert.ok(
+      auditEvents.some((event) => event.event === "gate.allowed"),
+      "allowed actions are audited",
+    );
+    const exhausted = auditEvents.find(
+      (event) => event.event === "budget.exhausted",
+    );
+    assert.ok(exhausted);
+    assert.equal(exhausted.actor, "operator");
+    assert.equal(exhausted.repo, "owner/repo");
+    assert.equal(exhausted.action, "close_issue");
+    assert.equal(exhausted.tier, "T4");
+    assert.equal(exhausted.timestamp, "1970-01-01T00:00:00.000Z");
+    assert.ok(
+      auditEvents.some((event) => event.event === "gate.denied"),
+      "budget denial is also recorded as a gate denial",
+    );
   });
 
   it("does not consume action budgets for permission previews", () => {
