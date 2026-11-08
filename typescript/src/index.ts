@@ -12,9 +12,16 @@ import { webhookHandler } from "./handlers/pull-request.js";
 import { verifyWebhookSignatureMiddleware } from "./middleware/webhook-signature.js";
 import { initHandoffService } from "./services/handoff-service.js";
 import { initContextService } from "./services/context-service.js";
+import {
+  configureRuntimePolicy,
+  summarizeRuntimePolicy,
+} from "./config/runtime.js";
 
 const PORT = parseInt(process.env["PORT"] ?? "3000", 10);
 const app = express();
+const RUNTIME_POLICY = configureRuntimePolicy();
+
+console.log("Agent autonomy policy:", summarizeRuntimePolicy(RUNTIME_POLICY));
 
 export const DEFAULT_IP_RATE_LIMIT = 2000;
 
@@ -98,6 +105,7 @@ app.get("/health", (_req, res) => {
     version: "1.0.0-ts",
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
+    policy: summarizeRuntimePolicy(RUNTIME_POLICY),
   });
 });
 

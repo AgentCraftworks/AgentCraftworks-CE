@@ -18,6 +18,7 @@ import {
   clearAllDials,
   setDialLevel,
 } from "../src/services/autonomy-dial.js";
+import { configureRuntimePolicy } from "../src/config/runtime.js";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
@@ -77,6 +78,10 @@ await startServer();
 
 beforeEach(() => {
   clearAllDials();
+  configureRuntimePolicy({
+    GH_CE_ENVIRONMENT: "local",
+    GH_CE_REPO_CEILINGS: "org/repo=5",
+  });
 });
 
 after(async () => {
@@ -243,16 +248,21 @@ describe("POST /api/dial/check", () => {
 
   it("should apply environment tier cap", async () => {
     setDialLevel("org", "repo", 5, "admin");
+    configureRuntimePolicy({
+      GH_CE_ENVIRONMENT: "production",
+      GH_CE_REPO_CEILINGS: "org/repo=5",
+    });
     const res = await request("POST", "/api/dial/check", {
       action: "merge_pr",
       owner: "org",
       repo: "repo",
-      environment: "production",
+      environment: "local",
     });
     assert.equal(res.status, 200);
-    // production caps at 3, merge_pr requires 5
+    // The caller's local claim is ignored; the configured server policy is production.
     assert.equal(res.body["permitted"], false);
     assert.equal(res.body["effectiveLevel"], 3);
+    assert.equal(res.body["environment"], "production");
   });
 
   it("should report unknown actions as T3", async () => {
@@ -365,12 +375,15 @@ describe("Permission decision scenarios", () => {
 
   it("should cap production environment at level 3", async () => {
     setDialLevel("org", "repo", 5, "admin");
+    configureRuntimePolicy({
+      GH_CE_ENVIRONMENT: "production",
+      GH_CE_REPO_CEILINGS: "org/repo=5",
+    });
     // T3 action (requires 3) should be allowed in production (capped at 3)
     const t3 = await request("POST", "/api/dial/check", {
       action: "edit_file",
       owner: "org",
       repo: "repo",
-      environment: "production",
     });
     assert.equal(t3.body["permitted"], true);
     assert.equal(t3.body["effectiveLevel"], 3);
@@ -380,18 +393,20 @@ describe("Permission decision scenarios", () => {
       action: "merge_pr",
       owner: "org",
       repo: "repo",
-      environment: "production",
     });
     assert.equal(t5.body["permitted"], false);
   });
 
   it("should cap staging environment at level 4", async () => {
     setDialLevel("org", "repo", 5, "admin");
+    configureRuntimePolicy({
+      GH_CE_ENVIRONMENT: "staging",
+      GH_CE_REPO_CEILINGS: "org/repo=5",
+    });
     const res = await request("POST", "/api/dial/check", {
       action: "push_commit",
       owner: "org",
       repo: "repo",
-      environment: "staging",
     });
     assert.equal(res.body["permitted"], true);
     assert.equal(res.body["effectiveLevel"], 4);

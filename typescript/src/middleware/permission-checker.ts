@@ -6,7 +6,7 @@
  */
 
 import type { Request, Response, NextFunction } from "express";
-import type { ActionTier, DialLevel, EnvironmentTier } from "../types/autonomy.js";
+import type { ActionTier, DialLevel } from "../types/autonomy.js";
 import {
   isActionPermitted as dialIsActionPermitted,
 } from "../services/autonomy-dial.js";
@@ -26,7 +26,6 @@ export interface ActionRequest {
   prNumber?: number | null;
   issueNumber?: number | null;
   userLogin?: string | null;
-  envTier?: EnvironmentTier;
 }
 
 export interface PermissionResult {
@@ -49,7 +48,6 @@ export function checkActionPermission(
     repoName,
     agentSlug,
     actionType,
-    envTier,
   } = actionRequest;
 
   if (!repoOwner || !repoName || !agentSlug || !actionType) {
@@ -62,7 +60,6 @@ export function checkActionPermission(
     repoOwner,
     repoName,
     actionType,
-    envTier,
   );
 
   const classification = classifyAction(actionType);
@@ -121,7 +118,6 @@ export function requirePermission(
         repoName,
         agentSlug,
         actionType,
-        envTier: context.envTier,
       });
 
       (req as unknown as Record<string, unknown>)["permissionCheck"] = result;

@@ -24,6 +24,7 @@ import {
   clearAllDials,
   DEFAULT_DIAL_LEVEL,
 } from "../src/services/autonomy-dial.js";
+import { loadRuntimePolicy } from "../src/config/runtime.js";
 import {
   mapLegacyDialLevel,
   resolveEngagementLevel,
@@ -308,30 +309,116 @@ describe("Autonomy Dial", () => {
 
   it("should apply environment tier cap", () => {
     setDialLevel("owner", "repo", 5, "admin");
-    // Production caps at 3
-    const effective = getEffectiveLevel("owner", "repo", "production");
-    assert.equal(effective, 3);
-    // Staging caps at 4
-    const effectiveStaging = getEffectiveLevel("owner", "repo", "staging");
+    const repoOptIn = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "production",
+        GH_CE_ENV_MAX_LEVELS: "production=5",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+      },
+      () => {},
+    );
+    const effective = getEffectiveLevel("owner", "repo", repoOptIn);
+    assert.equal(effective, 5);
+
+    const productionDefault = loadRuntimePolicy(
+      { GH_CE_ENVIRONMENT: "production", GH_CE_REPO_CEILINGS: "owner/repo=5" },
+      () => {},
+    );
+    assert.equal(getEffectiveLevel("owner", "repo", productionDefault), 3);
+
+    const stagingPolicy = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "staging",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+      },
+      () => {},
+    );
+    const effectiveStaging = getEffectiveLevel("owner", "repo", stagingPolicy);
     assert.equal(effectiveStaging, 4);
-    // Local has no cap (5)
-    const effectiveLocal = getEffectiveLevel("owner", "repo", "local");
+
+    const localPolicy = loadRuntimePolicy(
+      { GH_CE_ENVIRONMENT: "local", GH_CE_REPO_CEILINGS: "owner/repo=5" },
+      () => {},
+    );
+    const effectiveLocal = getEffectiveLevel("owner", "repo", localPolicy);
     assert.equal(effectiveLocal, 5);
   });
 
-  it("should factor env tier into permission check", () => {
+  it("should apply the pause kill switch before all other bounds", () => {
     setDialLevel("owner", "repo", 5, "admin");
-    // Without env tier, merge_pr (requires 5) should be allowed at level 5
-    const allowed = dialIsActionPermitted("owner", "repo", "merge_pr");
+    const policy = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "local",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+        GH_CE_AGENTS_PAUSED: "true",
+      },
+      () => {},
+    );
+    assert.equal(getEffectiveLevel("owner", "repo", policy), 1);
+    const permission = dialIsActionPermitted(
+      "owner",
+      "repo",
+      "post_comment",
+      policy,
+    );
+    assert.equal(permission.permitted, false);
+    assert.equal(permission.effectiveLevel, 1);
+  });
+
+  it("should factor server policy bounds into permission checks", () => {
+    setDialLevel("owner", "repo", 5, "admin");
+    const repoOptIn = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "local",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+      },
+      () => {},
+    );
+    const allowed = dialIsActionPermitted(
+      "owner",
+      "repo",
+      "merge_pr",
+      repoOptIn,
+    );
     assert.equal(allowed.permitted, true);
-    // With production cap (3), merge_pr should be denied
+
+    const productionPolicy = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "production",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+      },
+      () => {},
+    );
     const denied = dialIsActionPermitted(
       "owner",
       "repo",
       "merge_pr",
-      "production",
+      productionPolicy,
     );
     assert.equal(denied.permitted, false);
+    assert.equal(denied.effectiveLevel, 3);
+  });
+
+  it("caps repositories without config at level 3", () => {
+    setDialLevel("owner", "repo", 5, "admin");
+    const policy = loadRuntimePolicy(
+      { GH_CE_ENVIRONMENT: "local" },
+      () => {},
+    );
+    assert.equal(getEffectiveLevel("owner", "repo", policy), 3);
+  });
+
+  it("retains configured policy bounds for server-controlled tiers", () => {
+    setDialLevel("owner", "repo", 5, "admin");
+    const policy = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "staging",
+        GH_CE_ENV_MAX_LEVELS: "staging=4",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+      },
+      () => {},
+    );
+    assert.equal(getEffectiveLevel("owner", "repo", policy), 4);
   });
 
   it("should clear all dials", () => {

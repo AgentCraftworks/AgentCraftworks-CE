@@ -15,6 +15,7 @@ import {
 import {
   checkActionPermission,
 } from "../src/middleware/permission-checker.js";
+import { configureRuntimePolicy } from "../src/config/runtime.js";
 import {
   setDialLevel,
   clearAllDials,
@@ -141,6 +142,10 @@ src/backend/ @org/backend
 describe("checkActionPermission", () => {
   beforeEach(() => {
     clearAllDials();
+    configureRuntimePolicy({
+      GH_CE_ENVIRONMENT: "local",
+      GH_CE_REPO_CEILINGS: "owner/repo=5",
+    });
   });
 
   it("should permit T1 action with default dial level", () => {
@@ -191,15 +196,18 @@ describe("checkActionPermission", () => {
     );
   });
 
-  it("should apply env tier cap when provided", () => {
+  it("should apply the server-configured environment ceiling", () => {
     setDialLevel("owner", "repo", 5, "admin");
+    configureRuntimePolicy({
+      GH_CE_ENVIRONMENT: "production",
+      GH_CE_REPO_CEILINGS: "owner/repo=5",
+    });
     // Production caps at 3, merge_pr requires 5 -> denied
     const result = checkActionPermission({
       repoOwner: "owner",
       repoName: "repo",
       agentSlug: "@bot",
       actionType: "merge_pr",
-      envTier: "production",
     });
     assert.equal(result.permitted, false);
   });
