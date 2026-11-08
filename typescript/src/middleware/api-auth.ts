@@ -12,7 +12,7 @@
  *  - any other NODE_ENV → 503 with an operator-facing error
  */
 
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
 import type { Express, NextFunction, Request, RequestHandler, Response } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -54,8 +54,16 @@ export interface ApiAuthOptions {
 
 /** Constant-time comparison that does not leak length information via early exit. */
 export function tokensMatch(presented: string, expected: string): boolean {
-  const a = createHash("sha256").update(presented).digest();
-  const b = createHash("sha256").update(expected).digest();
+  const presentedBytes = Buffer.from(presented, "utf8");
+  const expectedBytes = Buffer.from(expected, "utf8");
+  const size = Math.max(presentedBytes.length, expectedBytes.length) + 4;
+  const a = Buffer.alloc(size);
+  const b = Buffer.alloc(size);
+  // Encoding the length prevents zero padding from making distinct credentials equal.
+  a.writeUInt32BE(presentedBytes.length);
+  b.writeUInt32BE(expectedBytes.length);
+  presentedBytes.copy(a, 4);
+  expectedBytes.copy(b, 4);
   return timingSafeEqual(a, b);
 }
 

@@ -117,6 +117,10 @@ describe("api-auth helpers", () => {
     assert.equal(tokensMatch("abc", "abd"), false);
     assert.equal(tokensMatch("abc", "abcd"), false);
     assert.equal(tokensMatch("", "abc"), false);
+    assert.equal(tokensMatch("abc", "abc\0"), false);
+    assert.equal(tokensMatch("abc\0", "abc"), false);
+    assert.equal(tokensMatch("\u00e9", "\u00e9"), true);
+    assert.equal(tokensMatch("\u00e9", "e"), false);
   });
 
   it("extractBearerToken: parses scheme case-insensitively and rejects other schemes", () => {
