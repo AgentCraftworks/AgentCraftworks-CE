@@ -21,6 +21,10 @@ import {
 import { configureRuntimePolicy } from "../src/config/runtime.js";
 import { clearActionBudgets } from "../src/services/action-budgets.js";
 import { actionGate } from "../src/services/action-gate.js";
+import {
+  clearAuditEvents,
+  listAuditEvents,
+} from "../src/services/audit-log.js";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
@@ -81,6 +85,7 @@ await startServer();
 beforeEach(() => {
   clearAllDials();
   clearActionBudgets();
+  clearAuditEvents();
   configureRuntimePolicy({
     GH_CE_ENVIRONMENT: "local",
     GH_CE_REPO_CEILINGS: "org/repo=5",
@@ -136,6 +141,30 @@ describe("POST /api/dial/:owner/:repo", () => {
     assert.equal(res.status, 200);
     assert.equal(res.body["dialLevel"], 5);
     assert.equal(res.body["updatedBy"], "user2");
+  });
+
+  it("audits dial changes with the server actor and effective bounds", async () => {
+    setDialLevel("org", "repo", 2, "previous-user");
+    const res = await request("POST", "/api/dial/org/repo", {
+      dialLevel: 4,
+      updatedBy: "caller-supplied-actor",
+    });
+
+    assert.equal(res.status, 200);
+    const event = listAuditEvents("org/repo").find(
+      (entry) => entry.event === "dial.changed",
+    );
+    assert.ok(event);
+    assert.equal(event.actor, "operator");
+    assert.equal(event.action, "set_dial_level");
+    assert.equal(event.tier, "T4");
+    assert.deepEqual(event.details, { previousLevel: 2, newLevel: 4 });
+    assert.deepEqual(event.bounds, {
+      repoCeiling: 5,
+      environmentCeiling: 5,
+      globalCeiling: 5,
+      agentsPaused: false,
+    });
   });
 
   it("should accept level 1 (minimum)", async () => {

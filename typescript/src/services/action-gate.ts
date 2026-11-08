@@ -16,6 +16,11 @@ import {
   getEffectiveActionBudgetLimit,
 } from "./action-budgets.js";
 import { isActionPermitted } from "./autonomy-dial.js";
+import {
+  recordAuditEvent,
+  type AuditEvent,
+  type AuditEventName,
+} from "./audit-log.js";
 
 export interface ActionGateRequest {
   owner: string;
@@ -47,7 +52,45 @@ export interface ActionGateDecision {
 export interface ActionGateCheckOptions {
   consumeBudget?: boolean;
   now?: number;
-  audit?: (event: Record<string, unknown>) => void;
+  audit?: (event: AuditEvent) => void;
+}
+
+function auditDecision(
+  request: ActionGateRequest,
+  decision: ActionGateDecision,
+  event: AuditEventName,
+  options: ActionGateCheckOptions,
+  timestamp = new Date(options.now ?? Date.now()).toISOString(),
+  details?: Readonly<Record<string, string | number | boolean | null>>,
+): void {
+  const auditEvent: AuditEvent = {
+    event,
+    actor: "operator",
+    repo: `${request.owner}/${request.repo}`,
+    action:
+      decision.code === "UNKNOWN_ACTION"
+        ? "UNKNOWN_ACTION"
+        : decision.action,
+    tier: decision.tier,
+    bounds: decision.bounds,
+    timestamp,
+    ...(details ? { details } : {}),
+  };
+
+  if (options.audit) {
+    options.audit(auditEvent);
+  } else {
+    recordAuditEvent(auditEvent);
+  }
+}
+
+function deny(
+  request: ActionGateRequest,
+  decision: ActionGateDecision,
+  options: ActionGateCheckOptions,
+): ActionGateDecision {
+  auditDecision(request, decision, "gate.denied", options);
+  return decision;
 }
 
 export const actionGate = {
@@ -65,17 +108,21 @@ export const actionGate = {
     );
 
     if (!classification.isKnownAction) {
-      return {
-        allowed: false,
-        code: "UNKNOWN_ACTION",
-        action: classification.actionType,
-        tier: classification.tier,
-        dialLevel: permission.dialLevel,
-        requiredLevel: permission.requiredLevel,
-        effectiveLevel: permission.effectiveLevel,
-        bounds: permission.bounds,
-        reason: `Unknown action "${classification.actionType}" is denied (UNKNOWN_ACTION).`,
-      };
+      return deny(
+        request,
+        {
+          allowed: false,
+          code: "UNKNOWN_ACTION",
+          action: classification.actionType,
+          tier: classification.tier,
+          dialLevel: permission.dialLevel,
+          requiredLevel: permission.requiredLevel,
+          effectiveLevel: permission.effectiveLevel,
+          bounds: permission.bounds,
+          reason: `Unknown action "${classification.actionType}" is denied (UNKNOWN_ACTION).`,
+        },
+        options,
+      );
     }
 
     if (
@@ -89,17 +136,21 @@ export const actionGate = {
       ].includes(classification.actionType) &&
       !request.branchName?.startsWith("agent/")
     ) {
-      return {
-        allowed: false,
-        code: "AGENT_BRANCH_REQUIRED",
-        action: classification.actionType,
-        tier: classification.tier,
-        dialLevel: permission.dialLevel,
-        requiredLevel: permission.requiredLevel,
-        effectiveLevel: permission.effectiveLevel,
-        bounds: permission.bounds,
-        reason: `Action "${classification.actionType}" is permitted only on an agent/* branch.`,
-      };
+      return deny(
+        request,
+        {
+          allowed: false,
+          code: "AGENT_BRANCH_REQUIRED",
+          action: classification.actionType,
+          tier: classification.tier,
+          dialLevel: permission.dialLevel,
+          requiredLevel: permission.requiredLevel,
+          effectiveLevel: permission.effectiveLevel,
+          bounds: permission.bounds,
+          reason: `Action "${classification.actionType}" is permitted only on an agent/* branch.`,
+        },
+        options,
+      );
     }
 
     if (
@@ -107,7 +158,7 @@ export const actionGate = {
       (!policy.allowedProtectedActions.has(classification.actionType) ||
         !request.repoProtectedActions?.includes(classification.actionType))
     ) {
-      return {
+      const decision: ActionGateDecision = {
         allowed: false,
         code: "PROTECTED_ACTION_DENIED",
         action: classification.actionType,
@@ -118,20 +169,26 @@ export const actionGate = {
         bounds: permission.bounds,
         reason: `Protected action "${classification.actionType}" requires both the repository and operator allow-lists.`,
       };
+      auditDecision(request, decision, "protected.denied", options);
+      return deny(request, decision, options);
     }
 
     if (!permission.permitted) {
-      return {
-        allowed: false,
-        code: permission.code ?? "INSUFFICIENT_LEVEL",
-        action: classification.actionType,
-        tier: classification.tier,
-        dialLevel: permission.dialLevel,
-        requiredLevel: permission.requiredLevel,
-        effectiveLevel: permission.effectiveLevel,
-        bounds: permission.bounds,
-        reason: permission.reason,
-      };
+      return deny(
+        request,
+        {
+          allowed: false,
+          code: permission.code ?? "INSUFFICIENT_LEVEL",
+          action: classification.actionType,
+          tier: classification.tier,
+          dialLevel: permission.dialLevel,
+          requiredLevel: permission.requiredLevel,
+          effectiveLevel: permission.effectiveLevel,
+          bounds: permission.bounds,
+          reason: permission.reason,
+        },
+        options,
+      );
     }
 
     if (
@@ -153,21 +210,7 @@ export const actionGate = {
       );
       if (!budget.allowed) {
         const retryAfterSeconds = budget.retryAfterSeconds ?? 1;
-        const event = {
-          msg: "action budget exhausted",
-          event: "budget.exhausted",
-          actor: "operator",
-          owner: request.owner,
-          repo: request.repo,
-          action: classification.actionType,
-          tier,
-          limit,
-          retryAfterSeconds,
-          timestamp: new Date(options.now ?? Date.now()).toISOString(),
-          bounds: permission.bounds,
-        };
-        (options.audit ?? ((entry) => console.log(JSON.stringify(entry))))(event);
-        return {
+        const decision: ActionGateDecision = {
           allowed: false,
           code: "BUDGET_EXHAUSTED",
           action: classification.actionType,
@@ -179,10 +222,16 @@ export const actionGate = {
           retryAfterSeconds,
           reason: `Action budget exhausted for ${tier}; retry after ${retryAfterSeconds} seconds.`,
         };
+        const timestamp = new Date(options.now ?? Date.now()).toISOString();
+        auditDecision(request, decision, "budget.exhausted", options, timestamp, {
+          limit,
+          retryAfterSeconds,
+        });
+        return deny(request, decision, options);
       }
     }
 
-    return {
+    const decision: ActionGateDecision = {
       allowed: true,
       action: classification.actionType,
       tier: classification.tier,
@@ -192,6 +241,8 @@ export const actionGate = {
       bounds: permission.bounds,
       reason: permission.reason,
     };
+    auditDecision(request, decision, "gate.allowed", options);
+    return decision;
   },
 };
 

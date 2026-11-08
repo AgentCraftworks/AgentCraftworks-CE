@@ -204,7 +204,7 @@ export function getEffectiveLevel(
   ) as DialLevel;
 }
 
-function getEffectiveBounds(
+export function getEffectiveBounds(
   owner: string,
   repo: string,
   policy: RuntimePolicy,
