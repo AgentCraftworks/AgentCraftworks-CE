@@ -10,10 +10,11 @@
  *   TARGET_BRANCH  — Branch to update (defaults to main)
  *   LOOKBACK_HOURS — Hours to look back for merged PRs (defaults to 24)
  *
- * Engagement Level: T3 (Collaborator) — creates PRs with file edits.
+ * Engagement Level: T3 (Collaborator) — creates draft PRs with file edits.
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 
 interface ChangelogEntry {
   category: "Features" | "Bug Fixes" | "Documentation" | "Maintenance" | "Breaking Changes";
@@ -136,7 +137,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "daily-doc-updater",
+  });
 
   // Calculate cutoff time
   const cutoff = new Date();
@@ -233,7 +238,7 @@ async function main(): Promise<void> {
   }
 
   // Create a branch
-  const branchName = `docs/changelog-${formatDate(new Date())}`;
+  const branchName = `agent/docs-changelog-${formatDate(new Date())}`;
 
   const { data: refData } = await octokit.git.getRef({
     owner,
@@ -289,6 +294,7 @@ async function main(): Promise<void> {
     head: branchName,
     base: targetBranch,
     body: prBody,
+    draft: true,
   });
 
   console.log(`Daily Doc Updater: Created PR #${pr.number}`);

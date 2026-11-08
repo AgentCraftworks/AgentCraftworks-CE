@@ -10,10 +10,12 @@
  *   PR_NUMBER      — PR number to review
  *   REPOSITORY     — owner/repo string
  *
- * Engagement Level: T2 (Advisor) — posts review comments, no direct edits.
+ * Engagement Level: T4 (Delegated) — may approve only after inspecting changed files.
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
+import { selectGrumpyReviewEvent } from "./grumpy-reviewer-policy.js";
 
 interface CodeSmell {
   name: string;
@@ -166,7 +168,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "grumpy-reviewer",
+  });
   const prNum = parseInt(prNumber, 10);
 
   // Get PR details
@@ -185,6 +191,7 @@ async function main(): Promise<void> {
 
   const reviewComments: ReviewComment[] = [];
   const issuesByFile: Map<string, ReviewComment[]> = new Map();
+  let inspectedFiles = 0;
 
   // Analyze each file
   for (const file of files) {
@@ -209,6 +216,7 @@ async function main(): Promise<void> {
 
       const fileContent = Buffer.from(content.content, "base64").toString("utf-8");
       const lines = fileContent.split("\n");
+      inspectedFiles++;
 
       for (const smell of CODE_SMELLS) {
         for (let i = 0; i < lines.length; i++) {
@@ -287,12 +295,7 @@ async function main(): Promise<void> {
   const reviewBody = bodyLines.join("\n");
 
   // Determine review event type
-  let event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT" = "COMMENT";
-  if (errors > 0) {
-    event = "REQUEST_CHANGES";
-  } else if (total === 0) {
-    event = "APPROVE";
-  }
+  const event = selectGrumpyReviewEvent(inspectedFiles, errors, total);
 
   // Submit review
   await octokit.pulls.createReview({

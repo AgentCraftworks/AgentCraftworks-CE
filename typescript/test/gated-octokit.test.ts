@@ -15,6 +15,8 @@ import { loadRuntimePolicy } from "../src/config/runtime.js";
 type Params = Record<string, unknown>;
 
 interface MockOctokit {
+  actions: Record<string, (params: Params) => Promise<void>>;
+  checks: Record<string, (params: Params) => Promise<void>>;
   issues: Record<string, (params: Params) => Promise<void>>;
   pulls: Record<string, (params: Params) => Promise<void>>;
   repos: Record<string, (params: Params) => Promise<void>>;
@@ -30,7 +32,20 @@ function makeOctokit(): { client: MockOctokit; calls: string[] } {
   };
   return {
     client: {
+      actions: {
+        downloadJobLogsForWorkflowRun: method("actions.downloadJobLogsForWorkflowRun"),
+        downloadWorkflowRunLogs: method("actions.downloadWorkflowRunLogs"),
+        getWorkflowRun: method("actions.getWorkflowRun"),
+        listJobsForWorkflowRun: method("actions.listJobsForWorkflowRun"),
+        listRepoWorkflows: method("actions.listRepoWorkflows"),
+        listWorkflowRuns: method("actions.listWorkflowRuns"),
+      },
+      checks: {
+        listForRef: method("checks.listForRef"),
+      },
       issues: {
+        get: method("issues.get"),
+        listForRepo: method("issues.listForRepo"),
         create: method("issues.create"),
         createComment: method("issues.createComment"),
         updateComment: method("issues.updateComment"),
@@ -39,13 +54,22 @@ function makeOctokit(): { client: MockOctokit; calls: string[] } {
         update: method("issues.update"),
       },
       pulls: {
+        get: method("pulls.get"),
+        list: method("pulls.list"),
+        listFiles: method("pulls.listFiles"),
         create: method("pulls.create"),
         createReview: method("pulls.createReview"),
       },
       repos: {
+        getCommit: method("repos.getCommit"),
+        getContent: method("repos.getContent"),
+        getLatestRelease: method("repos.getLatestRelease"),
+        listCommits: method("repos.listCommits"),
         createOrUpdateFileContents: method("repos.createOrUpdateFileContents"),
       },
       git: {
+        getRef: method("git.getRef"),
+        getTree: method("git.getTree"),
         createRef: method("git.createRef"),
       },
       request: async () => {
@@ -130,24 +154,91 @@ describe("createGatedOctokit", () => {
       job: "mapping-test",
       policy,
     });
-    const writes: Array<() => Promise<void>> = [
-      () => gated.issues.createComment({}),
-      () => gated.issues.updateComment({}),
-      () => gated.issues.addLabels({}),
-      () => gated.issues.removeLabel({}),
-      () => gated.issues.update({ state: "closed" }),
-      () => gated.issues.update({ state: "open" }),
-      () => gated.issues.create({}),
-      () => gated.pulls.create({ draft: true }),
-      () => gated.pulls.create({ draft: false }),
-      () => gated.pulls.createReview({ event: "APPROVE" }),
-      () => gated.pulls.createReview({ event: "REQUEST_CHANGES" }),
-      () => gated.repos.createOrUpdateFileContents({ branch: "agent/test" }),
-      () => gated.git.createRef({ ref: "refs/heads/agent/test" }),
+    const writes: Array<{
+      action: string;
+      tier: string;
+      invoke: () => Promise<void>;
+    }> = [
+      {
+        action: "post_comment",
+        tier: "T2",
+        invoke: () => gated.issues.createComment({}),
+      },
+      {
+        action: "update_comment",
+        tier: "T2",
+        invoke: () => gated.issues.updateComment({}),
+      },
+      {
+        action: "add_label",
+        tier: "T2",
+        invoke: () => gated.issues.addLabels({}),
+      },
+      {
+        action: "remove_label",
+        tier: "T2",
+        invoke: () => gated.issues.removeLabel({}),
+      },
+      {
+        action: "close_issue",
+        tier: "T4",
+        invoke: () => gated.issues.update({ state: "closed" }),
+      },
+      {
+        action: "reopen_issue",
+        tier: "T4",
+        invoke: () => gated.issues.update({ state: "open" }),
+      },
+      {
+        action: "create_issue",
+        tier: "T3",
+        invoke: () => gated.issues.create({}),
+      },
+      {
+        action: "create_draft_pr",
+        tier: "T3",
+        invoke: () => gated.pulls.create({ draft: true }),
+      },
+      {
+        action: "create_pr",
+        tier: "T4",
+        invoke: () => gated.pulls.create({ draft: false }),
+      },
+      {
+        action: "approve_pr",
+        tier: "T4",
+        invoke: () => gated.pulls.createReview({ event: "APPROVE" }),
+      },
+      {
+        action: "request_changes",
+        tier: "T3",
+        invoke: () => gated.pulls.createReview({ event: "REQUEST_CHANGES" }),
+      },
+      {
+        action: "post_review_comment",
+        tier: "T2",
+        invoke: () => gated.pulls.createReview({ event: "COMMENT" }),
+      },
+      {
+        action: "create_file",
+        tier: "T3",
+        invoke: () => gated.repos.createOrUpdateFileContents({ branch: "agent/test" }),
+      },
+      {
+        action: "create_branch",
+        tier: "T3",
+        invoke: () => gated.git.createRef({ ref: "refs/heads/agent/test" }),
+      },
     ];
 
     for (const write of writes) {
-      await assert.rejects(async () => write(), ActionGateDeniedError);
+      await assert.rejects(
+        async () => write.invoke(),
+        (error: unknown) =>
+          error instanceof ActionGateDeniedError &&
+          error.decision.action === write.action &&
+          error.decision.tier === write.tier,
+      );
     }
     assert.deepEqual(calls, []);
   });
@@ -179,6 +270,32 @@ describe("createGatedOctokit", () => {
       ActionGateDeniedError,
     );
     assert.deepEqual(calls, []);
+  });
+
+  it("allows only explicitly classified read methods without gate elevation", async () => {
+    const { client, calls } = makeOctokit();
+    const gated = createGatedOctokit(client, {
+      owner: "owner",
+      repo: "repo",
+      job: "read-only-test",
+      policy,
+    });
+
+    await gated.actions.getWorkflowRun({});
+    await gated.checks.listForRef({});
+    await gated.issues.listForRepo({});
+    await gated.pulls.listFiles({});
+    await gated.repos.getContent({});
+    await gated.git.getRef({});
+
+    assert.deepEqual(calls, [
+      "actions.getWorkflowRun",
+      "checks.listForRef",
+      "issues.listForRepo",
+      "pulls.listFiles",
+      "repos.getContent",
+      "git.getRef",
+    ]);
   });
 
   it("blocks an actual Octokit mutation before a request is sent", async () => {
@@ -222,7 +339,7 @@ describe("createGatedOctokit", () => {
     ]);
   });
 
-  it("wires every C-10a GH-AW job through the gated Octokit", async () => {
+  it("wires every write-capable GH-AW job through the gated Octokit", async () => {
     const jobs = [
       {
         source: "ci-coach.ts",
@@ -259,6 +376,39 @@ describe("createGatedOctokit", () => {
         workflow: "ghaw-ci-doctor.yml",
         tier: "T3",
       },
+      {
+        source: "plan-command.ts",
+        workflow: "ghaw-plan.yml",
+        tier: "T3",
+      },
+      {
+        source: "sub-issue-closer.ts",
+        workflow: "ghaw-sub-issue-closer.yml",
+        tier: "T4",
+      },
+      {
+        source: "daily-doc-updater.ts",
+        workflow: "ghaw-daily-doc-updater.yml",
+        tier: "T3",
+        createsDraftPr: true,
+      },
+      {
+        source: "link-checker.ts",
+        workflow: "ghaw-link-checker.yml",
+        tier: "T3",
+        createsDraftPr: true,
+      },
+      {
+        source: "code-simplifier.ts",
+        workflow: "ghaw-code-simplifier.yml",
+        tier: "T3",
+        createsDraftPr: true,
+      },
+      {
+        source: "grumpy-reviewer.ts",
+        workflow: "ghaw-grumpy-reviewer.yml",
+        tier: "T4",
+      },
     ];
 
     for (const job of jobs) {
@@ -276,6 +426,25 @@ describe("createGatedOctokit", () => {
         new RegExp(`Engagement Level: ${job.tier}`),
         `${job.source} must declare the correct tier`,
       );
+      if (job.source === "grumpy-reviewer.ts") {
+        assert.match(
+          source,
+          /selectGrumpyReviewEvent\(inspectedFiles,\s*errors,\s*total\)/,
+          "Grumpy Reviewer must base its review event on inspected files",
+        );
+      }
+      if ("createsDraftPr" in job) {
+        assert.match(
+          source,
+          /branchName = `agent\//,
+          `${job.source} must create its branch under agent/*`,
+        );
+        assert.match(
+          source,
+          /draft:\s*true/,
+          `${job.source} must create draft pull requests`,
+        );
+      }
       const workflow = await readFile(
         new URL(`../../.github/workflows/${job.workflow}`, import.meta.url),
         "utf8",
@@ -286,5 +455,21 @@ describe("createGatedOctokit", () => {
         `${job.workflow} must declare the correct tier`,
       );
     }
+
+    const changeset = await readFile(
+      new URL("../src/jobs/changeset.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(changeset, /Engagement Level: T1/);
+    assert.doesNotMatch(
+      changeset,
+      /octokit\.(?:issues\.(?:create|createComment|update)|pulls\.create|git\.createRef|repos\.createOrUpdateFileContents)\(/,
+      "changeset.ts is read-only and currently has no mutation to gate",
+    );
+    const changesetWorkflow = await readFile(
+      new URL("../../.github/workflows/ghaw-changeset.yml", import.meta.url),
+      "utf8",
+    );
+    assert.match(changesetWorkflow, /Engagement Level: T1/);
   });
 });

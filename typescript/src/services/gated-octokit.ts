@@ -15,7 +15,9 @@ const READ_ONLY_METHODS: Readonly<Record<string, ReadonlySet<string>>> = {
   ]),
   checks: new Set(["listForRef"]),
   issues: new Set(["get", "listForRepo"]),
-  pulls: new Set(["get", "listFiles"]),
+  pulls: new Set(["get", "list", "listFiles"]),
+  repos: new Set(["getCommit", "getContent", "getLatestRelease", "listCommits"]),
+  git: new Set(["getRef", "getTree"]),
 };
 
 export interface GatedOctokitContext {
@@ -177,6 +179,9 @@ export function createGatedOctokit<T extends object>(
   return new Proxy(octokit, {
     get(target, property, receiver) {
       const value: unknown = Reflect.get(target, property, receiver);
+      if (property === "paginate" && typeof value === "function") {
+        return (...args: unknown[]) => Reflect.apply(value, target, args);
+      }
       if (
         (property === "request" || property === "graphql") &&
         typeof value === "function"

@@ -15,10 +15,11 @@
  *   TARGET_BRANCH — Branch to scan (defaults to main)
  *   CREATE_PR     — If "true", creates a PR with fixes; otherwise creates an issue
  *
- * Engagement Level: T3 (Collaborator) — can create PRs with file edits.
+ * Engagement Level: T3 (Collaborator) — creates draft PRs with file edits.
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 
 interface UrlReplacement {
   pattern: RegExp;
@@ -142,7 +143,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "link-checker",
+  });
 
   // Get repo tree to find markdown files
   const { data: refData } = await octokit.git.getRef({
@@ -218,7 +223,7 @@ async function main(): Promise<void> {
 
   if (createPr && filesToUpdate.size > 0) {
     // Create a branch and PR with updates
-    const branchName = `chore/modernize-urls-${Date.now()}`;
+    const branchName = `agent/chore-modernize-urls-${Date.now()}`;
 
     // Create branch
     await octokit.git.createRef({

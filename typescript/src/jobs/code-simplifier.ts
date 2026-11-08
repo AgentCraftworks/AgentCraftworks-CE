@@ -15,6 +15,7 @@
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 
 interface SimplificationRule {
   name: string;
@@ -209,7 +210,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "code-simplifier",
+  });
 
   // Get recent commits
   const since = new Date();
@@ -299,7 +304,7 @@ async function main(): Promise<void> {
   console.log(`Code Simplifier: Found ${totalSimplifications} simplifications in ${fileChanges.length} files.`);
 
   // Create branch
-  const branchName = `refactor/code-simplify-${Date.now()}`;
+  const branchName = `agent/refactor-code-simplify-${Date.now()}`;
 
   const { data: refData } = await octokit.git.getRef({
     owner,
