@@ -59,9 +59,41 @@ src/backend/ @org/backend-team @org/security
 *.js @org/js-team
 `;
     const rules = parseCodeowners(content, "org");
-    // Only the @org/js-team rule should be parsed
     assert.equal(rules.length, 1);
     assert.deepEqual(rules[0]!.teams, ["js-team"]);
+  });
+
+  it("retains a matching pattern with no owners", () => {
+    const rules = parseCodeowners("private/**", "org");
+    assert.equal(rules.length, 1);
+    assert.deepEqual(rules[0]!.teams, []);
+  });
+
+  it("parses escaped spaces and hashes in patterns", () => {
+    const rules = parseCodeowners(String.raw`path/with\ space/\#draft.md @org/docs`);
+    assert.equal(rules.length, 1);
+    assert.deepEqual(rules[0]!.teams, ["docs"]);
+    assert.deepEqual(
+      matchFileToTeams("path/with space/#draft.md", rules),
+      ["docs"],
+    );
+  });
+
+  it("ignores inline comments after owners", () => {
+    const rules = parseCodeowners(
+      "*.js @org/javascript # inline comment",
+      "org",
+    );
+    assert.equal(rules.length, 1);
+    assert.deepEqual(rules[0]!.teams, ["javascript"]);
+  });
+
+  it("ignores escaped leading hashes and unsupported negation patterns", () => {
+    const rules = parseCodeowners(
+      String.raw`\#draft.md @org/ignored` + "\n!private/** @org/ignored",
+      "org",
+    );
+    assert.deepEqual(rules, []);
   });
 
   it("should strip org prefix from owners", () => {
@@ -79,35 +111,92 @@ src/backend/ @org/backend-team @org/security
 });
 
 describe("matchFileToTeams", () => {
-  const rules = parseCodeowners(
-    `
+  it("uses only the last matching rule, not the union of matching owners", () => {
+    const rules = parseCodeowners(
+      `
 * @org/default-team
 src/frontend/ @org/frontend
 src/backend/ @org/backend
 *.test.ts @org/test-team
 docs/**/*.md @org/docs-team
 `,
-    "org",
-  );
+      "org",
+    );
 
-  it("should match wildcard * to any file", () => {
-    const teams = matchFileToTeams("README.md", rules);
-    assert.ok(teams.includes("default-team"));
+    assert.deepEqual(matchFileToTeams("README.md", rules), ["default-team"]);
+    assert.deepEqual(
+      matchFileToTeams("src/frontend/index.tsx", rules),
+      ["frontend"],
+    );
+    assert.deepEqual(
+      matchFileToTeams("src/utils/helper.test.ts", rules),
+      ["test-team"],
+    );
+    assert.deepEqual(
+      matchFileToTeams("docs/api/v2/endpoints.md", rules),
+      ["docs-team"],
+    );
   });
 
-  it("should match directory patterns", () => {
-    const teams = matchFileToTeams("src/frontend/index.tsx", rules);
-    assert.ok(teams.includes("frontend"));
+  it("shows why a catch-all must precede a specific rule", () => {
+    const rules = parseCodeowners("*.ts @org/typescript\n* @org/default", "org");
+    assert.deepEqual(matchFileToTeams("src/index.ts", rules), ["default"]);
   });
 
-  it("should match extension patterns", () => {
-    const teams = matchFileToTeams("src/utils/helper.test.ts", rules);
-    assert.ok(teams.includes("test-team"));
+  it("allows a later ownerless pattern to clear an earlier match", () => {
+    const rules = parseCodeowners("* @org/default\nprivate/**");
+    assert.deepEqual(matchFileToTeams("private/credentials.json", rules), []);
   });
 
-  it("should match double-star patterns", () => {
-    const teams = matchFileToTeams("docs/api/v2/endpoints.md", rules);
-    assert.ok(teams.includes("docs-team"));
+  it("matches an unanchored pattern at any directory depth", () => {
+    const rules = parseCodeowners("*.ts @org/typescript", "org");
+    assert.deepEqual(
+      matchFileToTeams("src/deep/module.ts", rules),
+      ["typescript"],
+    );
+  });
+
+  it("anchors slash-containing and leading-slash patterns at the repository root", () => {
+    const rules = parseCodeowners(
+      "src/*.ts @org/src\n/root-only.ts @org/root",
+      "org",
+    );
+    assert.deepEqual(matchFileToTeams("src/index.ts", rules), ["src"]);
+    assert.deepEqual(matchFileToTeams("nested/src/index.ts", rules), []);
+    assert.deepEqual(matchFileToTeams("root-only.ts", rules), ["root"]);
+    assert.deepEqual(matchFileToTeams("nested/root-only.ts", rules), []);
+  });
+
+  it("matches a trailing-slash directory at any depth unless it contains a slash", () => {
+    const rules = parseCodeowners(
+      "generated/ @org/generated\nsrc/private/ @org/private",
+      "org",
+    );
+    assert.deepEqual(
+      matchFileToTeams("nested/generated/output.js", rules),
+      ["generated"],
+    );
+    assert.deepEqual(
+      matchFileToTeams("src/private/key.ts", rules),
+      ["private"],
+    );
+    assert.deepEqual(matchFileToTeams("nested/src/private/key.ts", rules), []);
+  });
+
+  it("matches ** across zero or more path segments while * stays within one segment", () => {
+    const rules = parseCodeowners(
+      "**/README.md @org/readme\nsrc/**/*.ts @org/source\nsrc/*.js @org/direct",
+      "org",
+    );
+    assert.deepEqual(matchFileToTeams("README.md", rules), ["readme"]);
+    assert.deepEqual(matchFileToTeams("docs/README.md", rules), ["readme"]);
+    assert.deepEqual(matchFileToTeams("src/index.ts", rules), ["source"]);
+    assert.deepEqual(
+      matchFileToTeams("src/deep/nested/index.ts", rules),
+      ["source"],
+    );
+    assert.deepEqual(matchFileToTeams("src/nested/index.js", rules), []);
+    assert.deepEqual(matchFileToTeams("src/index.js", rules), ["direct"]);
   });
 
   it("should return empty array when no rules match", () => {
@@ -115,6 +204,20 @@ docs/**/*.md @org/docs-team
     const specificRules = parseCodeowners("src/special/ @org/special-team", "org");
     const teams = matchFileToTeams("other/file.ts", specificRules);
     assert.equal(teams.length, 0);
+  });
+
+  it("unions the winning owners across multiple files", () => {
+    const rules = parseCodeowners(
+      "* @org/default\nsrc/** @org/source\nsrc/private/**",
+      "org",
+    );
+    assert.deepEqual(
+      matchFilesToTeams(
+        ["src/index.ts", "src/private/key.ts", "README.md"],
+        rules,
+      ),
+      ["source", "default"],
+    );
   });
 });
 
