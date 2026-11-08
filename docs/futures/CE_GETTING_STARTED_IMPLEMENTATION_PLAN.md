@@ -2,7 +2,7 @@
 
 > **Status:** APPROVED
 > **Edition:** Community
-> **Last updated:** 2025-11-24
+> **Last updated:** 2026-11-07
 
 **Repo:** `AgentCraftworks/AgentCraftworks-CE`
 **Tracking epic:** [#238](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/238) — 17 child issues, [#239](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/239)–[#255](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/255)
@@ -96,33 +96,40 @@ working on CE docs must apply it.
 
 ### 3.1 ✅ Documentable in CE
 
-Webhook-driven GitHub App · HMAC-SHA256 webhook verification · IP + installation rate
-limiting (`express-rate-limit`) · Agent Engagement Levels 1–5 with environment caps
-(local 5 / dev 5 / staging 4 / production 3) · Action tiers T1–T5 · Action classifier ·
-Permission checker middleware · Handoff FSM (`pending`/`active`/`completed`/`failed`) ·
-Handoff REST API · Context attach/get · CODEOWNERS routing · Label routing · 6 MCP tools ·
-CODEOWNERS setup PR on install · GH-AW workflow catalogue + toggle script ·
-Docker Compose local run · Azure deploy via `azd` + Bicep · Accessibility agent team ·
-CodeQL · SDLC lifecycle stages · Branch promotion policy `feature/* → staging → main` ·
-MIT licence, forking, CLA.
+Under proposed D-9, Community Edition has no edition-level engagement cap and spans levels
+1–5. The default repository dial is 1 (Observer). The effective level is the minimum of the
+repository dial, repository ceiling (`agents.ceiling`, default 3), operator environment
+ceiling (local 5 / dev 5 / staging 4 / production 3), and `GH_CE_MAX_LEVEL` (default 5).
+`GH_CE_AGENTS_PAUSED=true` returns the effective level to 1.
+
+Levels 4–5 can be configured but are not yet enforced on all job paths. Configuring levels 4–5
+requires three free opt-ins: an operator environment ceiling that permits the level, a
+CODEOWNERS-reviewed repository configuration, and a token with `dial:elevate`. Protected
+actions are denied by default at every level and require both repository and operator
+allow-lists. T4 and T5 action budgets are 30/hour and 5/hour. Decisions and actions are audited.
+
+The proposed Community boundary also includes the safety stack, handoff state machine,
+Community MCP tools, CODEOWNERS routing, local audit records, local action budgets (not a
+distributed Rate Governor), a single-node store, a single-squad Coordinator, and Community
+Academy tracks after G6. Other documentable capabilities include the webhook-driven GitHub
+App, HMAC-SHA256 webhook verification, action tiers and permission checks, context attach/get,
+label routing, CODEOWNERS setup PR on install, GH-AW workflow catalogue and toggle script,
+Docker Compose, Azure deployment via `azd` and Bicep, accessibility guidance, CodeQL, SDLC
+lifecycle stages, branch promotion policy, MIT licence, forking, and CLA.
 
 ### 3.2 ❌ NOT documentable in CE (Enterprise-only)
 
-Rate Governor (6-pattern adaptive rate limiting) · Squad Coordinator / squads / S2S
-coordination / `.squad/` team-config · Aspire integration · Governance Gates middleware ·
-Promotion Engine (staging → canary → production) · Rate-limiting Audit Trail ·
-Quarantine Bridge · Microsoft Entra Agent ID · Conditional Access · Microsoft Sentinel
-SIEM / `sentinel.bicep` · NIST SP 800-53 / ISO 42001 compliance packs · nuSquad SDK ·
-Three-layer Squad Engagement Dial · AEU cost model / wave planning · Risk-tier
-compliance scaffolding (Tier 2/3 governance files) · Dashboard / canvas ·
+Organization-wide policy and centralized ceilings · Microsoft Entra ID · Durable
+multi-replica state · Promotion Engine · Compliance evidence · Multi-squad S2S coordination ·
+Distributed Rate Governor · Aspire integration · Quarantine Bridge · Governance Gates for
+organization policy · Enterprise Academy tracks (kept separate from Community tracks) ·
+Conditional Access · Microsoft Sentinel SIEM / `sentinel.bicep` · NIST SP 800-53 / ISO 42001
+compliance packs · nuSquad SDK · Three-layer Squad Engagement Dial · AEU cost model / wave
+planning · Risk-tier compliance scaffolding (Tier 2/3 governance files) · Dashboard / canvas ·
 Copilot Studio eval loop · Marketplace / billing / Stripe.
 
-> ⚠️ **Conflict to resolve.** The research pass over the paid repo suggested Rate
-> Governor, Squad Coordinator, Aspire, Governance Gates, Promotion Engine and
-> Quarantine Bridge were "core to both editions." That contradicts CE's own
-> `README.md` (lines 137–147), which lists all six as Enterprise-only, and the CE
-> codebase, which contains none of them. **This plan treats CE `README.md` as
-> authoritative.** See decision D-2 (§7).
+Community Edition includes a single-squad Coordinator and local action budgets. Do not call
+these a multi-squad Coordinator or a distributed Rate Governor.
 
 ### 3.3 Cross-reference pattern
 
@@ -130,8 +137,10 @@ Where a CE doc must acknowledge an Enterprise capability (for upgrade context on
 use exactly one pattern — a short callout, never a feature description:
 
 ```markdown
-> **Enterprise:** Adaptive rate governing and multi-agent squad coordination are part
-> of AgentCraftworks Enterprise. See [Editions](../EDITIONS.md).
+> **Enterprise:** Organization-wide policy, centralized ceilings, durable multi-replica state,
+> compliance evidence, multi-squad coordination, distributed Rate Governor, Promotion Engine,
+> Aspire, Quarantine Bridge, and Microsoft Entra ID are part of AgentCraftworks Enterprise.
+> See [Editions](../EDITIONS.md).
 ```
 
 ---
@@ -464,17 +473,31 @@ tool names exported by `mcp/server.ts`. Prevents DEF-1 recurring.
 
 ---
 
-## 7. Decisions — RESOLVED 2026-08-18
+## 7. Decisions
+
+> D-1 and D-3 through D-7 were resolved on 2026-08-18. D-2 and D-8 are superseded.
+> D-9 through D-18 are proposed pending G0.
 
 | ID | Decision | Resolution |
 |---|---|---|
 | **D-1** | Engagement level names | **RESOLVED — align CE to the paid naming.** CE adopts Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous**. The old CE names were superseded by later improvements in the paid product that were never pushed back down to CE. CE has no released users, so the old names are **removed outright** — no alias layer, no deprecation window. `resolveEngagementLevel` rejects them with an error naming the valid set. |
-| **D-2** | Are Rate Governor / Squad Coordinator / Aspire / Governance Gates / Promotion Engine / Quarantine Bridge CE or Enterprise? | **RESOLVED — Enterprise-only.** The product direction shifted away from CE-as-core; these six exist only in the paid product. The research pass that called them "core to both editions" was wrong. §3.2 stands. |
+| **D-2** | Are Rate Governor / Squad Coordinator / Aspire / Governance Gates / Promotion Engine / Quarantine Bridge CE or Enterprise? | **SUPERSEDED by D-13.** The old all-or-nothing boundary is replaced by a hybrid: CE includes a single-squad Coordinator and local action budgets; Enterprise retains organization-wide policy, distributed Rate Governor, multi-squad S2S, Aspire, Governance Gates, Promotion Engine, and Quarantine Bridge. |
 | **D-3** | Ship 7-day auto-merge of the setup PR in CE? | **No.** 48-hour reminder comment only. |
 | **D-4** | Add `detect_repo` as a 7th MCP tool? | **No.** Preserve the 6-tool contract; expose via REST. |
 | **D-5** | Does CE need `mode: workflow \| agent \| both`? | **Ship the field** for forward-compatibility, defaulting to `workflow`. |
 | **D-6** | Publish docs to a site? | **Not in this scope.** |
 | **D-7** | Where do product standards get authored? | Upstream in `AgentCraftworks`, consumed here via ORG-STANDARD sync. |
+| **D-8** | Should Community Edition stop at engagement level 3? | **SUPERSEDED by D-9.** The previous level 1–3 edition cap is replaced by CE levels 1–5; use the enforcement caveat in §3.1 until G3. |
+| **D-9** | What engagement levels does Community Edition allow? | **PROPOSED — pending G0.** CE has no edition-level cap and spans levels 1–5. Supersedes #270 Option A, the #285 cap, the ADR-077 boundary, and D-8. Levels 4–5 remain subject to the §3.1 enforcement caveat. |
+| **D-10** | What safeguards are required for levels 4–5? | **PROPOSED — pending G0.** Require three free opt-ins (operator environment ceiling, CODEOWNERS-reviewed repository configuration, and a token with `dial:elevate`) plus a kill switch that returns operation to Observer. |
+| **D-11** | What is the default when `GH_CE_ENVIRONMENT` is unset? | **PROPOSED — pending G0.** Treat an unset environment as `production`. |
+| **D-12** | How are action tiers and unknown actions handled? | **PROPOSED — pending G0.** Use canonical action tiers; deny unknown actions by default. |
+| **D-13** | Where is the Community/Enterprise boundary? | **PROPOSED — pending G0.** Hybrid boundary: CE includes a single-squad Coordinator and local action budgets (not branded as a Rate Governor). Enterprise retains organization-wide policy and centralized ceilings, Entra ID, durable multi-replica state, Promotion Engine, compliance evidence, multi-squad S2S, distributed Rate Governor, Aspire, and Quarantine Bridge. |
+| **D-14** | What are the runtime source of truth and storage modes? | **PROPOSED — pending G0.** HTTP is the source of truth, JSON is the store, and MCP supports remote mode. |
+| **D-15** | When are upstream names and aliases changed? | **PROPOSED — pending G0.** Rename upstream before removing aliases. |
+| **D-16** | How are releases versioned? | **PROPOSED — pending G0.** Use Changesets. |
+| **D-17** | When and how are Academy tracks published? | **PROPOSED — pending G0.** Publish Community Edition tracks after G6; clearly label and keep Enterprise tracks separate. |
+| **D-18** | How should unsafe code simplification rules be handled? | **PROPOSED — pending G0.** Disable unsafe simplifier rules. |
 
 ### 7.1 ⚠️ Upstream dependency created by D-1
 
@@ -570,7 +593,7 @@ practice), provided B1 is written against the A-series *design* and reconciled i
 | API rate limits during org-wide install (hundreds of repos) | 403s, partial onboarding | Trees API (1 call/repo); existing concurrency limit of 5; check `gh api rate_limit` before bulk ops per `AGENTS.md` |
 | New `issues: write` / `checks: write` permissions force existing installs to re-consent | Silent breakage for current users | A7 health check reports degraded capability; docs call out the re-consent step; feature-flag A1/A7 off when permission absent |
 | Docs drift from code again | Repeat of DEF-1/DEF-2 | D4 drift test + `ghaw-daily-doc-updater` |
-| D-2 answered "these are CE features after all" | Large rework of §3 and B4/B12 | Resolve in Phase 0 before any writing |
+| D-9/D-13 boundary remains proposed until G0 | Documentation could describe a boundary that is not approved | Keep decisions explicitly proposed and retain the G3 enforcement caveat until the required gates pass |
 | Config schema diverges from Enterprise | Users can't upgrade cleanly | CE schema is a strict subset; unknown keys warn not fail; propose upstream per D-7 |
 
 ---
