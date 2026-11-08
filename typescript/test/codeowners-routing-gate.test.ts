@@ -241,12 +241,12 @@ describe("resolveRouting", () => {
     assert.equal(decision.source, "codeowners");
     assert.deepEqual(
       [...decision.teams].sort(),
-      ["backend-team", "code-reviewer", "docs-team", "octocat"],
+      ["backend-team", "docs-team", "octocat"],
     );
     // @octocat is a user, the rest are org teams
     assert.deepEqual(
       [...decision.teamSlugs].sort(),
-      ["backend-team", "code-reviewer", "docs-team"],
+      ["backend-team", "docs-team"],
     );
   });
 
@@ -548,7 +548,7 @@ describe("handlePullRequestEvent with CODEOWNERS and action gate", () => {
     assert.ok(review, "review request should be sent");
     assert.deepEqual(
       [...(review.params["team_reviewers"] as string[])].sort(),
-      ["backend-team", "code-reviewer"],
+      ["backend-team"],
     );
     assert.deepEqual(review.params["reviewers"], ["octocat"]);
 

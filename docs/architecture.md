@@ -29,7 +29,7 @@ graph TD
         signatureVerify["HMAC Signature Verification"]
         codeownersRouter["CODEOWNERS Router<br/>changed files → owners → agents<br/>(fallback: labels → none)"]
         eventFsm["Handoff FSM<br/>pending → active → completed | failed"]
-        actionGate["Action Gate<br/>gateAction(owner, repo, action, env)"]
+        actionGate["Action Gate<br/>actionGate.check({ owner, repo, action })"]
         engagementLevels["Agent Engagement Levels<br/>Observer → Autonomous<br/>(capped by NODE_ENV tier)"]
         mcpServer["MCP Server<br/>6 Core Tools"]
     end
@@ -37,9 +37,9 @@ graph TD
     subgraph Actions["Agent Actions"]
         level1["Observer (T1): Read, view, list"]
         level2["Advisor (T2): Comment, suggest"]
-        level3["Collaborator (T3): Label, assign, approve, edit file"]
-        level4["Delegated (T4): Merge, close, create branch, push commit"]
-        level5["Autonomous (T5): Deploy, modify CI, orchestrate agents"]
+        level3["Collaborator (T3): Propose changes on agent branches"]
+        level4["Delegated (T4): Approve, close issues, request reviews"]
+        level5["Autonomous (T5): Merge, deploy, modify CI, orchestrate agents"]
     end
 
     prEvent --> webhookHandler
@@ -79,8 +79,9 @@ On `pull_request.opened | reopened | ready_for_review | synchronize | labeled`, 
    `.github/CODEOWNERS`, `CODEOWNERS`, `docs/CODEOWNERS` via `GET /repos/{owner}/{repo}/contents/{path}`.
    The parsed result (including "not found") is cached per repository for 5 minutes.
 2. **Fetch changed files** — `GET /repos/{owner}/{repo}/pulls/{n}/files`, paginated up to 300 files.
-3. **Match** — `parseCodeowners()` + `matchFilesToTeams()` from `utils/codeowners.ts` produce the set of
-   owners for the PR; each owner becomes an agent slug (`frontend-team` → `@frontend-team`).
+3. **Match** — `parseCodeowners()` + `matchFilesToTeams()` from `utils/codeowners.ts` apply GitHub's
+   last-matching-rule-wins behavior for each changed file; each winning owner becomes an agent slug
+   (`frontend-team` → `@frontend-team`).
 4. **Create the handoff** — the primary agent receives the handoff; matched owners are stored in
    `handoff.teams` and the decision in `handoff.metadata.routing`.
 5. **Gated writes** — every GitHub write goes through `services/action-gate.ts`:
@@ -94,9 +95,10 @@ On `pull_request.opened | reopened | ready_for_review | synchronize | labeled`, 
 > (`security-review`, `accessibility-review`, `docs-review`, …). With neither, the handoff goes to
 > `@code-reviewer` with `source: "none"`.
 
-The environment tier used by the gate is derived from `NODE_ENV`: `production` → `production`,
-`staging` → `staging`, anything else → `dev`. The tier caps the effective engagement level
-(see table below), so a repository dialed to 5 is still limited to level 3 in production.
+The gate uses the server-configured `GH_CE_ENVIRONMENT`; an unset value defaults to `production`
+with a startup warning, and request payloads cannot select the tier. The effective level is bounded
+by the repository dial, repository ceiling, environment ceiling, and global ceiling. Unknown actions
+are denied, and protected actions require both operator and repository allow-lists.
 
 Without an installation ID and app credentials (`GH_CE_APP_ID`, `GH_CE_APP_PRIVATE_KEY`) the handler
 cannot read CODEOWNERS or write to GitHub; it falls back to label routing and creates the handoff only.
@@ -137,13 +139,13 @@ stateDiagram-v2
 |---|---|---|---|---|
 | 1 | Observer | T1 | Read, view, list | Always |
 | 2 | Advisor | T2 | Comment, suggest | Always |
-| 3 | Collaborator | T3 | Label, assign, approve, edit file | For merge |
-| 4 | Delegated | T4 | Merge, close, create branch, push commit | Escalation only |
-| 5 | Autonomous | T5 | Deploy, modify CI, orchestrate agents | Never |
+| 3 | Collaborator | T3 | Propose edits and draft PRs on agent branches | For merge |
+| 4 | Delegated | T4 | Approve, request reviews, close/reopen issues, update PR branches | Escalation only |
+| 5 | Autonomous | T5 | Merge, deploy, release, modify CI, orchestrate agents | Never |
 
 Default environment ceilings: local=5, dev=5, staging=4, production=3. The
 effective level is bounded by the repository dial, repository ceiling, operator
 environment ceiling, and global ceiling. Levels 4–5 require independent opt-ins;
-protected actions remain denied unless separately allowed.
+protected actions remain denied unless both allow-lists explicitly allow them.
 
 > Levels 4–5 can be configured but are not yet enforced on all job paths.
