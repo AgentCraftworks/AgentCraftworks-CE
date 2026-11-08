@@ -38,6 +38,7 @@ describe("loadRuntimePolicy", () => {
     assert.equal(policy.environmentMaxLevels.production, 3);
     assert.equal(policy.globalMaxLevel, 5);
     assert.equal(policy.agentsPaused, false);
+    assert.deepEqual(policy.actionBudgets, { T4: 30, T5: 5 });
     assert.equal(DEFAULT_REPO_CEILING, 3);
     assert.deepEqual(summarizeRuntimePolicy(policy), {
       environment: "production",
@@ -45,6 +46,7 @@ describe("loadRuntimePolicy", () => {
       globalCeiling: 5,
       defaultRepositoryCeiling: 3,
       agentsPaused: false,
+      actionBudgets: { T4: 30, T5: 5 },
     });
   });
 
@@ -55,6 +57,7 @@ describe("loadRuntimePolicy", () => {
         GH_CE_ENV_MAX_LEVELS: "production=5,staging=5",
         GH_CE_MAX_LEVEL: "4",
         GH_CE_REPO_CEILINGS: "owner/repo=5",
+        GH_CE_ACTION_BUDGETS: "T4=20/h,T5=3/h",
       },
       () => {},
     );
@@ -62,6 +65,7 @@ describe("loadRuntimePolicy", () => {
     assert.equal(policy.environmentMaxLevels.staging, 5);
     assert.equal(policy.globalMaxLevel, 4);
     assert.equal(policy.repoCeilings.get("owner/repo"), 5);
+    assert.deepEqual(policy.actionBudgets, { T4: 20, T5: 3 });
   });
 
   it("rejects invalid limits, duplicate environment entries, and invalid pause values", () => {
@@ -108,6 +112,28 @@ describe("loadRuntimePolicy", () => {
           () => {},
         ),
       /Invalid GH_CE_ALLOW_PROTECTED_ACTIONS/,
+    );
+    assert.throws(
+      () =>
+        loadRuntimePolicy(
+          {
+            GH_CE_ENVIRONMENT: "local",
+            GH_CE_ACTION_BUDGETS: "T4=0/h",
+          },
+          () => {},
+        ),
+      /positive integer/,
+    );
+    assert.throws(
+      () =>
+        loadRuntimePolicy(
+          {
+            GH_CE_ENVIRONMENT: "local",
+            GH_CE_ACTION_BUDGETS: "T4=10/h,T4=20/h",
+          },
+          () => {},
+        ),
+      /Duplicate T4/,
     );
   });
 });

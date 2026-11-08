@@ -7,6 +7,14 @@ import {
 
 export const DEFAULT_REPO_CEILING: DialLevel = 3;
 
+export type ActionBudgetTier = "T4" | "T5";
+export type ActionBudgetLimits = Readonly<Record<ActionBudgetTier, number>>;
+
+export const DEFAULT_ACTION_BUDGETS: ActionBudgetLimits = {
+  T4: 30,
+  T5: 5,
+};
+
 const ENVIRONMENTS: readonly EnvironmentTier[] = [
   "local",
   "dev",
@@ -21,6 +29,7 @@ export interface RuntimePolicy {
   readonly agentsPaused: boolean;
   readonly repoCeilings: ReadonlyMap<string, DialLevel>;
   readonly allowedProtectedActions: ReadonlySet<ProtectedAction>;
+  readonly actionBudgets: ActionBudgetLimits;
 }
 
 let runtimePolicy: RuntimePolicy | undefined;
@@ -137,6 +146,37 @@ function parseOperatorProtectedActions(
   return allowed;
 }
 
+function parseActionBudgets(raw: string | undefined): ActionBudgetLimits {
+  const budgets: Record<ActionBudgetTier, number> = {
+    ...DEFAULT_ACTION_BUDGETS,
+  };
+  if (raw === undefined) return budgets;
+  const seen = new Set<ActionBudgetTier>();
+
+  for (const entry of raw.split(",")) {
+    const match = /^T([45])=(\d+)\/h$/i.exec(entry.trim());
+    if (!match) {
+      throw new Error(
+        `Invalid GH_CE_ACTION_BUDGETS entry "${entry}". Use T4=30/h and T5=5/h entries.`,
+      );
+    }
+
+    const tier = `T${match[1]}` as ActionBudgetTier;
+    const limit = Number(match[2]);
+    if (!Number.isSafeInteger(limit) || limit < 1) {
+      throw new Error(
+        `Invalid GH_CE_ACTION_BUDGETS limit for ${tier}; expected a positive integer.`,
+      );
+    }
+    if (seen.has(tier)) {
+      throw new Error(`Duplicate ${tier} entry in GH_CE_ACTION_BUDGETS`);
+    }
+    seen.add(tier);
+    budgets[tier] = limit;
+  }
+  return budgets;
+}
+
 export function loadRuntimePolicy(
   env: Record<string, string | undefined> = process.env,
   warn?: (message: string) => void,
@@ -155,6 +195,7 @@ export function loadRuntimePolicy(
     allowedProtectedActions: parseOperatorProtectedActions(
       env["GH_CE_ALLOW_PROTECTED_ACTIONS"],
     ),
+    actionBudgets: parseActionBudgets(env["GH_CE_ACTION_BUDGETS"]),
   };
 }
 
@@ -178,6 +219,7 @@ export function summarizeRuntimePolicy(
   globalCeiling: DialLevel;
   defaultRepositoryCeiling: DialLevel;
   agentsPaused: boolean;
+  actionBudgets: ActionBudgetLimits;
 } {
   return {
     environment: policy.environment,
@@ -185,5 +227,6 @@ export function summarizeRuntimePolicy(
     globalCeiling: policy.globalMaxLevel,
     defaultRepositoryCeiling: DEFAULT_REPO_CEILING,
     agentsPaused: policy.agentsPaused,
+    actionBudgets: policy.actionBudgets,
   };
 }
