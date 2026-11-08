@@ -16,6 +16,7 @@ import { timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
 import type { Express, NextFunction, Request, RequestHandler, Response } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import { authenticateApiToken, loadApiPrincipals, OPERATOR_PRINCIPAL } from "./api-principal.js";
 
 type Env = Record<string, string | undefined>;
 
@@ -85,9 +86,20 @@ export function createApiAuthMiddleware(options: ApiAuthOptions = {}): RequestHa
   let warnedUnconfigured = false;
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const expected = env[API_TOKEN_ENV];
+    let principals: ReturnType<typeof loadApiPrincipals>;
+    try {
+      principals = loadApiPrincipals(env);
+    } catch {
+      warn({ msg: "REST API token configuration is invalid", code: "api_tokens_invalid" });
+      res.status(503).json({ error: "Service Unavailable", code: "api_tokens_invalid" });
+      return;
+    }
 
-    if (expected === undefined || expected === "") {
+    if (principals.length === 0) {
+      if (env["GH_CE_API_TOKENS_FILE"]) {
+        res.status(503).json({ error: "Service Unavailable", code: "api_token_not_configured" });
+        return;
+      }
       if (env["NODE_ENV"] !== "development" && env["NODE_ENV"] !== "test") {
         res.status(503).json({
           error: "Service Unavailable",
@@ -105,6 +117,7 @@ export function createApiAuthMiddleware(options: ApiAuthOptions = {}): RequestHa
           hint: "Allowed only in explicit development/test; set the token before deploying.",
         });
       }
+      res.locals["apiPrincipal"] = OPERATOR_PRINCIPAL;
       next();
       return;
     }
@@ -121,7 +134,8 @@ export function createApiAuthMiddleware(options: ApiAuthOptions = {}): RequestHa
       return;
     }
 
-    if (!tokensMatch(presented, expected)) {
+    const principal = authenticateApiToken(presented, principals);
+    if (!principal) {
       res
         .status(401)
         .set("WWW-Authenticate", 'Bearer realm="agentcraftworks-api", error="invalid_token"')
@@ -132,6 +146,7 @@ export function createApiAuthMiddleware(options: ApiAuthOptions = {}): RequestHa
       return;
     }
 
+    res.locals["apiPrincipal"] = principal;
     next();
   };
 }

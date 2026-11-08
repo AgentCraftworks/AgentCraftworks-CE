@@ -53,6 +53,10 @@ The REST API (`/api/handoffs`, `/api/dial`) requires the shared bearer token con
 
 Forwarded client addresses are ignored unless `GH_CE_TRUST_PROXY` contains operator-verified ingress IP addresses or CIDRs. Configure these behind Azure ingress to isolate client rate-limit buckets. Never trust arbitrary forwarding headers, all-address ranges, or numeric hop counts.
 
+For least-privilege access, set `GH_CE_API_TOKENS_FILE` to a JSON array of hash-only credentials. Each entry has `name`, `sha256`, `scopes`, and `repos`. Supported scopes are `handoffs:read`, `handoffs:write`, `dial:write`, `dial:elevate`, and `audit:read`. Repository patterns are exact `owner/repo` names or `owner/*`; matching is case-insensitive and never crosses owner boundaries. Dial reads and permission checks use `handoffs:read`. `dial:elevate` and `audit:read` are available to downstream governance work; this baseline does not add an audit endpoint or enforce elevation policy.
+
+Invalid credentials return `401`; authenticated callers with a wrong scope or repository return `403`. Unfiltered handoff lists and statistics contain only authorized repositories. Dial `updatedBy` and structured `dial.changed` events use the authenticated principal name, ignoring caller-supplied attribution. The compatibility `GH_CE_API_TOKEN` is principal `operator` with every scope and repository; use it only for trusted operator access. Token-file errors fail closed with `503`, even when the compatibility token is present. Tokens and token hashes are never logged.
+
 ## Dependencies
 
 We regularly review and update dependencies. Key security-relevant dependencies:

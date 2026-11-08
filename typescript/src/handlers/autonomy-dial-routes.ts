@@ -12,6 +12,8 @@
 
 import { Router } from "express";
 import type { Request, Response } from "express";
+import { randomUUID } from "node:crypto";
+import { getApiPrincipal } from "../middleware/api-principal.js";
 import type { EnvironmentTier } from "../types/autonomy.js";
 import {
   ENGAGEMENT_LEVEL_NAMES,
@@ -169,7 +171,7 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
     const body = req.body as Record<string, unknown>;
     const rawDialLevel = body["dialLevel"] as number | undefined;
     const engagement = body["engagement"] as string | undefined;
-    const updatedBy = body["updatedBy"] as string | undefined;
+    const updatedBy = getApiPrincipal(res)?.name;
 
     // Resolve dial level from either dialLevel or engagement name
     let dialLevel: number | undefined;
@@ -209,14 +211,19 @@ router.post("/:owner/:repo", (req: Request, res: Response): void => {
     }
 
     if (!updatedBy || typeof updatedBy !== "string") {
-      res.status(400).json({
-        error: "Bad Request",
-        message: "updatedBy is required",
+      res.status(401).json({
+        error: "Unauthorized",
+        message: "Authenticated principal required",
       });
       return;
     }
 
+    const previousLevel = getDialLevel(owner, repo).dialLevel;
     const config = setDialLevel(owner, repo, dialLevel, updatedBy);
+    console.log(JSON.stringify({
+      msg: "dial.changed", actor: updatedBy, repository: `${owner}/${repo}`,
+      previousLevel, dialLevel, correlationId: randomUUID(),
+    }));
 
     res.json({
       ...config,

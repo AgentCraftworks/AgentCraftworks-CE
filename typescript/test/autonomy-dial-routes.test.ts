@@ -14,6 +14,8 @@ import express from "express";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import dialRouter from "../src/handlers/autonomy-dial-routes.js";
+import { createApiAuthMiddleware } from "../src/middleware/api-auth.js";
+import { authorizeApiRequest } from "../src/middleware/api-principal.js";
 import {
   clearAllDials,
   setDialLevel,
@@ -23,7 +25,9 @@ import {
 
 const app = express();
 app.use(express.json());
-app.use("/api/dial", dialRouter);
+app.use("/api/dial", createApiAuthMiddleware({
+  env: { GH_CE_API_TOKEN: "route-test-token" },
+}), authorizeApiRequest, dialRouter);
 
 let server: http.Server;
 let baseUrl: string;
@@ -61,7 +65,7 @@ async function request(
   const url = `${baseUrl}${path}`;
   const options: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: "Bearer route-test-token" },
   };
   if (body) {
     options.body = JSON.stringify(body);
@@ -115,7 +119,7 @@ describe("POST /api/dial/:owner/:repo", () => {
     });
     assert.equal(res.status, 200);
     assert.equal(res.body["dialLevel"], 5);
-    assert.equal(res.body["updatedBy"], "admin-user");
+    assert.equal(res.body["updatedBy"], "operator");
     assert.equal(res.body["isDefault"], false);
   });
 
@@ -127,7 +131,7 @@ describe("POST /api/dial/:owner/:repo", () => {
     });
     assert.equal(res.status, 200);
     assert.equal(res.body["dialLevel"], 5);
-    assert.equal(res.body["updatedBy"], "user2");
+    assert.equal(res.body["updatedBy"], "operator");
   });
 
   it("should accept level 1 (minimum)", async () => {
@@ -182,12 +186,12 @@ describe("POST /api/dial/:owner/:repo", () => {
     assert.ok((res.body["message"] as string).includes("dialLevel or engagement is required"));
   });
 
-  it("should return 400 when updatedBy is missing", async () => {
+  it("should derive updatedBy when the caller omits it", async () => {
     const res = await request("POST", "/api/dial/org/repo", {
       dialLevel: 5,
     });
-    assert.equal(res.status, 400);
-    assert.ok((res.body["message"] as string).includes("updatedBy is required"));
+    assert.equal(res.status, 200);
+    assert.equal(res.body["updatedBy"], "operator");
   });
 });
 

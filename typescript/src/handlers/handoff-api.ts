@@ -14,6 +14,7 @@
 
 import { Router } from "express";
 import type { Request, Response } from "express";
+import { canAccessRepository, getApiPrincipal } from "../middleware/api-principal.js";
 import type {
   HandoffState,
   HandoffFilters,
@@ -92,7 +93,11 @@ router.post("/", (req: Request, res: Response): void => {
 
 router.get("/stats", (_req: Request, res: Response): void => {
   try {
-    const stats = getHandoffStats();
+    const principal = getApiPrincipal(res);
+    const visible = principal
+      ? listHandoffs().filter((handoff) => canAccessRepository(principal, handoff.repository_full_name))
+      : undefined;
+    const stats = getHandoffStats(visible);
     res.json(stats);
   } catch (error: unknown) {
     const message =
@@ -183,7 +188,9 @@ router.get("/", (req: Request, res: Response): void => {
     if (fromAgent) filters.from_agent = fromAgent;
     if (repo) filters.repository_full_name = repo;
     if (repoFullName) filters.repository_full_name = repoFullName;
-    const handoffs = listHandoffs(filters);
+    const principal = getApiPrincipal(res);
+    const handoffs = listHandoffs(filters).filter((handoff) =>
+      !principal || canAccessRepository(principal, handoff.repository_full_name));
     res.json({ handoffs, count: handoffs.length, filters });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to list handoffs";

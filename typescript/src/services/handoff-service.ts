@@ -413,8 +413,8 @@ export function getActiveHandoffs(): Handoff[] {
 /**
  * Get handoff statistics.
  */
-export function getHandoffStats(): HandoffStats {
-  const allHandoffs = Array.from(inMemoryHandoffs.values());
+export function getHandoffStats(handoffs?: readonly Handoff[]): HandoffStats {
+  const allHandoffs = handoffs ?? Array.from(inMemoryHandoffs.values());
 
   const byStatus: Partial<Record<HandoffState, number>> = {};
   for (const state of Object.values(HandoffStates)) {
