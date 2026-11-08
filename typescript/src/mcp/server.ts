@@ -64,7 +64,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "create_handoff",
         description:
-          "Create a new agent handoff to delegate work to another agent",
+          "Record a handoff for another agent to pick up; this does not dispatch work",
         inputSchema: {
           type: "object" as const,
           properties: {
@@ -354,7 +354,9 @@ function handleCreateHandoff(
           {
             success: true,
             handoff_id: handoff.handoff_id,
-            status: handoff.status,
+            status: "recorded",
+            handoff_status: handoff.status,
+            message: "Handoff recorded; no agent was dispatched.",
             to_agent: handoff.to_agent,
             task: handoff.task,
             priority: handoff.priority,

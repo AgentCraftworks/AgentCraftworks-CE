@@ -82,7 +82,12 @@ router.post("/", (req: Request, res: Response): void => {
     };
 
     const handoff = createHandoff(handoffData, metadata);
-    res.status(201).json(handoff);
+    res.status(201).json({
+      ...handoff,
+      status: "recorded",
+      handoff_status: handoff.status,
+      message: "Handoff recorded; no agent was dispatched.",
+    });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Failed to create handoff";
