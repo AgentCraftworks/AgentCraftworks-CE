@@ -3,7 +3,7 @@ name: "GH-AW: Grumpy Reviewer"
 # Grumpy Reviewer — On-demand thorough code review by a grumpy senior developer.
 # Triggered by /grumpy command in PR comments. Focuses on edge cases, potential bugs,
 # and code quality issues with characteristic sarcasm.
-# Engagement Level: T2 (Advisor) — creates review comments, no code modifications.
+# Engagement Level: T4 (Delegated) — may approve only after inspecting changed files.
 # Source: githubnext/agentics/workflows/grumpy-reviewer.md
 
 on:

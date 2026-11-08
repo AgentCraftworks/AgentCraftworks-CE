@@ -13,6 +13,7 @@
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 
 interface ParentIssue {
   number: number;
@@ -48,7 +49,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "sub-issue-closer",
+  });
 
   // Fetch ALL open issues using pagination to avoid missing sub-issues beyond the first page
   const openIssues = await octokit.paginate(octokit.issues.listForRepo, {

@@ -10,7 +10,7 @@
  *   REPOSITORY    — owner/repo string
  *   DRY_RUN       — "true" to preview without committing
  *
- * Engagement Level: T3 (Collaborator) — creates branches and edits files.
+ * Engagement Level: T1 (Observer) — reads release history and previews changes only.
  */
 
 import { Octokit } from "@octokit/rest";

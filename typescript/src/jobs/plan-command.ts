@@ -14,6 +14,7 @@
  */
 
 import { Octokit } from "@octokit/rest";
+import { createGatedOctokit } from "../services/gated-octokit.js";
 
 interface PlanPattern {
   type: string;
@@ -310,7 +311,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const octokit = new Octokit({ auth: token });
+  const octokit = createGatedOctokit(new Octokit({ auth: token }), {
+    owner,
+    repo,
+    job: "plan-command",
+  });
   const issueNum = parseInt(issueNumber, 10);
 
   // Fetch parent issue

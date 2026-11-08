@@ -3,7 +3,7 @@ name: "GH-AW: Plan Command"
 # Plan Command — Breaks down issues into actionable sub-tasks via /plan command.
 # Analyzes issues/discussions and creates sequenced, agent-friendly work items.
 # Triggered by /plan command in issue or discussion comments.
-# Engagement Level: T2 (Advisor) — creates sub-issues, no code modifications.
+# Engagement Level: T3 (Collaborator) — creates sub-issues and posts summaries.
 # Source: githubnext/agentics/workflows/plan.md
 
 on:
