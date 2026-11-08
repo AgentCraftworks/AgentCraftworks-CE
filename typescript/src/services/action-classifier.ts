@@ -11,6 +11,13 @@ import type {
   ActionTier,
   DialLevel,
 } from "../types/autonomy.js";
+import actionTierManifest from "../../../standards/action-tiers.json" with {
+  type: "json",
+};
+
+function isActionTier(value: unknown): value is ActionTier {
+  return value === "T1" || value === "T2" || value === "T3" || value === "T4" || value === "T5";
+}
 
 // ─── Tier Definitions ───────────────────────────────────────────────────────────────
 
@@ -57,75 +64,24 @@ export const ACTION_TIERS: Record<string, TierDetails> = {
 // ─── Action Catalog ─────────────────────────────────────────────────────────────────
 
 /** Maps specific action types to their corresponding tier */
-const ACTION_TYPE_MAP: Record<string, ActionTier> = {
-  // T1: Read-Only Actions (15 actions)
-  view_file: "T1",
-  read_comment: "T1",
-  list_files: "T1",
-  get_pr: "T1",
-  get_issue: "T1",
-  get_commit: "T1",
-  list_branches: "T1",
-  list_commits: "T1",
-  view_logs: "T1",
-  get_status: "T1",
-  inspect_config: "T1",
-  read_content: "T1",
-  view_diff: "T1",
-  get_review: "T1",
-  list_reviews: "T1",
+function validateActionTypeMap(
+  value: unknown,
+): Readonly<Record<string, ActionTier>> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("Action tier manifest must contain an action map");
+  }
 
-  // T2: Informational Actions (10 actions)
-  post_comment: "T2",
-  create_discussion: "T2",
-  add_reaction: "T2",
-  update_comment: "T2",
-  post_review_comment: "T2",
-  suggest_change: "T2",
-  add_label: "T2",
-  remove_label: "T2",
-  ci_lint_fix: "T2",
-  ci_issue_file: "T2",
+  const actions: Record<string, ActionTier> = {};
+  for (const [action, tier] of Object.entries(value)) {
+    if (!action || !isActionTier(tier)) {
+      throw new Error(`Invalid action tier manifest entry "${action}"`);
+    }
+    actions[action] = tier;
+  }
+  return Object.freeze(actions);
+}
 
-  // T3: Modify Actions (16 actions)
-  edit_file: "T3",
-  create_file: "T3",
-  delete_file: "T3",
-  create_branch: "T3",
-  update_issue: "T3",
-  update_pr: "T3",
-  update_title: "T3",
-  update_description: "T3",
-  create_issue: "T3",
-  close_issue: "T3",
-  reopen_issue: "T3",
-  assign_user: "T3",
-  request_changes: "T3",
-  ci_type_fix: "T3",
-  ci_test_fix: "T3",
-  ci_build_fix: "T3",
-
-  // T4: Commit Actions (9 actions)
-  push_commit: "T4",
-  create_pr: "T4",
-  request_review: "T4",
-  approve_pr: "T4",
-  update_pr_branch: "T4",
-  force_push: "T4",
-  create_tag: "T4",
-  create_release: "T4",
-  ci_security_escalate: "T4",
-
-  // T5: Merge/Deploy Actions (8 actions)
-  merge_pr: "T5",
-  delete_branch: "T5",
-  deploy: "T5",
-  publish_release: "T5",
-  revert_commit: "T5",
-  cherry_pick: "T5",
-  force_merge: "T5",
-  emergency_rollback: "T5",
-};
+const ACTION_TYPE_MAP = validateActionTypeMap(actionTierManifest.actions);
 
 // ─── Public API ─────────────────────────────────────────────────────────────────────
 
@@ -139,7 +95,7 @@ export interface ClassifyResult {
 
 /**
  * Classify an action into its appropriate tier.
- * Unknown actions default to T3 (Modify) as a conservative approach.
+ * Unknown actions retain a T3 display tier for compatibility, but are never permitted.
  */
 export function classifyAction(actionType: string): ClassifyResult {
   if (!actionType || typeof actionType !== "string") {
@@ -150,7 +106,7 @@ export function classifyAction(actionType: string): ClassifyResult {
   const tier = ACTION_TYPE_MAP[normalized];
 
   if (!tier) {
-    // Unknown action types default to T3 (Modify) — conservative
+    // Keep an informational fallback tier; permission checks must honor isKnownAction.
     const t3Details = ACTION_TIERS["T3"];
     if (!t3Details) {
       throw new Error("Internal error: T3 tier not found");
@@ -192,6 +148,7 @@ export function isActionPermitted(
   actionType: string,
 ): {
   permitted: boolean;
+  code?: "UNKNOWN_ACTION";
   dialLevel: number;
   requiredLevel: DialLevel;
   tier: ActionTier;
@@ -204,10 +161,12 @@ export function isActionPermitted(
 
   const classification = classifyAction(actionType);
   const requiredLevel = classification.tierDetails.requiredDialLevel;
-  const permitted = dialLevel >= requiredLevel;
+  const permitted =
+    classification.isKnownAction && dialLevel >= requiredLevel;
 
   return {
     permitted,
+    ...(classification.isKnownAction ? {} : { code: "UNKNOWN_ACTION" as const }),
     dialLevel,
     requiredLevel,
     tier: classification.tier,

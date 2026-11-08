@@ -1,5 +1,9 @@
 import type { DialLevel, EnvironmentTier } from "../types/autonomy.js";
 import { ENV_MAX_LEVELS } from "../types/autonomy.js";
+import {
+  PROTECTED_ACTIONS,
+  type ProtectedAction,
+} from "./protected-actions.js";
 
 export const DEFAULT_REPO_CEILING: DialLevel = 3;
 
@@ -16,6 +20,7 @@ export interface RuntimePolicy {
   readonly globalMaxLevel: DialLevel;
   readonly agentsPaused: boolean;
   readonly repoCeilings: ReadonlyMap<string, DialLevel>;
+  readonly allowedProtectedActions: ReadonlySet<ProtectedAction>;
 }
 
 let runtimePolicy: RuntimePolicy | undefined;
@@ -114,6 +119,24 @@ function parsePaused(raw: string | undefined): boolean {
   throw new Error("GH_CE_AGENTS_PAUSED must be true or false");
 }
 
+function parseOperatorProtectedActions(
+  raw: string | undefined,
+): ReadonlySet<ProtectedAction> {
+  const allowed = new Set<ProtectedAction>();
+  if (raw === undefined || raw.trim() === "") return allowed;
+
+  for (const entry of raw.split(",")) {
+    const action = entry.trim().toLowerCase();
+    if (!PROTECTED_ACTIONS.includes(action as ProtectedAction)) {
+      throw new Error(
+        `Invalid GH_CE_ALLOW_PROTECTED_ACTIONS entry "${entry}".`,
+      );
+    }
+    allowed.add(action as ProtectedAction);
+  }
+  return allowed;
+}
+
 export function loadRuntimePolicy(
   env: Record<string, string | undefined> = process.env,
   warn?: (message: string) => void,
@@ -129,6 +152,9 @@ export function loadRuntimePolicy(
         : parseLevel(env["GH_CE_MAX_LEVEL"], "GH_CE_MAX_LEVEL"),
     agentsPaused: parsePaused(env["GH_CE_AGENTS_PAUSED"]),
     repoCeilings: parseRepoCeilings(env["GH_CE_REPO_CEILINGS"]),
+    allowedProtectedActions: parseOperatorProtectedActions(
+      env["GH_CE_ALLOW_PROTECTED_ACTIONS"],
+    ),
   };
 }
 

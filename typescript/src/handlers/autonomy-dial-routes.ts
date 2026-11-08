@@ -20,7 +20,6 @@ import {
 import {
   getDialLevel,
   setDialLevel,
-  isActionPermitted,
 } from "../services/autonomy-dial.js";
 import { getRuntimePolicy } from "../config/runtime.js";
 import {
@@ -28,6 +27,7 @@ import {
   classifyAction,
   getTierSummary,
 } from "../services/action-classifier.js";
+import { actionGate } from "../services/action-gate.js";
 
 const router = Router();
 
@@ -70,6 +70,7 @@ router.post("/check", (req: Request, res: Response): void => {
     const action = body["action"] as string | undefined;
     const owner = body["owner"] as string | undefined;
     const repo = body["repo"] as string | undefined;
+    const branchName = body["branchName"] as string | undefined;
     // Validate required fields
     if (!action) {
       res.status(400).json({
@@ -89,14 +90,20 @@ router.post("/check", (req: Request, res: Response): void => {
 
     // Classify the action and check permission
     const classification = classifyAction(action);
-    const permissionResult = isActionPermitted(owner, repo, action);
+    const permissionResult = actionGate.check({
+      owner,
+      repo,
+      action,
+      branchName,
+    });
 
     res.json({
       action: classification.actionType,
       tier: classification.tier,
       tierName: classification.tierDetails.name,
       isKnownAction: classification.isKnownAction,
-      permitted: permissionResult.permitted,
+      permitted: permissionResult.allowed,
+      code: permissionResult.code,
       dialLevel: permissionResult.dialLevel,
       effectiveLevel: permissionResult.effectiveLevel,
       requiredLevel: permissionResult.requiredLevel,

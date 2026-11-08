@@ -98,5 +98,16 @@ describe("loadRuntimePolicy", () => {
         ),
       /GH_CE_AGENTS_PAUSED must be true or false/,
     );
+    assert.throws(
+      () =>
+        loadRuntimePolicy(
+          {
+            GH_CE_ENVIRONMENT: "local",
+            GH_CE_ALLOW_PROTECTED_ACTIONS: "unknown_action",
+          },
+          () => {},
+        ),
+      /Invalid GH_CE_ALLOW_PROTECTED_ACTIONS/,
+    );
   });
 });

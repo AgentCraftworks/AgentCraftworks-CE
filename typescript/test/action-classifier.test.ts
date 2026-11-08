@@ -25,6 +25,9 @@ import {
   DEFAULT_DIAL_LEVEL,
 } from "../src/services/autonomy-dial.js";
 import { loadRuntimePolicy } from "../src/config/runtime.js";
+import actionTierManifest from "../../standards/action-tiers.json" with {
+  type: "json",
+};
 import {
   mapLegacyDialLevel,
   resolveEngagementLevel,
@@ -130,6 +133,12 @@ describe("isActionPermitted (classifier)", () => {
     assert.equal(result.permitted, true);
   });
 
+  it("should deny unknown actions even at dial level 5", () => {
+    const result = isActionPermitted(5, "unknown_action_xyz");
+    assert.equal(result.permitted, false);
+    assert.equal(result.code, "UNKNOWN_ACTION");
+  });
+
   it("should throw on invalid dial level", () => {
     assert.throws(() => isActionPermitted(0, "view_file"), /between 1 and 5/);
     assert.throws(() => isActionPermitted(6, "view_file"), /between 1 and 5/);
@@ -153,10 +162,14 @@ describe("getActionsByTier", () => {
 });
 
 describe("getAllActions", () => {
-  it("should return 53+ action types", () => {
+  it("should exactly match the CE-local tier manifest", () => {
     const all = getAllActions();
-    const count = Object.keys(all).length;
-    assert.ok(count >= 53, `Expected >= 53 actions, got ${count}`);
+    assert.deepEqual(all, actionTierManifest.actions);
+    assert.equal(all["modify_ci"], "T5");
+    assert.equal(all["orchestrate_agents"], "T5");
+    assert.equal(all["create_draft_pr"], "T3");
+    assert.equal(all["mark_pr_ready"], "T4");
+    assert.equal(all["bypass_branch_protection"], "T5");
   });
 });
 
@@ -305,6 +318,25 @@ describe("Autonomy Dial", () => {
     const result = dialIsActionPermitted("owner", "repo", "merge_pr");
     assert.equal(result.permitted, false);
     assert.equal(result.requiredLevel, 5);
+  });
+
+  it("should deny unknown actions even when the effective level is sufficient", () => {
+    setDialLevel("owner", "repo", 5, "admin");
+    const policy = loadRuntimePolicy(
+      {
+        GH_CE_ENVIRONMENT: "local",
+        GH_CE_REPO_CEILINGS: "owner/repo=5",
+      },
+      () => {},
+    );
+    const result = dialIsActionPermitted(
+      "owner",
+      "repo",
+      "unknown_write",
+      policy,
+    );
+    assert.equal(result.permitted, false);
+    assert.equal(result.code, "UNKNOWN_ACTION");
   });
 
   it("should apply environment tier cap", () => {

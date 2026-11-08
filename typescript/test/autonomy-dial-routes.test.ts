@@ -229,6 +229,7 @@ describe("POST /api/dial/check", () => {
       action: "edit_file",
       owner: "org",
       repo: "repo",
+      branchName: "agent/test",
     });
     assert.equal(res.status, 200);
     assert.equal(res.body["permitted"], true);
@@ -265,7 +266,7 @@ describe("POST /api/dial/check", () => {
     assert.equal(res.body["environment"], "production");
   });
 
-  it("should report unknown actions as T3", async () => {
+  it("should deny unknown actions with UNKNOWN_ACTION", async () => {
     setDialLevel("org", "repo", 5, "admin");
     const res = await request("POST", "/api/dial/check", {
       action: "unknown_action_xyz",
@@ -275,7 +276,8 @@ describe("POST /api/dial/check", () => {
     assert.equal(res.status, 200);
     assert.equal(res.body["tier"], "T3");
     assert.equal(res.body["isKnownAction"], false);
-    assert.equal(res.body["permitted"], true);
+    assert.equal(res.body["permitted"], false);
+    assert.equal(res.body["code"], "UNKNOWN_ACTION");
   });
 
   it("should return 400 when action is missing", async () => {
@@ -384,6 +386,7 @@ describe("Permission decision scenarios", () => {
       action: "edit_file",
       owner: "org",
       repo: "repo",
+      branchName: "agent/test",
     });
     assert.equal(t3.body["permitted"], true);
     assert.equal(t3.body["effectiveLevel"], 3);
