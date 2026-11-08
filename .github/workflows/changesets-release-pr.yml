@@ -1,0 +1,55 @@
+name: Changesets Release PR
+
+# Engagement Level: T4 (Agent Team) — opens and updates a version PR on staging.
+
+on:
+  push:
+    branches: [staging]
+
+permissions:
+  contents: read
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_CE_APP_ID }}
+          private-key: ${{ secrets.GH_CE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create or update version PR
+        uses: changesets/action@v1
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          version-script: npm run changeset:version
+          publish-script: echo "npm publishing is disabled; GitHub Releases are created from version tags."
+          pr-title: "chore: release packages"
+          commit-message: "chore: release packages"
+          pr-base-branch: staging
+          pr-draft: create
+          create-github-releases: false
+          push-git-tags: false
