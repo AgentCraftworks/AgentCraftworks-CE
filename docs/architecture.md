@@ -138,14 +138,17 @@ stateDiagram-v2
 | Level | Name | Action Tier | Permitted Actions | Human Required |
 |---|---|---|---|---|
 | 1 | Observer | T1 | Read, view, list | Always |
-| 2 | Advisor | T2 | Comment, suggest | Always |
-| 3 | Collaborator | T3 | Propose edits and draft PRs on agent branches | For merge |
-| 4 | Delegated | T4 | Approve, request reviews, close/reopen issues, update PR branches | Escalation only |
-| 5 | Autonomous | T5 | Merge, deploy, release, modify CI, orchestrate agents | Never |
+| 2 | Advisor | T2 | Comment, review comments, suggest, label, react | Always |
+| 3 | Collaborator | T3 | Create agent branches, propose edits, create draft PRs/issues, request changes | For merge |
+| 4 | Delegated | T4 | Mark PRs ready, approve, request reviews, close/reopen issues, update PR branches, create tags | Escalation only |
+| 5 | Autonomous | T5 | Merge, deploy, publish releases, revert/cherry-pick, modify CI, orchestrate agents | Never |
 
 Default environment ceilings: local=5, dev=5, staging=4, production=3. The
-effective level is bounded by the repository dial, repository ceiling, operator
-environment ceiling, and global ceiling. Levels 4–5 require independent opt-ins;
-protected actions remain denied unless both allow-lists explicitly allow them.
+default repository ceiling is 3; operators may raise environment limits, while
+repository and authenticated-principal opt-ins are intended to be independently
+reviewed. Protected actions remain denied unless both allow-lists explicitly allow
+them. The distinction between CE and Enterprise is organizational scale, not a
+license-based engagement-level cap.
 
 > Levels 4–5 can be configured but are not yet enforced on all job paths.
+> See [ENGAGEMENT_LEVELS.md](ENGAGEMENT_LEVELS.md) and [ENABLING_DELEGATED_AUTONOMOUS_SAFELY.md](ENABLING_DELEGATED_AUTONOMOUS_SAFELY.md).

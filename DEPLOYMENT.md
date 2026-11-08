@@ -20,6 +20,8 @@ Complete guide for deploying AgentCraftworks Community Edition to Azure and runn
 - [Smoke Tests](#smoke-tests)
 - [Production Deployment Checklist](#production-deployment-checklist)
 - [Monitoring & Health Checks](#monitoring--health-checks)
+- [Engagement Levels Guide](docs/ENGAGEMENT_LEVELS.md)
+- [Safe Delegated and Autonomous Enablement](docs/ENABLING_DELEGATED_AUTONOMOUS_SAFELY.md)
 - [Cost Estimation](#cost-estimation)
 - [Cleanup](#cleanup)
 - [Troubleshooting](#troubleshooting)
@@ -629,13 +631,13 @@ services:
 
 ### GH-AW Workflow Index
 
-**GH-AW (GitHub Agent Workflows)** are autonomous agents built into AgentCraftworks Community Edition. They implement graduated Agent Engagement Levels (T1–T3) to provide guidance, validation, and automated maintenance without requiring manual intervention.
+**GH-AW (GitHub Agent Workflows)** are autonomous agents built into AgentCraftworks Community Edition. Each GitHub write is classified and checked against the T1–T5 action policy; a workflow can make different kinds of actions, so its label is not a blanket authorization.
 
 #### Core Philosophy
 
-- **Graduated Autonomy**: Each workflow operates at a specific engagement level, from Observer (T1) to Collaborator (T3)
+- **Graduated Autonomy**: Actions range from Observer (T1) reads through Autonomous (T5) operations
 - **Advisory by Default**: Most GH-AW workflows assist and suggest only; designated enforcement workflows such as `ghaw-branch-policy-guard` and `ghaw-azd-service-tag-check` may block PRs or fail checks in the default Community Edition configuration
-- **Policy-governed agents**: CE supports engagement levels 1–5 with independent operator, maintainer, and API-principal safeguards; levels 4–5 are not yet enforced on all job paths
+- **Policy-governed agents**: CE defines levels 1–5 and a layered safety policy; levels 4–5 are not yet enforced on all job paths
 
 #### Complete Workflow Reference
 
@@ -644,7 +646,7 @@ services:
 | **Accessibility Review** | `.github/workflows/ghaw-accessibility-review.yml` | T2 (Advisor) | Posts accessibility checklist on PRs touching UI files; tags `@accessibility-lead` for review | PR touching `.jsx`, `.tsx`, `.vue`, `.html`, `.css`, `.scss`, `.less`, `.svelte`, `.md` |
 | **azd Service-Tag Check** | `.github/workflows/ghaw-azd-service-tag-check.yml` | T2 (Advisor) | Validates every service in `azure.yaml` has a matching `azd-service-name` tag in Bicep templates; prevents deploy failures | PR to `main` or `staging` touching `azure.yaml` or `infra/**`; push to `main` touching `azure.yaml` or `infra/**` |
 | **Branch Policy Guard** | `.github/workflows/ghaw-branch-policy-guard.yml` | T1 (Observer) | Enforces promotion flow (`feature/* → staging → main`); blocks PRs that violate branch policy | PR to `main` or `staging` |
-| **Changeset** | `.github/workflows/ghaw-changeset.yml` | T3 (Collaborator) | Automated version bumps and changelog generation; analyzes merged PRs, determines semver bump, updates `CHANGELOG.md` | Push to `main`, manual |
+| **Changeset** | `.github/workflows/ghaw-changeset.yml` | T1 (Observer) | Reads merged PR metadata and prints a changeset preview; does not write repository state | Push to `main`, manual |
 | **CI Coach** | `.github/workflows/ghaw-ci-coach.yml` | T2 (Advisor) | Analyzes CI failures and posts suggested fixes as PR comments | CI workflow failure |
 | **CLI Consistency Checker** | `.github/workflows/ghaw-cli-consistency.yml` | T2 (Advisor) | Validates CLI, API, and MCP tool naming conventions; posts findings as PR comments | PR to `main` touching `typescript/src/handlers/**`, `typescript/src/mcp/**`, or `typescript/src/jobs/**` |
 | **Daily Test Improver** | `.github/workflows/ghaw-daily-test-improver.yml` | T2 (Advisor) | Identifies test coverage gaps and creates issues with specific test suggestions | Weekday 9 AM UTC schedule, manual |
@@ -656,14 +658,21 @@ services:
 GH-AW workflows demonstrate the **Agent Engagement Levels** model in production:
 
 - **T1 (Observer)**: `ghaw-branch-policy-guard` — validates topology, never modifies state
-- **T2 (Advisor)**: Most workflows — post comments, create issues, add labels, but never edit code
-- **T3 (Collaborator)**: `ghaw-changeset` — creates branches and edits files, but only on explicit trigger (push to `main`)
+- **T2 (Advisor)**: Advisory workflows — post comments or review comments, suggest, label, and react; every write is classified separately
+- **T3 (Collaborator)**: Agents may propose edits and draft PRs on `agent/*` branches; the action gate checks each write.
 
 Agent engagement levels are not restricted by edition. The default environment
 ceilings are local=5, dev=5, staging=4, production=3; operators can explicitly
 raise them. The default repository ceiling is 3, and levels 4–5 require independent
-operator, maintainer, and authenticated-principal opt-ins. Levels 4–5 can be
-configured but are not yet enforced on all job paths.
+operator, reviewed-repository, and authenticated-principal opt-ins in the intended
+policy. Levels 4–5 can be configured but are not yet enforced on all job paths.
+
+#### Repository CI/CD automation is separate from product agents
+
+The repository's own delivery workflows are operational automation, not customer
+GH-AW agents. `ghaw-staging-refresh` is classified T4 and `deploy-azd` can deploy
+at T5; their CI/CD permissions and environment protections remain separate from
+the product-agent engagement-level policy.
 
 #### Customizing GH-AW Workflows
 

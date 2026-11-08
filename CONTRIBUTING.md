@@ -68,12 +68,16 @@ npm test
 | Community Edition (this repo) | Enterprise |
 |---|---|
 | Webhook routing + FSM | SRE incident response |
-| Agent Engagement Levels (Observer → Autonomous) | Self-healing orchestration |
+| Agent Engagement Levels 1–5 under repository and operator policy | Self-healing orchestration |
 | MCP 6-tool interface | Chronicle AI ledger |
 | CODEOWNERS routing | Governance Monitor |
 | GitHub App scaffolding | CI autofix engine |
 
-If your contribution adds Enterprise-tier functionality, it may not be accepted into CE — but we may offer to integrate it into Enterprise with attribution.
+CE does not impose an edition cap on Agent Engagement Levels 1–5; the boundary is
+organizational-scale functionality and its security controls. If your contribution
+adds Enterprise-tier functionality, it may not be accepted into CE — but we may
+offer to integrate it into Enterprise with attribution. Levels 4–5 remain subject
+to the enforcement-status warning in the [engagement-level guide](docs/ENGAGEMENT_LEVELS.md).
 
 ## Reporting Issues
 
