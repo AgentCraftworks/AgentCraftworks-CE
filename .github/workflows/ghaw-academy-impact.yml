@@ -1,0 +1,36 @@
+name: "GH-AW: Academy contract impact"
+
+# Engagement Level: T2 (Advisor) — adds a label based on changed contract surfaces.
+# Uses pull_request_target without checking out or executing pull request code.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  label-contract-impact:
+    name: Apply academy-impact label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure academy-impact label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh api "repos/$GITHUB_REPOSITORY/labels/academy-impact" >/dev/null 2>&1; then
+            gh api "repos/$GITHUB_REPOSITORY/labels" \
+              --method POST \
+              -f name=academy-impact \
+              -f color=5319e7 \
+              -f description="Changes a Community Edition Academy contract surface"
+          fi
+
+      - name: Label changed contract surfaces
+        uses: actions/labeler@v6
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
