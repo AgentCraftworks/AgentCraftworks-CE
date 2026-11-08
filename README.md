@@ -8,7 +8,6 @@
 [![Node.js 22+](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/built%20with-TypeScript-blue)](https://www.typescriptlang.org)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-purple)](https://modelcontextprotocol.io)
-[![Hackathon](https://img.shields.io/badge/Microsoft%20AI%20Dev%20Days-2026-orange)](https://github.com/Azure/AI-Dev-Days-Hackathon)
 
 [Quick Start](#quick-start) · [How It Works](#how-it-works) · [Enterprise](#enterprise-edition) · [Docs](#documentation) · [Contribute](#contributing)
 
@@ -18,13 +17,24 @@
 
 ## The Problem
 
-AI coding agents are powerful — but completely ungoverned. They merge PRs without approval, push to production without validation, and operate at full autonomy with no safety net.
-
-**Engineering teams need an agent team operating at the speed of their trust while ensuring critical security and compliance requirements are always met.**
+Agent workflows combine automation, AI tools, and human decisions. Their behavior depends on
+the permissions, policies, and integrations configured around them; recording a request for work
+does not, by itself, execute or dispatch that work.
 
 ## What AgentCraftworks Community Edition Does
 
-AgentCraftworks Community Edition is a GitHub App + MCP server that intercepts every agent action and routes it through **configurable Agent Engagement Levels** before it reaches your codebase. Even when your team runs agents at full autonomy in development, CE keeps a human in the loop for production.
+AgentCraftworks Community Edition is a GitHub App and MCP server for agentic DevOps. It provides
+a handoff state machine, the **Agent Engagement Levels** model, six MCP tools, and a reviewable
+CODEOWNERS setup pull request on install. Pull-request routing uses labels today; CODEOWNERS
+routing is being added in #266. The engagement model includes levels 1–5. **Levels 4–5 are
+configurable; enforcement is in progress.**
+
+> **What CE is / isn't**
+>
+> - **Is:** the MIT-licensed Community Edition, with the handoff state machine, engagement-level model, and six MCP tools documented in this repository.
+> - **Isn't:** a prerequisite for Enterprise or a feature-trimmed Enterprise release. The editions serve different needs and have distinct capabilities.
+>
+> The full edition comparison is being drafted in [#243](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/243).
 
 ## SDLC Lifecycle Strategy
 
@@ -61,13 +71,13 @@ Pull Request / Push Event
 | Feature | Description |
 |---|---|
 | **Agent Engagement Levels** | 5-level governance control (Observer → Autonomous) — set per-repo, per-team, per-event type |
-| **MCP 6-Tool Interface** | Standard MCP server for agent handoffs: `create_handoff`, `accept_handoff`, `complete_handoff`, `query_workflow_state`, `attach_context`, `get_context` |
-| **Finite State Machine** | Every handoff is a state transition — auditable, reproducible |
+| **MCP Interface** | Six tools create, accept, complete, and query handoffs, or attach and retrieve context. Creating a handoff records a request; it does not dispatch an agent. |
+| **Finite State Machine** | Handoffs move through explicit states, with machine-readable failure reasons and inspectable history. A record does not verify that downstream work ran. |
 | **CODEOWNERS Routing** | Events routed to the right agent based on ownership rules |
 | **Webhook Handling** | Handles GitHub PR, push, issue, and workflow events |
 | **GitHub App Scaffold** | Drop-in GitHub App: one install, works across all repos in your org |
 | **Setup PR on Install** | Installing the App opens a reviewable CODEOWNERS pull request — no silent repository changes |
-| **Enterprise Upgrade Path** | Same finite state machine and same MCP tools, plus the orchestration and governance layers listed under [Enterprise Edition](#enterprise-edition) |
+| **Edition comparison** | See the comparison being drafted in [#243](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/243). |
 
 ## Architecture
 
@@ -75,15 +85,9 @@ Pull Request / Push Event
 graph TD
     GH[GitHub Events] --> WH[Webhook Handler]
     WH --> AD[Engagement Level Router]
-    AD -->|Observer / Advisor| OBS[Read & Comment]
-    AD -->|Collaborator| PR[Label, Assign, Edit]
-    AD -->|Delegated / Autonomous| AUTO[Merge, Deploy, Orchestrate]
-    OBS --> MCP[MCP Server]
-    PR --> MCP
-    AUTO --> MCP
-    MCP --> GHA[GitHub Actions]
-    MCP --> API[GitHub API]
-    GHA --> PROD[Production]
+    AD -->|Permitted action| ACTION[GitHub API action]
+    MCP[MCP Client] --> MCP_SERVER[MCP Server]
+    MCP_SERVER --> HANDOFF[Handoff and context records]
 ```
 
 ## Quick Start
@@ -153,10 +157,13 @@ Four states, two terminal (`completed`, `failed`). A `failed` handoff always car
 reason prefix — `rejected:`, `abandoned:`, `error:` or `timeout:` — so the cause is
 machine-readable. `overdue` is a **computed property**, not a stored state.
 
-This makes every agent action **auditable and reproducible** — essential for enterprise compliance.
+The state machine makes handoff status and failure reasons explicit. It does not by itself prove
+that a receiving agent executed the work or provide Enterprise compliance evidence.
 
 ### 3. MCP-Compatible
-AgentCraftworks Community Edition ships a fully compliant Model Context Protocol (MCP) server. Any MCP-capable AI client (GitHub Copilot, Claude, GPT-4) can connect and use the 6 core tools:
+AgentCraftworks Community Edition ships a Model Context Protocol (MCP) server. An MCP-capable
+client can connect and use these six tools. The tools manage handoff and context records; they do
+not dispatch agents:
 
 | Tool | Description |
 |---|---|
@@ -169,21 +176,22 @@ AgentCraftworks Community Edition ships a fully compliant Model Context Protocol
 
 ## Enterprise Edition
 
-The paid [AgentCraftworks Enterprise](https://agentcraftworks.com) extends CE with advanced orchestration and governance capabilities. **None of the following are included in Community Edition:**
+[AgentCraftworks Enterprise](https://agentcraftworks.com) adds organization-wide policy,
+multi-instance services, and integrations for larger deployments.
 
-| Enterprise Feature | What It Adds Over CE |
+| Enterprise capability | Scope |
 |---|---|
-| **Rate Governor** | 6-pattern adaptive rate limiting — traffic light throttling, shared token pool, predictive circuit breaker, cascade detection, lease cleanup, and priority retry windows |
-| **Squad Coordinator** | Multi-agent orchestration — MCP capability detection, CLI fallback chains (`MCP → CLI → filesystem`), team configuration, and response mode selection |
-| **Aspire Integration** | .NET Aspire CLI bridge for distributed tracing, health checks, and observability dashboards across agent squads |
-| **Governance Gates** | Pre/post-execution policy enforcement middleware — validates trust scores, action tiers, and environment caps before every agent action |
-| **Promotion Engine** | Graduated rollout (staging → canary → production) with automatic rollback on gate failures |
-| **Audit Trail** | Full rate-limiting audit log — 429 events, circuit breaker transitions, zone changes, and lease reclaims |
-| **Quarantine Bridge** | Abuse detection and automatic quarantine for agents exceeding rate thresholds |
+| Organization-wide policy and centralized ceilings | Apply policy across repositories and teams |
+| Durable multi-replica state | Share state across service instances |
+| Promotion Engine | Coordinate staged production promotion |
+| Compliance evidence | Provide organization-level evidence and reporting |
+| Multi-squad S2S coordination | Coordinate multiple squads across services |
+| Distributed Rate Governor | Enforce budgets across instances |
+| Aspire integration | Integrate distributed tracing and health checks |
+| Quarantine Bridge | Integrate organization-level abuse response |
+| Entra ID | Provide enterprise identity integration |
 
-All Enterprise features build on the same finite state machine (FSM), CODEOWNERS routing, and MCP tool interface that CE provides — they add the orchestration and governance layers needed for production-scale multi-agent workflows.
-
-Learn more at [AgentCraftworks.com](https://agentcraftworks.com).
+The edition comparison is being drafted in [#243](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/243).
 
 ## Fork & Customize
 
@@ -230,6 +238,6 @@ See [LICENSE](LICENSE) for full text.
 
 Built with ❤️ for the agentic DevOps era · Powered by Azure + GitHub Copilot
 
-[Enterprise](https://agentcraftworks.com) · [Issues](../../issues) · [Discussions](../../discussions)
+[Enterprise](https://agentcraftworks.com) · [Issues](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues) · [Discussions](https://github.com/AgentCraftworks/AgentCraftworks-CE/discussions)
 
 </div>

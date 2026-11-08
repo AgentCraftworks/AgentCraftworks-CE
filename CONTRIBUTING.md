@@ -65,13 +65,7 @@ npm test
 
 ## What Belongs in CE vs Enterprise
 
-| Community Edition (this repo) | Enterprise |
-|---|---|
-| Webhook routing + FSM | SRE incident response |
-| Agent Engagement Levels (Observer → Autonomous) | Self-healing orchestration |
-| MCP 6-tool interface | Chronicle AI ledger |
-| CODEOWNERS routing | Governance Monitor |
-| GitHub App scaffolding | CI autofix engine |
+CE is the open protocol layer — a subset of AgentCraftworks Enterprise, not its core. See [README → Enterprise Edition](README.md#enterprise-edition) and [docs/EDITIONS.md](docs/EDITIONS.md) for the single edition comparison table. <!-- TODO(#243): docs/EDITIONS.md is being authored in #243 -->
 
 If your contribution adds Enterprise-tier functionality, it may not be accepted into CE — but we may offer to integrate it into Enterprise with attribution.
 

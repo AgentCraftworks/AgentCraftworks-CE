@@ -8,7 +8,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in AgentCraftworks Core, please report it responsibly:
+If you discover a security vulnerability in AgentCraftworks Community Edition, please report it responsibly:
 
 1. **Do NOT open a public issue** for security vulnerabilities
 2. **Preferred:** Use [GitHub's private vulnerability reporting](https://github.com/AgentCraftworks/AgentCraftworks-CE/security/advisories/new) for this repository
@@ -25,7 +25,7 @@ We aim to acknowledge reports within 48 hours and provide a fix timeline within 
 
 ## Security Measures
 
-AgentCraftworks Core implements the following security measures:
+AgentCraftworks Community Edition implements the following security measures:
 
 ### Webhook Signature Verification
 

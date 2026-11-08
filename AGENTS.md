@@ -1,4 +1,4 @@
-# AGENTS.md — AgentCraftworks Core (Open Source)
+# AGENTS.md — AgentCraftworks Community Edition (Open Source)
 
 > This file follows the [AGENTS.md](https://agents.md/) open standard (Linux Foundation / Agentic AI Foundation).
 > It is read by 25+ coding agent tools including Claude Code, GitHub Copilot, Gemini CLI, Cursor, Windsurf, Devin, OpenAI Codex, and more.
@@ -9,7 +9,7 @@
 
 ## Project Overview
 
-AgentCraftworks Core is an open-source **GitHub App** (webhook-driven Express server) that orchestrates multi-agent software development workflows. It uses a 4-state handoff finite state machine, CODEOWNERS-based routing, and the Model Context Protocol (MCP).
+AgentCraftworks Community Edition (CE) is an open-source **GitHub App** (webhook-driven Express server) that provides the open protocol layer for multi-agent software development workflows. It uses a 4-state handoff finite state machine, CODEOWNERS-based routing, and the Model Context Protocol (MCP). CE is a subset of the paid product, not its core; Enterprise-only components are listed in docs/EDITIONS.md (#243).
 
 **This is NOT a CLI tool.** It is a webhook-driven server that listens for GitHub events and routes work to specialized AI agents.
 
@@ -28,7 +28,7 @@ AgentCraftworks-CE/
 │   │   └── index.ts  # Entry point
 │   ├── test/         # Tests (node:test + tsx)
 │   ├── tsconfig.json # strict: true
-│   └── package.json  # @agentcraftworks/core
+│   └── package.json  # @agentcraftworks/ce
 ├── infra/            # Azure Bicep infrastructure-as-code
 ├── scripts/          # Deployment and utility scripts
 └── docs/             # Documentation
