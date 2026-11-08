@@ -15,8 +15,9 @@ Community Edition serves two different people. Pick your track:
 Both tracks end at the same place: [your first handoff](#your-first-handoff), then
 [choosing how much agents may do](#choose-an-engagement-level).
 
-Commands and examples are being added to CI smoke coverage. If one fails for you, see
-[Troubleshooting](#troubleshooting).
+CI checks local documentation links, verifies the MCP tool list through `npm run mcp`, and
+smoke-tests the health endpoint and signed webhook demo. The `doctor` command check will be
+added with the E-1 CLI work. If a command fails for you, see [Troubleshooting](#troubleshooting).
 
 ---
 
