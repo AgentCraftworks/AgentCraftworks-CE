@@ -1,0 +1,32 @@
+# Engagement Level: T1 (Observer) - local compilation only; no Azure access.
+name: Security Bicep Outputs
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Bicep secret output guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install pinned Bicep compiler
+        run: az bicep install --version v0.49.2
+      - name: Reject insecure secret outputs in every infrastructure module
+        shell: pwsh
+        run: |
+          $configDirectory = if ($env:AZURE_CONFIG_DIR) { $env:AZURE_CONFIG_DIR } else { Join-Path $HOME '.azure' }
+          $compiler = Join-Path $configDirectory 'bin/bicep'
+          ./.github/security/check-bicep-outputs.test.ps1 -BicepExecutable $compiler
+          ./.github/security/check-bicep-outputs.ps1 -BicepExecutable $compiler
