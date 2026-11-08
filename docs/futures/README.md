@@ -19,6 +19,7 @@ This folder contains forward-looking strategy documents, roadmaps, and proposals
 |---|---|---|
 | [CE_GETTING_STARTED_IMPLEMENTATION_PLAN.md](CE_GETTING_STARTED_IMPLEMENTATION_PLAN.md) | APPROVED | Getting Started experience and product documentation for Community Edition — tracked by epic [#238](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues/238) |
 | [PLAYWRIGHT_CLI_INTEGRATION.md](PLAYWRIGHT_CLI_INTEGRATION.md) | DRAFT | Browser automation via Playwright CLI for Agent Teams |
+| [CE_HANDOFF_EVIDENCE_EXPORT.md](CE_HANDOFF_EVIDENCE_EXPORT.md) | DRAFT | Proposed portable handoff export contract and synthetic fixture, pending C-12 |
 
 ## Why this folder exists
 
