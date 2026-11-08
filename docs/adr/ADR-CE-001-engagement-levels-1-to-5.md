@@ -9,7 +9,8 @@ related: "#270, #285, #288"
 
 # ADR-CE-001 — Community Edition supports Agent Engagement Levels 1–5
 
-**Status:** Proposed — pending G0 approval  
+**Status:** Proposed — pending G0 approval
+
 **Date:** 2026-11-07
 
 ## Context
