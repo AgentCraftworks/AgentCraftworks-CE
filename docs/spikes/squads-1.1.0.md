@@ -9,7 +9,7 @@
 
 The package is technically usable in the CE Node 22 / ESM / strict-TypeScript environment. The exact 1.1.0 package installed without tracked dependency changes; CE typecheck, build, and tests passed; the SDK's ESM entry points and representative Windows path checks worked; and npm audit reported no vulnerabilities.
 
-Proceed to design G-2 through G-7 only after the plan's G5 prerequisites are met: D-13 approval and U-4 alignment. Keep CE as the policy and audit control plane: every agent action must still pass through CE authorization and handoff logic. Do not import model-resolver profiles, HydraFusion, multi-squad coordination, or the Redis Rate Governor into CE under this recommendation. The upstream 1.0.1-to-1.1.0 release-specific API delta is not sufficiently documented to call the upgrade unconditionally safe; verify the exact integration contract during G-2/G-3.
+Proceed with G-2 through G-7 only after G5 is approved. The product owner has approved the CE implementation plan and D-9 through D-18, satisfying the product-owner portion of D-13. The architect alignment for D-13, U-4 alignment, and approval of this G-1 spike remain outstanding. C-8 and D-2 implementation dependencies must also be available before G-3 can be based and validated. Keep CE as the policy and audit control plane: every agent action must still pass through CE authorization and handoff logic. Do not import model-resolver profiles, HydraFusion, multi-squad coordination, or the Redis Rate Governor into CE under this recommendation. The upstream 1.0.1-to-1.1.0 release-specific API delta is not sufficiently documented to call the upgrade unconditionally safe; verify the exact integration contract during G-2/G-3.
 
 ## Existing CE usage
 
@@ -69,7 +69,7 @@ The CE plan's baseline estimates total 7 AEU. The range below keeps those estima
 
 ## Gate disposition
 
-**G-1 technical recommendation: GO. G5: NOT YET SATISFIED.** The spike supplies the compatibility evidence needed for a bounded next design step, but G5 still requires D-13 approval and U-4 alignment by the named human approvers. Once those are recorded, begin with a small G-2/G-3 integration contract that proves CE authorization and handoff behavior before adding MCP tools or documentation.
+**G-1 technical recommendation: GO. G5: NOT YET SATISFIED.** Product-owner approval of the CE plan and D-9 through D-18 is recorded; this satisfies only the product-owner portion of D-13. G5 still requires approval of this spike, architect alignment for D-13, and U-4 alignment. G-3 additionally depends on the C-8 action-gate and D-2 store work. Do not merge the SDK pin or start implementation until G5 is met; after that, first prove CE authorization and handoff behavior before adding MCP tools or documentation.
 
 ### References
 
