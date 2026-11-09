@@ -84,7 +84,7 @@ These are **shipping inaccuracies** and must be fixed before we add more docs on
 | DEF-3 | `README.md` line 98 | "see Quick Start section above" is a self-referential dangling pointer | Point at `docs/getting-started.md` (B1) |
 | DEF-4 | `README.md` Quick Start | Only documents the *self-host / build from source* path; there is no *install the App and get a PR* path — which is the actual product experience | Add a two-track Quick Start (§4.10) |
 | DEF-5 | `.env.example` vs `DEPLOYMENT.md` | `.env.example` uses `GH_CE_APP_ID` / `GH_CE_APP_PRIVATE_KEY` / `GH_CE_WEBHOOK_SECRET`; confirm every doc and workflow uses the same names | Single canonical env var table in `docs/CONFIGURATION.md` (B9) |
-| DEF-6 | Engagement level naming | CE used Observer / Advisor / **Peer Programmer** / **Agent Team** / **Full Agent Team**; the paid product had since moved to Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous** without pushing the change back to CE | **RESOLVED** — CE now uses the paid names. The old names are **removed outright** (no alias layer, no deprecation window); `resolveEngagementLevel` rejects them with an error naming the valid set. See D-1 and §7.1. |
+| DEF-6 | Engagement level naming | CE used Observer / Advisor / **Peer Programmer** / **Agent Team** / **Full Agent Team**; the paid product had since moved to Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous** without pushing the change back to CE | **RESOLVED** for canonical names — CE uses the paid names. The resolver currently accepts the old names as API aliases; D-15 proposes retaining them until the upstream rename. If approved at G0, D-15 supersedes D-1's no-alias removal policy. See §7.1. |
 | DEF-7 | `FORKING.md` (23 lines) | README links it as a "complete file-by-file checklist"; it is a short workflow-disable note | Either expand to match the promise or soften the README claim |
 
 ---
@@ -478,9 +478,21 @@ tool names exported by `mcp/server.ts`. Prevents DEF-1 recurring.
 > D-1 and D-3 through D-7 were resolved on 2026-08-18. D-2 and D-8 are superseded.
 > D-9 through D-18 are proposed pending G0.
 
+### Decision and readiness gates
+
+G0, G3, and G6 are approval/readiness gates, not implementation phases. They are separate
+checkpoints that may span or follow the numbered phases in §8; a phase number does not itself
+satisfy a gate.
+
+| Gate | Exit criteria |
+|---|---|
+| **G0 — Decision approval** | Record approval or rejection of each proposed decision D-9 through D-18 in the tracking issue. Resolve D-15 against D-1 and DEF-6 explicitly before implementation: if approved, D-15 replaces D-1's no-alias removal policy, retaining aliases until the upstream rename is synced; if not approved, D-1 remains the policy. |
+| **G3 — Level enforcement** | Verify that every job path enforces the approved levels 4–5 policy and all required safeguards. Tests cover each path and prove the operator ceiling, reviewed repository configuration, and elevated token are all required, the pause switch returns to Observer, and protected actions remain denied unless both allow-lists permit them. Remove the enforcement caveat only after these checks pass and the result is recorded. |
+| **G6 — Community Academy publication** | Approve the Community tracks after confirming their claims match implemented CE capabilities and the approved CE/Enterprise boundary; label them as Community, keep Enterprise tracks separate, and complete the required documentation accessibility and link checks. Record the approval before publication. |
+
 | ID | Decision | Resolution |
 |---|---|---|
-| **D-1** | Engagement level names | **RESOLVED — align CE to the paid naming.** CE adopts Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous**. The old CE names were superseded by later improvements in the paid product that were never pushed back down to CE. CE has no released users, so the old names are **removed outright** — no alias layer, no deprecation window. `resolveEngagementLevel` rejects them with an error naming the valid set. |
+| **D-1** | Engagement level names | **RESOLVED — align canonical names to the paid naming.** CE adopts Observer / Advisor / **Collaborator** / **Delegated** / **Autonomous**. D-1 also specified removing old names outright, with no alias layer or deprecation window, but the current resolver accepts them as API aliases. D-15 proposes a different removal policy; if approved at G0, it supersedes D-1's no-alias clause. |
 | **D-2** | Are Rate Governor / Squad Coordinator / Aspire / Governance Gates / Promotion Engine / Quarantine Bridge CE or Enterprise? | **SUPERSEDED by D-13.** The old all-or-nothing boundary is replaced by a hybrid: CE includes a single-squad Coordinator and local action budgets; Enterprise retains organization-wide policy, distributed Rate Governor, multi-squad S2S, Aspire, Governance Gates, Promotion Engine, and Quarantine Bridge. |
 | **D-3** | Ship 7-day auto-merge of the setup PR in CE? | **No.** 48-hour reminder comment only. |
 | **D-4** | Add `detect_repo` as a 7th MCP tool? | **No.** Preserve the 6-tool contract; expose via REST. |
@@ -494,7 +506,7 @@ tool names exported by `mcp/server.ts`. Prevents DEF-1 recurring.
 | **D-12** | How are action tiers and unknown actions handled? | **PROPOSED — pending G0.** Use canonical action tiers; deny unknown actions by default. |
 | **D-13** | Where is the Community/Enterprise boundary? | **PROPOSED — pending G0.** Hybrid boundary: CE includes a single-squad Coordinator and local action budgets (not branded as a Rate Governor). Enterprise retains organization-wide policy and centralized ceilings, Entra ID, durable multi-replica state, Promotion Engine, compliance evidence, multi-squad S2S, distributed Rate Governor, Aspire, and Quarantine Bridge. |
 | **D-14** | What are the runtime source of truth and storage modes? | **PROPOSED — pending G0.** HTTP is the source of truth, JSON is the store, and MCP supports remote mode. |
-| **D-15** | When are upstream names and aliases changed? | **PROPOSED — pending G0.** Rename upstream before removing aliases. |
+| **D-15** | When are upstream names and aliases changed? | **PROPOSED — pending G0.** Retain the current API aliases until the upstream naming is updated and synced to CE, then remove them. If approved at G0, this supersedes D-1's no-alias removal policy and DEF-6's claim that the old names are rejected; until then, D-1 remains the approved policy, although it does not describe the current resolver behavior. |
 | **D-16** | How are releases versioned? | **PROPOSED — pending G0.** Use Changesets. |
 | **D-17** | When and how are Academy tracks published? | **PROPOSED — pending G0.** Publish Community Edition tracks after G6; clearly label and keep Enterprise tracks separate. |
 | **D-18** | How should unsafe code simplification rules be handled? | **PROPOSED — pending G0.** Disable unsafe simplifier rules. |
@@ -505,7 +517,8 @@ The engagement level tables in CE's `AGENTS.md` (lines 337–348) sit **inside**
 `<!-- ORG-STANDARD:BEGIN/END -->` block (lines 249–499), which this repo's own policy
 forbids editing by hand — it is synced from `AgentCraftworks/.github`.
 
-Therefore the rename must be completed in two places:
+Therefore the canonical rename must be completed in two places. Under proposed D-15, alias
+removal follows the upstream update and sync; whether that policy replaces D-1 is decided at G0:
 
 1. **In CE (done — see §7.2):** code, tests, README, `docs/**`, workflow headers.
 2. **Upstream (blocked on another repo):** `AgentCraftworks/.github/AGENTS.md` must be
@@ -514,13 +527,16 @@ Therefore the rename must be completed in two places:
 
 Until step 2 lands, CE's `AGENTS.md` will show the old names and `sync-org-standards`
 will report drift. **This is expected and must not be "fixed" by editing the block.**
+Do not describe the current resolver as rejecting the old names: they are currently accepted
+as aliases. If G0 approves D-15, remove them only after the upstream rename has been synced;
+if G0 rejects it, remove them under D-1's existing policy.
 
 ### 7.2 Work already completed in this session
 
 | Change | Files |
 |---|---|
-| Level rename in the type layer, with `LEGACY_ENGAGEMENT_LEVEL_ALIASES` and `VALID_ENGAGEMENT_LEVEL_NAMES` | `typescript/src/types/autonomy.ts`, `typescript/src/handlers/autonomy-dial-routes.ts` |
-| Test updates + new coverage asserting superseded names are rejected | `typescript/test/action-classifier.test.ts` |
+| Level rename in the type layer, with legacy API aliases and `VALID_ENGAGEMENT_LEVEL_NAMES` | `typescript/src/types/autonomy.ts`, `typescript/src/handlers/autonomy-dial-routes.ts` |
+| Test updates + coverage asserting superseded names are accepted as aliases | `typescript/test/action-classifier.test.ts` |
 | DEF-1 MCP tool list corrected; DEF-2 FSM corrected; DEF-3 dangling link fixed; DEF-4 two-track Quick Start added; DEF-7 FORKING claim softened; Enterprise section marked "none of the following are included in CE" | `README.md` |
 | DEF-1 + DEF-2 corrected; handoff state diagram and MCP tool table added; level rename | `docs/architecture.md` |
 | Squad Coordinator no longer claimed as a CE capability; `.squad/` paths removed | `docs/RUBBER_DUCK_INTEGRATION.md` |
