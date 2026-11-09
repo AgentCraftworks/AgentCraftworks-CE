@@ -1,0 +1,34 @@
+$ .\docs\demos\04-docker-compose\run.ps1        (Windows 11, Docker Desktop 29.2, Compose v5.1, Node 24)
+
+── docker compose up --build -d typescript-api
+ Image jenp-aicraftworks-…-typescript-api Building
+ Image jenp-aicraftworks-…-typescript-api Built
+ Container …-typescript-api-1 Started
+── waiting for /health
+{"status":"ok","version":"1.0.0-ts","uptime":1.103864551,"timestamp":"2026-09-18T20:43:53.678Z"}
+
+── signed ping
+POST http://localhost:3000/api/webhook
+X-GitHub-Event: ping
+HTTP 200
+{"event":"ping","message":"pong"}
+
+── signed pull_request
+POST http://localhost:3000/api/webhook
+X-GitHub-Event: pull_request
+HTTP 200
+{"action":"opened","handled":true,"message":"Handoff created for PR #279","handoff_id":"e7c00fec-6804-474c-8ab8-97e45c38e10b"}
+
+── wrong secret (expect 401)
+POST http://localhost:3000/api/webhook
+X-GitHub-Event: ping
+HTTP 401
+{"error":"Unauthorized","message":"Invalid webhook signature"}
+
+Container left running. Stop with: docker compose down
+
+Notes
+- The PR number is random on every run.
+- Compose prints `The "GH_CE_APP_ID" variable is not set` / `"GH_CE_APP_PRIVATE_KEY" … not set`
+  warnings when those values are absent from .env. They are expected for this demo — the
+  server only needs them to call back into GitHub.

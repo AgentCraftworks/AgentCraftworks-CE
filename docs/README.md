@@ -1,0 +1,62 @@
+# AgentCraftworks Community Edition — documentation
+
+> **Status:** Shipped · **Edition:** Community · **Last updated:** 2026-09-18
+
+Shipped documents describe capabilities that are implemented in Community Edition.
+Documents labelled `DRAFT` describe decisions or capabilities that are still in progress;
+they are not promises of shipped behavior. Other plans and proposals live in
+[`docs/futures/`](futures/README.md).
+
+## Start here
+
+| Document | Read it when… |
+|---|---|
+| [Getting Started](getting-started.md) | You are new. Two tracks: install the GitHub App (5 min) or run your own instance (30 min). |
+| [Demos](demos/README.md) | You want proof in minutes — four scripted demos plus a [two-minute architecture walkthrough](demos/ce-architecture.html). |
+| [Editions — Community and Enterprise](EDITIONS.md) | Draft comparison reflecting decisions D-9 and D-13. Levels 4–5 can be configured but are not yet enforced on all job paths. |
+
+## Reference
+
+| Document | Covers |
+|---|---|
+| [Architecture](architecture.md) | Request flow, handoff state machine, storage, pull request routing and gating, MCP tool reference, engagement levels |
+| [GH-AW workflows](GHAW_WORKFLOWS.md) | The `ghaw-*` agentic workflow catalogue and `ACW PR Readiness` gate |
+| [Accessibility](accessibility.md) | WCAG 2.2 AA requirements and the accessibility agent team |
+| [`.mcp.json`](../.mcp.json) | MCP client configuration for GitHub Copilot and Claude (`npm run mcp`, stdio) |
+| [`.env.example`](../.env.example) | Every environment variable CE reads |
+
+## Operate
+
+| Document | Covers |
+|---|---|
+| [DEPLOYMENT.md](../DEPLOYMENT.md) | Creating the GitHub App, Docker Compose, Azure Container Apps with `azd`, OIDC, Key Vault, background scaffolding |
+| [FORKING.md](../FORKING.md) | Secrets and variables a fork needs (`GH_CE_APP_ID`, `GH_CE_APP_PRIVATE_KEY`, `REQUIRED_HUMAN_REVIEWER`) |
+| [SECURITY.md](../SECURITY.md) | Reporting vulnerabilities; CodeQL and `npm audit` in CI |
+| [SDLC lifecycle strategy](SDLC_LIFECYCLE_STRATEGY.md) | Greenfield-to-production promotion and environment strategy |
+| [New repository branch policy template](NEW_REPO_BRANCH_POLICY_TEMPLATE.md) | `feature/* → staging → main` policy bootstrap |
+
+## Contribute
+
+| Document | Covers |
+|---|---|
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | Branching, PR labels, review routing, definition of done |
+| [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | Contributor Covenant |
+| [AGENTS.md](../AGENTS.md) | Instructions every coding agent follows in this repository, including mandatory accessibility rules |
+| [Rubber Duck integration](RUBBER_DUCK_INTEGRATION.md) | Using GitHub Copilot Rubber Duck for a cross-model second opinion at CE review checkpoints |
+
+## Futures (not implemented)
+
+| Document | Status |
+|---|---|
+| [`docs/futures/README.md`](futures/README.md) | Index of proposals and their statuses |
+| [CE Getting Started implementation plan](futures/CE_GETTING_STARTED_IMPLEMENTATION_PLAN.md) | Program plan behind this documentation set |
+| [Playwright CLI integration](futures/PLAYWRIGHT_CLI_INTEGRATION.md) | `DRAFT` |
+
+## Conventions
+
+- Every shipped document starts with a status line:
+  `> **Status:** Shipped · **Edition:** Community · **Last updated:** YYYY-MM-DD`.
+- Enterprise capabilities are compared in [EDITIONS.md](EDITIONS.md); elsewhere use a short
+  factual reference rather than duplicating the feature list.
+- Markdown must pass the accessibility checklist in [AGENTS.md](../AGENTS.md):
+  meaningful link text, heading order, alt text, tables with header rows.

@@ -649,10 +649,11 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
-// Only run main if this is the entrypoint (not imported for tests)
+// Only run main if this is the entrypoint (not imported for tests).
+// Accept both "/" and "\" so the check also works on Windows paths.
 const isMainModule =
   typeof process.argv[1] === "string" &&
-  process.argv[1].includes("mcp/server");
+  /mcp[\\/]server/.test(process.argv[1]);
 
 if (isMainModule) {
   main().catch((error: unknown) => {
