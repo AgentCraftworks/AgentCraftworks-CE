@@ -1,0 +1,56 @@
+name: "GH-AW: Academy release dispatch"
+
+# Engagement Level: T4 (Agent Team) — dispatches published release metadata to Academy.
+# Configure the dedicated app credentials and ACADEMY_REPOSITORY variable as documented
+# in docs/ACADEMY_HOOKS.md. No credential values belong in this repository.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch-release:
+    name: Notify Academy of a published CE release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Academy repository setting
+        id: target
+        env:
+          ACADEMY_REPOSITORY: ${{ vars.ACADEMY_REPOSITORY }}
+        run: |
+          if [[ ! "$ACADEMY_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "::error::Set the ACADEMY_REPOSITORY Actions variable to the Academy owner/repository."
+            exit 1
+          fi
+          echo "owner=${ACADEMY_REPOSITORY%%/*}" >> "$GITHUB_OUTPUT"
+          echo "repository=${ACADEMY_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate scoped Academy dispatch token
+        id: academy-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_CE_ACADEMY_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.GH_CE_ACADEMY_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ steps.target.outputs.owner }}
+          repositories: ${{ steps.target.outputs.repository }}
+          permission-contents: write
+
+      - name: Dispatch release metadata
+        env:
+          GH_TOKEN: ${{ steps.academy-token.outputs.token }}
+          ACADEMY_OWNER: ${{ steps.target.outputs.owner }}
+          ACADEMY_REPOSITORY: ${{ steps.target.outputs.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_PUBLISHED_AT: ${{ github.event.release.published_at }}
+        run: |
+          gh api "repos/$ACADEMY_OWNER/$ACADEMY_REPOSITORY/dispatches" \
+            --method POST \
+            -f event_type=ce-release-published \
+            -F "client_payload[repository]=$GITHUB_REPOSITORY" \
+            -F "client_payload[tag]=$RELEASE_TAG" \
+            -F "client_payload[url]=$RELEASE_URL" \
+            -F "client_payload[published_at]=$RELEASE_PUBLISHED_AT" \
+            -F "client_payload[run_id]=$GITHUB_RUN_ID"
