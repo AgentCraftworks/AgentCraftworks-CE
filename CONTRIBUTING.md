@@ -46,6 +46,34 @@ Read the full [CLA document here](.github/CLA.md).
 4. Run tests: `npm test`
 5. Open a pull request against `staging`
 
+## First contribution
+
+The fastest first check uses Node.js 22+ from the repository root:
+
+```bash
+npm ci && npm test
+```
+
+The clean-install test path is intended to take under two minutes on a typical
+connection; package-download time varies. The full build and typecheck are available
+when your change needs them.
+
+The demos index links to open `good first issue` searches for each lab. If a search has
+no suitable issue, ask a maintainer before starting a larger change. Read the
+[Contributor License Agreement](.github/CLA.md); the CLA Assistant tells you whether
+your account needs to sign and how to do it.
+
+## Code review and recognition
+
+`CODEOWNERS` routes review requests to the people responsible for each area. Reviewers
+are asked to review routed pull requests, but no turnaround timeline is guaranteed. If
+you are blocked, state the specific question in the pull request so maintainers can
+respond when available.
+
+Maintainers should recognize community contributions in release notes using the
+contributor's GitHub handle. If you want a specific user-visible contribution called
+out, mention it in your pull request.
+
 ## Development Setup
 
 ```bash

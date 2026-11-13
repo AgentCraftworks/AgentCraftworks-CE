@@ -10,13 +10,13 @@ so you can tell at a glance whether yours worked.
 Run them in order — each one builds a little on the previous — or jump to the one
 that answers your question.
 
-| # | Demo | Proves | Prerequisites | Time |
-|---|---|---|---|---|
-| 01 | [Your first handoff over MCP](01-first-handoff/README.md) | The 6-tool MCP server drives `pending → active → completed`, with schema-validated context | Node 22+, `npm install` | 2 min |
-| 02 | [Engagement levels](02-engagement-levels/README.md) | A T4 action is denied by a repository configured at level 3. Levels 4–5 can be configured but are not yet enforced on all job paths. | Node 22+, CE running locally (`npm run start:env`) | 3 min |
-| 03 | [CODEOWNERS routing](03-codeowners-routing/README.md) | The setup PR, CODEOWNERS → labels → none routing precedence, and the action gate | Node 22+, CE running locally | 5 min |
-| 04 | [Docker Compose + signed webhook](04-docker-compose/README.md) | One container, `/health`, HMAC-SHA256-verified webhooks (200 vs 401) | Docker Compose v2, Node 22+ | 5 min |
-| — | [Two-minute architecture walkthrough](ce-architecture.html) | How webhooks, CODEOWNERS, engagement levels, the handoff FSM and MCP fit together | A browser | 2 min |
+| # | Demo | Proves | Prerequisites | Time | Good-first-issue search |
+|---|---|---|---|---|---|
+| 01 | [Your first handoff over MCP](01-first-handoff/README.md) | The 6-tool MCP server drives `pending → active → completed`, with schema-validated context | Node 22+, `npm install` | 2 min | [Handoff issues](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22+handoff) |
+| 02 | [Engagement levels](02-engagement-levels/README.md) | A T4 action is denied by a repository configured at level 3. Levels 4–5 can be configured but are not yet enforced on all job paths. | Node 22+, CE running locally (`npm run start:env`) | 3 min | [Engagement-level issues](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22+engagement+levels) |
+| 03 | [CODEOWNERS routing](03-codeowners-routing/README.md) | The setup PR, CODEOWNERS → labels → none routing precedence, and the action gate | Node 22+, CE running locally | 5 min | [Routing issues](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22+CODEOWNERS+routing) |
+| 04 | [Docker Compose + signed webhook](04-docker-compose/README.md) | One container, `/health`, HMAC-SHA256-verified webhooks (200 vs 401) | Docker Compose v2, Node 22+ | 5 min | [Docker/webhook issues](https://github.com/AgentCraftworks/AgentCraftworks-CE/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22+Docker+webhook) |
+| — | [Two-minute architecture walkthrough](ce-architecture.html) | How webhooks, CODEOWNERS, engagement levels, the handoff FSM and MCP fit together | A browser | 2 min | — |
 
 ## Expected output at a glance
 
