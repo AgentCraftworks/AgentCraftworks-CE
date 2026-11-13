@@ -20,6 +20,8 @@ they are not promises of shipped behavior. Other plans and proposals live in
 | Document | Covers |
 |---|---|
 | [Architecture](architecture.md) | Request flow, handoff state machine, storage, pull request routing and gating, MCP tool reference, engagement levels |
+| [MCP tools](MCP_TOOLS.md) | The six stdio tools, their inputs, and record behavior |
+| [Handoff lifecycle](HANDOFF_LIFECYCLE.md) | Handoff states, transitions, failure reasons, and SLA behavior |
 | [GH-AW workflows](GHAW_WORKFLOWS.md) | The `ghaw-*` agentic workflow catalogue and `ACW PR Readiness` gate |
 | [Accessibility](accessibility.md) | WCAG 2.2 AA requirements and the accessibility agent team |
 | [`.mcp.json`](../.mcp.json) | MCP client configuration for GitHub Copilot and Claude (`npm run mcp`, stdio) |

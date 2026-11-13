@@ -165,7 +165,7 @@ See **[docs/EDITIONS.md](docs/EDITIONS.md)** for the draft edition comparison.
 ## Documentation
 
 - **Start here:** [Getting Started](docs/getting-started.md) · [Demos](docs/demos/README.md) · [Editions](docs/EDITIONS.md)
-- **Reference:** [Architecture](docs/architecture.md) · [Engagement levels](docs/architecture.md#agent-engagement-levels-reference) · [Agentic workflows](docs/GHAW_WORKFLOWS.md) · [Accessibility](docs/accessibility.md)
+- **Reference:** [Architecture](docs/architecture.md) · [Engagement levels](docs/architecture.md#agent-engagement-levels-reference) · [MCP tools](docs/MCP_TOOLS.md) · [Handoff lifecycle](docs/HANDOFF_LIFECYCLE.md) · [Agentic workflows](docs/GHAW_WORKFLOWS.md) · [Accessibility](docs/accessibility.md)
 - **Operate:** [Deployment](DEPLOYMENT.md) · [Fork & Rename Guide](FORKING.md) · [Security policy](SECURITY.md)
 - **Contribute:** [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [AGENTS.md](AGENTS.md)
 - Full index: **[docs/README.md](docs/README.md)**
