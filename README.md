@@ -47,6 +47,9 @@ each operator determine which actions are available:
 Two tracks, depending on whether you want to **use** Community Edition or **run your own instance**.
 The canonical, step-by-step guide is **[docs/getting-started.md](docs/getting-started.md)**.
 
+[Open this repository in GitHub Codespaces](https://codespaces.new/AgentCraftworks/AgentCraftworks-CE?quickstart=1)
+for a preconfigured Node.js 22 development environment.
+
 ### Track 1 — Install the GitHub App (5 minutes)
 
 1. Install your organisation's AgentCraftworks Community Edition App on a repository (there is no
