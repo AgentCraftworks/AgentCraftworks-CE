@@ -1,0 +1,21 @@
+{
+  "status": "DRAFT",
+  "format": "scenario-only-not-squad-schema",
+  "dependencies": ["G-1", "G-6", "C-8", "C-12"],
+  "members": [
+    {
+      "id": "docs-member",
+      "skillRoute": "documentation",
+      "expectedOutcome": "complete one repository-level-permitted sandbox action"
+    },
+    {
+      "id": "test-member",
+      "skillRoute": "test-investigation",
+      "expectedOutcome": "receive a denial for one action above the configured repository level"
+    }
+  ],
+  "sandbox": "synthetic-only",
+  "squadSchemaVerified": false,
+  "denialContractVerified": false,
+  "evidenceExportVerified": false
+}
