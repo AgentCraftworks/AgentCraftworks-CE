@@ -1,0 +1,59 @@
+{
+  "status": "DRAFT",
+  "dependencies": ["C-8", "C-12", "G3"],
+  "sandbox": "not-provisioned",
+  "killSwitch": {
+    "variable": "GH_CE_AGENTS_PAUSED",
+    "value": "true",
+    "expectedEffectiveLevel": 1
+  },
+  "evidenceExport": {
+    "http": "GET /api/handoffs/:id/export?format=md|json",
+    "mcp": "export_evidence",
+    "verified": false
+  },
+  "rungs": [
+    {
+      "targetLevel": 1,
+      "boundToRaise": "repository dial to Observer baseline",
+      "action": "read synthetic issue",
+      "evidenceCheckpoint": true
+    },
+    {
+      "targetLevel": 2,
+      "boundToRaise": "repository dial",
+      "action": "comment on synthetic issue",
+      "evidenceCheckpoint": true
+    },
+    {
+      "targetLevel": 3,
+      "boundToRaise": "repository dial",
+      "action": "apply pre-approved sandbox label",
+      "evidenceCheckpoint": true
+    },
+    {
+      "targetLevel": 4,
+      "boundToRaise": "repository dial",
+      "requiredOptIns": [
+        "operator environment ceiling",
+        "CODEOWNERS-reviewed repository configuration",
+        "token with dial:elevate"
+      ],
+      "action": "open harmless sandbox PR without merging",
+      "evidenceCheckpoint": true,
+      "executionStatus": "configurable, enforcement in progress"
+    },
+    {
+      "targetLevel": 5,
+      "boundToRaise": "repository dial",
+      "requiredOptIns": [
+        "operator environment ceiling",
+        "CODEOWNERS-reviewed repository configuration",
+        "token with dial:elevate"
+      ],
+      "action": "make one additional allow-listed sandbox PR change without merging or deploying",
+      "evidenceCheckpoint": true,
+      "executionStatus": "configurable, enforcement in progress"
+    }
+  ]
+}
